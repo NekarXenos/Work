@@ -1,0 +1,89 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Studio layout verification</title>
+<style>
+  body { margin: 20px; background: #242a32; color: white; font: 14px Arial, sans-serif; }
+  main { display: flex; gap: 24px; align-items: flex-start; }
+  iframe { display: block; border: 0; transform-origin: top left; }
+  .tablet { width: 461px; height: 615px; }
+  .tablet iframe { transform: scale(.6); }
+  .small { width: 320px; }
+  .offscreen { position: absolute; left: -10000px; }
+  pre { white-space: pre-wrap; font-size: 11px; }
+</style>
+<main>
+  <section><h2>Phone · 390 × 844</h2><iframe width="390" height="844" src="../" title="Phone"></iframe></section>
+  <section class="tablet"><h2>Tablet · 768 × 1024</h2><iframe width="768" height="1024" src="../" title="Tablet"></iframe></section>
+  <section class="small"><h2>Small phone · 320 × 568</h2><iframe width="320" height="568" src="../" title="Small phone"></iframe></section>
+</main>
+<iframe class="offscreen" width="600" height="800" src="../" title="Small tablet"></iframe>
+<iframe class="offscreen" width="540" height="720" src="../" title="Compact tablet"></iframe>
+<iframe class="offscreen" width="520" height="520" src="../" title="Square viewport"></iframe>
+<iframe class="offscreen" width="1024" height="768" src="../" title="Landscape tablet"></iframe>
+<iframe class="offscreen" width="1440" height="900" src="../" title="Desktop"></iframe>
+<pre id="results">Checking…</pre>
+<script>
+const expected = [[143,337,204,207], [408,336,207,208], [678,336,207,208], [124,624,216,121], [404,624,217,121], [685,623,219,122]];
+const results = [];
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const intersects = (a,b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+async function check(frame) {
+  const win = frame.contentWindow, doc = frame.contentDocument;
+  const stylesheet = doc.querySelector('link[rel="stylesheet"]');
+  await new Promise((resolve, reject) => {
+    stylesheet.onload = resolve;
+    stylesheet.onerror = reject;
+    stylesheet.href = '../styles.css?verify=' + Date.now();
+  });
+  await doc.fonts.ready;
+  for(let retry = 0; retry < 40 && ![...doc.querySelectorAll('.hotspot img')].every(img => img.complete && img.naturalWidth); retry++) await delay(50);
+  const portrait = win.matchMedia('(orientation: portrait)').matches;
+  const slots = [...doc.querySelectorAll('.hotspot')].filter(slot => win.getComputedStyle(slot).display !== 'none');
+  const plate = doc.querySelector('.studio').getBoundingClientRect();
+  const errors = [];
+  if(slots.length !== (portrait ? 6 : 10)) errors.push('Wrong visible slot count');
+  if(!slots.every(slot => slot.querySelector('img').naturalWidth > 0)) errors.push('Missing images');
+  if(portrait) {
+    if(!win.getComputedStyle(doc.querySelector('.studio')).backgroundImage.includes('Studio_Portrait.png')) errors.push('Wrong photo');
+    slots.forEach((slot,index) => {
+      const box = slot.getBoundingClientRect(), want = expected[index];
+      const actual = [(box.left-plate.left)*1024/plate.width, (box.top-plate.top)*1536/plate.height, box.width*1024/plate.width, box.height*1536/plate.height];
+      if(actual.some((value,i) => Math.abs(value-want[i]) > .2)) errors.push('Misaligned ' + slot.dataset.slot);
+      if(box.left < 0 || box.right > win.innerWidth || box.top < 0 || box.bottom > win.innerHeight) errors.push('Clipped ' + slot.dataset.slot);
+    });
+    const headings = [...doc.querySelectorAll('.section-heading .brush')];
+    const intro = [...doc.querySelectorAll('.masthead h1, .masthead .brush')].filter(el => el.getBoundingClientRect().width > 0);
+    headings.forEach(heading => {
+      const rect = heading.getBoundingClientRect();
+      if(intro.some(el => intersects(rect, el.getBoundingClientRect()))) errors.push('Intro overlaps ' + heading.textContent);
+      if(slots.some(slot => intersects(rect, slot.getBoundingClientRect()))) errors.push('Heading overlaps a work');
+    });
+  }
+  const slot = slots[0], before = slot.dataset.image;
+  slot.dispatchEvent(new win.WheelEvent('wheel', {deltaY: 100, bubbles: true, cancelable: true}));
+  if(slot.dataset.image === before) errors.push('Gallery did not advance');
+  slot.click();
+  if(doc.querySelector('.lightbox').hidden) errors.push('Lightbox did not open');
+  const firstImage = doc.querySelector('.lightbox img').src;
+  doc.querySelector('.lightbox-nav--next').click();
+  if(doc.querySelector('.lightbox img').src === firstImage) errors.push('Lightbox did not advance');
+  doc.querySelector('.close-button').click();
+  if(!doc.querySelector('.lightbox').hidden) errors.push('Lightbox did not close');
+  doc.activeElement.blur();
+  return {view: frame.title, width: win.innerWidth, height: win.innerHeight, slots: slots.length, errors};
+}
+window.addEventListener('load', async () => {
+  try {
+    for(const frame of document.querySelectorAll('iframe')) results.push(await check(frame));
+    const phone = document.querySelector('iframe');
+    phone.width = 844; phone.height = 390;
+    await delay(100);
+    results.push({...await check(phone), view: 'Phone rotated to landscape'});
+    phone.width = 390; phone.height = 844;
+    await delay(100);
+    results.push({...await check(phone), view: 'Phone rotated back to portrait'});
+    document.querySelector('#results').textContent = JSON.stringify(results);
+    document.title = results.some(result => result.errors.length) ? 'FAIL' : 'PASS';
+  } catch(error) { document.querySelector('#results').textContent = error.stack; document.title = 'FAIL'; }
+});
+</script>

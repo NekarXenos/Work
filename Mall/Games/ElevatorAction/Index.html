@@ -1,0 +1,3719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0806">
+<title>ESCALATED MAYHEM V22 — 20 floors, 6 documents, one way out</title>
+<style>
+  /* ------------------------------------------------------------------
+     Visual language: 1983 arcade cabinet meets stakeout surveillance.
+     Amber phosphor readouts on smoked glass, segmented hardware bars,
+     stencilled condensed display type. No gradients, no rounded cards.
+     ------------------------------------------------------------------ */
+  :root{
+    --ink:#0a0806;          /* warm near-black */
+    --smoke:rgba(12,10,8,.62);
+    --amber:#f2a33c;        /* primary readout */
+    --amber-dim:#8a5c22;
+    --alarm:#d8341f;
+    --bone:#e6dcc8;         /* documents / paper */
+    --steel:#767c85;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+    --display:"Haettenschweiler","Arial Narrow Bold","Arial Narrow",Impact,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--ink);color:var(--amber);font-family:var(--mono)}
+  canvas{display:block}
+  #game{position:fixed;inset:0}
+
+  /* ---------------- HUD ---------------- */
+  #hud{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .4s}
+  #hud.live{opacity:1}
+  .panel{
+    position:absolute;background:var(--smoke);border:1px solid rgba(242,163,60,.28);
+    padding:7px 11px 8px;letter-spacing:.06em;font-size:12px;line-height:1.45;
+    text-shadow:0 0 7px rgba(242,163,60,.45);backdrop-filter:blur(2px);
+  }
+  .k{color:var(--amber-dim);font-size:10px;letter-spacing:.18em}
+  .big{font-family:var(--display);font-size:30px;letter-spacing:.02em;line-height:.95;display:block}
+
+  #p-health{left:18px;bottom:18px;min-width:196px}
+  #p-ammo{right:18px;bottom:18px;min-width:150px;text-align:right}
+  #p-mission{left:18px;top:18px;min-width:196px}
+  #p-time{right:18px;top:18px;min-width:150px;text-align:right}
+
+  /* segmented hardware bars */
+  .bar{display:flex;gap:2px;margin-top:5px}
+  .bar i{flex:1;height:9px;background:rgba(242,163,60,.11);border:1px solid rgba(242,163,60,.22)}
+  .bar i.on{background:var(--amber);box-shadow:0 0 6px rgba(242,163,60,.7)}
+  #healthbar i.on{background:var(--alarm);box-shadow:0 0 6px rgba(216,52,31,.75)}
+  #healthbar.ok i.on{background:#8fbf5a;box-shadow:0 0 6px rgba(143,191,90,.6)}
+  #btbar i.on{background:#79d2e8;box-shadow:0 0 6px rgba(121,210,232,.7)}
+  #btbar.spent i.on{background:var(--amber-dim);box-shadow:none}
+
+  #docs{color:var(--bone);text-shadow:0 0 8px rgba(230,220,200,.5)}
+  #redtip{display:block;color:#e4553f;text-shadow:0 0 8px rgba(216,52,31,.6)}
+  .lo{color:var(--alarm)!important;text-shadow:0 0 9px rgba(216,52,31,.7)!important}
+
+  /* crosshair: four ticks, no circle */
+  #cross{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;opacity:.85}
+  #cross b{position:absolute;background:var(--amber);box-shadow:0 0 4px rgba(242,163,60,.9)}
+  #cross b:nth-child(1){left:10px;top:0;width:2px;height:7px}
+  #cross b:nth-child(2){left:10px;bottom:0;width:2px;height:7px}
+  #cross b:nth-child(3){top:10px;left:0;height:2px;width:7px}
+  #cross b:nth-child(4){top:10px;right:0;height:2px;width:7px}
+
+  #hint{position:absolute;left:50%;top:58%;transform:translateX(-50%);font-size:13px;
+        letter-spacing:.1em;background:var(--smoke);padding:6px 14px;border-left:2px solid var(--amber);
+        opacity:0;transition:opacity .15s}
+  #hint.show{opacity:1}
+  #toast{position:absolute;left:50%;top:24%;transform:translateX(-50%);text-align:center;
+         font-family:var(--display);font-size:26px;letter-spacing:.04em;color:var(--bone);
+         text-shadow:0 0 14px rgba(0,0,0,.9);opacity:0;transition:opacity .3s}
+  #toast.show{opacity:1}
+  #flash{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 42%,rgba(216,52,31,.55) 100%);opacity:0;transition:opacity .25s}
+  #tint{position:absolute;inset:0;background:rgba(121,210,232,.07);opacity:0;transition:opacity .2s;mix-blend-mode:screen}
+
+  /* ---------------- Screens ---------------- */
+  .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+          background:radial-gradient(ellipse at 50% 35%,#1a1410 0%,#070605 70%);text-align:center;padding:24px;z-index:10}
+  .screen.hide{display:none}
+  .screen h1{font-family:var(--display);font-size:clamp(46px,9vw,104px);line-height:.86;letter-spacing:.01em;
+             color:var(--amber);text-shadow:0 0 26px rgba(242,163,60,.35)}
+  .screen h1 span{display:block;color:var(--bone);font-size:.38em;letter-spacing:.34em;text-shadow:none;margin-top:10px}
+  .screen p{max-width:58ch;font-size:13.5px;line-height:1.75;color:#c9b99a;margin-top:22px}
+  .keys{margin-top:26px;display:grid;grid-template-columns:auto auto;gap:5px 26px;font-size:12px;color:#9b8f7a;text-align:left}
+  .keys b{color:var(--amber);font-weight:400}
+  .cta{margin-top:32px;font-family:var(--display);font-size:22px;letter-spacing:.14em;color:var(--ink);
+       background:var(--amber);padding:11px 30px;border:0;cursor:pointer;pointer-events:auto}
+  .cta:focus-visible{outline:3px solid var(--bone);outline-offset:3px}
+  .foot{position:fixed;bottom:14px;left:0;right:0;font-size:10px;letter-spacing:.24em;color:#5a5148}
+  #over h1{color:var(--alarm);text-shadow:0 0 30px rgba(216,52,31,.4)}
+  #win h1{color:var(--bone);text-shadow:0 0 30px rgba(230,220,200,.3)}
+
+  /* ---------------- Touch / mobile ---------------- */
+  body.touch{touch-action:none;overscroll-behavior:none}
+  body.touch canvas{touch-action:none}
+
+  /* HUD moves clear of the thumbs: all four readouts stack along the top */
+  body.touch .panel{padding:5px 8px 6px;font-size:10px;line-height:1.35;overflow:hidden}
+  body.touch .k{font-size:9px;letter-spacing:.12em}
+  body.touch .big{font-size:20px}
+  body.touch #p-mission{left:8px;top:8px;min-width:124px;height:70px}
+  body.touch #p-time{right:8px;top:8px;min-width:96px;height:60px}
+  body.touch #p-health{left:8px;top:78px;bottom:auto;min-width:124px}
+  body.touch #p-ammo{right:8px;top:68px;bottom:auto;min-width:96px}
+  body.touch #hint{top:auto;bottom:34%;font-size:12px}
+  body.touch #toast{top:19%;font-size:21px}
+
+  #touch{position:fixed;inset:0;z-index:6;pointer-events:none;
+         padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  #touch.off{display:none}
+  #touch *{touch-action:none;-webkit-user-select:none;user-select:none;
+           -webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+  #t-look{position:fixed;inset:0;pointer-events:auto}
+  #t-stickzone{position:absolute;left:0;bottom:0;width:42%;height:58%;pointer-events:auto}
+
+  /* stick: arcade gate with a ball top, dropped wherever the thumb lands */
+  #t-stick{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;opacity:.34;transition:opacity .12s}
+  #t-stick.live{opacity:.92}
+  #t-stick .gate{position:absolute;inset:0;background:rgba(242,163,60,.6);
+     clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
+  #t-stick .gate::after{content:'';position:absolute;inset:3px;background:rgba(10,8,6,.55);
+     clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
+  #t-knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;
+          background:var(--amber);box-shadow:0 0 14px rgba(242,163,60,.5);will-change:transform}
+
+  .tb{position:absolute;pointer-events:auto;display:flex;align-items:center;justify-content:center;
+      font-family:var(--display);letter-spacing:.09em;color:var(--amber);font-size:13px;
+      background:rgba(12,10,8,.5);border:1px solid rgba(242,163,60,.45);
+      text-shadow:0 0 8px rgba(242,163,60,.45);backdrop-filter:blur(2px)}
+  .tb.rnd{border-radius:50%;border-width:2px}
+  .tb.down{background:rgba(242,163,60,.85);color:var(--ink);text-shadow:none;border-color:var(--bone)}
+  .tb.dim{opacity:.3}
+
+  #t-fire{right:16px;bottom:16px;width:86px;height:86px;font-size:17px;
+          color:#ef7a53;border-color:rgba(216,52,31,.7);text-shadow:0 0 9px rgba(216,52,31,.5)}
+  #t-fire.down{background:rgba(216,52,31,.85);color:#fff2ec;border-color:var(--bone);text-shadow:none}
+  #t-jump{right:114px;bottom:20px;width:62px;height:62px}
+  #t-kick{right:114px;bottom:90px;width:62px;height:62px}
+  #t-up{left:16px;bottom:172px;width:52px;height:46px;font-size:15px}
+  #t-dn{left:16px;bottom:118px;width:52px;height:46px;font-size:15px}
+  #t-pause{left:50%;margin-left:-24px;top:10px;width:48px;height:30px;font-size:12px;letter-spacing:.2em}
+
+  #t-util{position:absolute;left:50%;transform:translateX(-50%);bottom:16px;
+          display:flex;gap:8px;justify-content:center;pointer-events:none}
+  #t-util .tb{position:relative;left:auto;right:auto;bottom:auto;width:52px;height:44px;font-size:12px}
+  @media (orientation:portrait){#t-util{bottom:176px}}
+  @media (max-height:400px){
+    #t-fire{width:74px;height:74px;font-size:15px}
+    #t-jump{right:100px;bottom:16px;width:54px;height:54px}
+    #t-kick{right:100px;bottom:78px;width:54px;height:54px}
+    #t-up{bottom:150px;height:42px}
+    #t-dn{bottom:104px;height:42px}
+    #t-util .tb{width:48px;height:40px;font-size:11px}
+    #t-stick{width:104px;height:104px;margin:-52px 0 0 -52px}
+    #t-knob{width:48px;height:48px;margin:-24px 0 0 -24px}
+  }
+
+  /* portrait nudge: the building reads much better sideways */
+  #rotate{position:fixed;left:50%;transform:translateX(-50%);top:46px;z-index:7;display:none;
+          background:var(--smoke);border:1px solid rgba(242,163,60,.35);padding:6px 12px;
+          font-size:10px;letter-spacing:.16em;color:var(--amber-dim);animation:fade 6s forwards}
+  @keyframes fade{0%,70%{opacity:1}100%{opacity:0}}
+  @media (orientation:portrait){body.touch.playing #rotate{display:block}}
+
+  /* start / pause screen extras */
+  /* a landscape phone is ~390 tall: the briefing has to scroll, not clip */
+  body.touch .screen{justify-content:flex-start;overflow-y:auto;touch-action:pan-y;
+                     -webkit-overflow-scrolling:touch;
+                     padding:calc(16px + env(safe-area-inset-top)) 16px calc(26px + env(safe-area-inset-bottom))}
+  body.touch .screen > *{flex-shrink:0}
+  body.touch #pause,body.touch #over,body.touch #win{justify-content:center}
+  body.touch .screen h1{font-size:clamp(34px,7vw,62px)}
+  body.touch .screen p{font-size:12px;line-height:1.6;margin-top:14px;max-width:52ch}
+  body.touch .keys{margin-top:16px;gap:4px 16px;font-size:11px}
+  body.touch .cta{margin-top:20px;font-size:19px;padding:10px 26px}
+  body.touch .tog{margin-top:12px}
+  body.touch .foot{display:none}
+  @media (max-height:470px){
+    body.touch .screen h1{font-size:34px}
+    body.touch #start p{display:none}
+    body.touch .keys{font-size:10px;margin-top:12px}
+  }
+  .keys.tc{display:none}
+  body.touch .keys.kb{display:none}
+  body.touch .keys.tc{display:grid}
+  .tog{margin-top:18px;background:none;border:1px solid rgba(242,163,60,.4);color:var(--amber-dim);
+       font-family:var(--mono);font-size:11px;letter-spacing:.14em;padding:7px 15px;cursor:pointer;pointer-events:auto}
+  .sens{display:none;margin-top:20px;align-items:center;gap:11px;font-size:11px;letter-spacing:.16em;color:#9b8f7a}
+  body.touch .sens{display:flex}
+  .sens button{width:36px;height:31px;background:none;border:1px solid rgba(242,163,60,.4);
+               color:var(--amber);font-size:16px;font-family:var(--mono);cursor:pointer;pointer-events:auto}
+  .sens b{color:var(--amber);font-weight:400;min-width:10px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+
+<div id="hud">
+  <div id="cross"><b></b><b></b><b></b><b></b></div>
+
+  <div class="panel" id="p-mission">
+    <span class="k">documents secured</span>
+    <span class="big" id="docs">0/6</span>
+    <span class="k" id="floorlabel">position &mdash; roof</span>
+    <span class="k" id="redtip"></span>
+  </div>
+
+  <div class="panel" id="p-time">
+    <span class="k">bullet time</span>
+    <span class="big" id="btlabel">READY</span>
+    <div class="bar" id="btbar"></div>
+  </div>
+
+  <div class="panel" id="p-health">
+    <span class="k">condition</span>
+    <span class="big" id="hpnum">100</span>
+    <div class="bar ok" id="healthbar"></div>
+  </div>
+
+  <div class="panel" id="p-ammo">
+    <span class="k" id="ammolabel">.45 automatic</span>
+    <span class="big" id="ammo">12<small style="font-size:.44em;color:#8a5c22"> / 48</small></span>
+    <span class="k" id="ammohint">R to reload</span>
+    <span class="k" id="shadetip"></span>
+  </div>
+
+  <div id="hint"></div>
+  <div id="toast"></div>
+  <div id="flash"></div>
+  <div id="tint"></div>
+</div>
+
+<div id="touch" class="off">
+  <div id="t-look"></div>
+  <div id="t-stickzone"></div>
+  <div id="t-stick"><div class="gate"></div><div id="t-knob"></div></div>
+
+  <div class="tb rnd" id="t-fire">FIRE</div>
+  <div class="tb rnd" id="t-jump">JUMP</div>
+  <div class="tb rnd" id="t-kick">KICK</div>
+  <div class="tb" id="t-up">&uarr;</div>
+  <div class="tb" id="t-dn">&darr;</div>
+  <div class="tb" id="t-pause">II</div>
+  <div id="t-util">
+    <div class="tb" id="t-use">USE</div>
+    <div class="tb" id="t-reload">RLD</div>
+    <div class="tb" id="t-bt">B/T</div>
+    <div class="tb" id="t-shd">SHD</div>
+    <div class="tb" id="t-lamp">LMP</div>
+  </div>
+</div>
+<div id="rotate">turn the phone sideways for a wider view</div>
+
+<div class="screen" id="start">
+  <h1>Escalated<br>Mayhem<span>V22</span></h1>
+  <p>Six safes are sitting behind red doors somewhere in these twenty floors, and the Corvino family has men in every office. No lift runs the whole height &mdash; every hoistway is a stack of short local cars, so you ride one to the end of its run and go hunting for the next. Take the roof elevator down, work your way to the basement, and drive the red roadster up the ramp before they close it. Every shot you fire carries two floors, and the men who hear it come to look &mdash; by lift or by escalator, the same way you have to.</p>
+  <div class="keys kb">
+    <b>W A S D</b><span>move &middot; hold Shift to run</span>
+    <b>Mouse</b><span>look &middot; left click fires</span>
+    <b>Space</b><span>jump &middot; right click or V kicks</span>
+    <b>Middle click</b><span>swap the .45 for a lampshade &middot; Q does the same</span>
+    <b>&uarr; &darr;</b><span>drive the lift you stand on &middot; call one to your floor from the hall</span>
+    <b>E</b><span>open doors, get in the car</span>
+    <b>R / B / L</b><span>reload &middot; bullet time &middot; flashlight</span>
+  </div>
+  <div class="keys tc">
+    <b>Left pad</b><span>move &middot; push the stick to the rim to run</span>
+    <b>Drag</b><span>look &middot; drag off the FIRE button to keep shooting</span>
+    <b>FIRE &middot; KICK</b><span>shoot &middot; kick, deadly while you are airborne</span>
+    <b>JUMP</b><span>jump &middot; doubles as the brake in the car</span>
+    <b>SHD</b><span>swap the .45 for a lampshade &middot; FIRE throws it</span>
+    <b>&uarr; &darr;</b><span>drive the lift you stand on &middot; call one from the hall</span>
+    <b>USE</b><span>doors, safes, and getting into the roadster</span>
+    <b>RLD &middot; B/T &middot; LMP</b><span>reload &middot; bullet time &middot; flashlight</span>
+  </div>
+  <button class="cta" id="startbtn">Take the roof</button>
+  <button class="tog" id="touchtog">touch controls: off</button>
+  <div class="foot">no lift goes all the way down &middot; shoot a lamp chain and it drops on whoever is underneath &middot; walk over the wreckage and the shade becomes a weapon &middot; a shot draws the floors above and below to the spot it came from</div>
+</div>
+
+<div class="screen hide" id="pause">
+  <h1>Held<span>paused</span></h1>
+  <p id="pausetxt">Click to lock the mouse and go back in.</p>
+  <button class="cta" id="resumebtn">Back to it</button>
+  <div class="sens">
+    <span>look speed</span>
+    <button id="sensdn">&minus;</button><b id="sensval">4</b><button id="sensup">+</button>
+  </div>
+  <button class="tog" id="touchtog2">touch controls: on</button>
+</div>
+
+<div class="screen hide" id="over">
+  <h1>They got you<span>game over</span></h1>
+  <p id="overtxt">Twenty floors, and this is where it ended.</p>
+  <button class="cta" id="againbtn">Run it again</button>
+</div>
+
+<div class="screen hide" id="win">
+  <h1>Clean<br>getaway<span>mission complete</span></h1>
+  <p id="wintxt">Six documents, one roadster, and daylight up ahead.</p>
+  <button class="cta" id="winbtn">Run it again</button>
+</div>
+
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+<script>
+if (typeof THREE === 'undefined') {
+  document.getElementById('start').innerHTML =
+    '<h1>No signal<span>three.js did not load</span></h1><p>This build pulls three.js r128 from unpkg. Reconnect and reload the page.</p>';
+}
+</script>
+<script>
+"use strict";
+(function () {
+if (typeof THREE === 'undefined') return;
+/* ==========================================================================
+   ESCALATED MAYHEM V22
+   Single-file first-person game built on three.js r128 (UMD build).
+   Everything — geometry, textures-by-material, audio — is generated at runtime.
+   Sections: 1 config  2 utils  3 engine  4 world build  5 entities
+             6 combat  7 systems  8 loop
+   ========================================================================== */
+
+/* ------------------------------ 1. CONFIG ------------------------------- */
+const VERSION   = 'V19';
+const FH        = 6;                 // floor-to-floor height (corridors are 6 high)
+const FLOORS    = 20;                // 20 procedurally generated floors
+const ROOF_Y    = FLOORS * FH;       // 120
+const WT        = 0.15;              // half wall thickness
+const DOCS_TOTAL= 6;                 // red doors / safes / secret documents
+const BASE_Y    = -9;                // basement slab
+const BASE_CEIL = -1;                // basement ceiling underside
+const RAMP_Z0   = 14, RAMP_Z1 = 38, RAMP_TOP_Y = 0.4;   // garage exit ramp
+const WIN_Z     = 44;                // drive past this and you are out
+
+const P = { r: 0.34, h: 1.75, eye: 1.58 };   // player capsule (as an AABB)
+const E = { r: 0.30, h: 1.80 };              // enemy capsule
+
+// --- thrown lampshade ---------------------------------------------------
+// Shoot a lamp down, walk over the wreckage, and the shade comes with you.
+// It flies flat and quiet: 35% of a man's health per hit, so three good
+// throws put one down, and the disc can be walked over and thrown again.
+const SHADE_DMG_FRAC = 0.35;    // fraction of full health per hit
+const SHADE_SPEED    = 27;      // launch speed, m/s
+const SHADE_GRAV     = 5.5;     // well under GRAV — a disc, not a brick
+const SHADE_LIFT     = 3.4;     // a disc holds its line for a while
+const SHADE_R        = 0.46;    // collision radius of the disc
+const SHADE_LIFE     = 2.6;     // seconds before it gives up and drops
+const SHADE_CD       = 0.42;    // between throws
+
+const GRAV      = 24;
+const WALK      = 5.0, RUN = 7.6, AIR = 0.34;
+const JUMP_V    = 8.4;
+const ELEV_SPD  = 8.5, ELEV_IDLE_SPD = 1.6, ELEV_CALL_SPD = 6.4;
+const ESC_SPD   = 4.0;
+
+// corridor/room footprint, shared by every floor (uniform building core)
+const HALLX = 10, HALLZ = 6;         // central elevator hall
+const CORZ  = 2;                     // corridors are 4 units wide (-2..2)
+const CORX  = 30;                    // corridor runs out to x = 30
+const ESCX0 = 30, ESCX1 = 48, ESCZ = 6;   // escalator hall at each end
+const ROOMS_X = [[12, 20], [22, 30]];
+const ROOMZ0 = 2, ROOMZ1 = 9;
+
+// Three open-frame hoistways run down the middle, reachable from all sides, at
+// x = -6, 0 and +6. None of them is a single car: each column is a stack of
+// short local lifts (see planRuns below), so no one lift takes you from the
+// roof to the street. The centre column also carries the two fixed hoists —
+// the parking hoist under floor 1 and the roof hoist above floor 20 — which is
+// why its local lifts stop short at floors 2 and 19. Each car lands on the
+// solid slab at its own bottom landing and is capped at its top landing by a
+// plant room and hoist housing, and those caps are what keep the runs apart:
+// nothing can drop past the housing of the lift below it.
+const COLUMNS = [
+  { id: 'A', x: -6, f0: 1, f1: FLOORS },        // full height
+  { id: 'B', x:  0, f0: 2, f1: FLOORS - 1 },    // centre: P below it, R above it
+  { id: 'C', x:  6, f0: 1, f1: FLOORS }
+];
+const RUN_MIN = 3, RUN_MAX = 5;      // landings a single local lift may serve
+
+// Every shaft is capped at its top landing. The strip of hall between the car
+// and the +z wall is walled off floor-to-ceiling — the plant room — and the
+// leftover slot above the parked car is filled by the hoist housing that sits
+// flush against it. Ride the car roof up and the headroom runs out.
+const CAR_TOP = 2.53;                // car roof, measured from the car deck
+const MR_Z0   = 1.8;                 // housing/plant-room face, flush with the car
+const MR_Z1   = HALLZ - WT;          // inner face of the hall wall
+
+/* ------------------------------- 2. UTILS -------------------------------- */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const rnd = mulberry32(19831024);
+const rr    = (a, b) => a + rnd() * (b - a);
+const ri    = (a, b) => Math.floor(rr(a, b + 1));
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const lerp  = (a, b, t) => a + (b - a) * t;
+function shuffled(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
+
+// axis-aligned rectangle on the XZ plane — the atom of the whole building
+const rect = (x0, x1, z0, z1) => ({ x0, x1, z0, z1 });
+
+/** 1-D subtract: [a,b] spans with every span in `cuts` taken out of them.
+ *  Walls are built from this so no two of them ever land in the same place. */
+function cutSpans(spans, cuts) {
+  for (const c of cuts) {
+    const out = [];
+    for (const s of spans) {
+      if (c[1] <= s[0] || c[0] >= s[1]) { out.push(s); continue; }
+      if (s[0] < c[0]) out.push([s[0], c[0]]);
+      if (c[1] < s[1]) out.push([c[1], s[1]]);
+    }
+    spans = out;
+  }
+  return spans;
+}
+
+/* --------------------------- 2b. the hoistways --------------------------- */
+/* Every column is chopped into local lifts of RUN_MIN..RUN_MAX landings, so a
+   column of 20 floors comes out as four to six short runs. Two house rules
+   keep the stack readable, and both are enforced across all three columns at
+   once rather than one column at a time:
+
+     * one engine room per floor — the top floor excepted, where the two outer
+       columns have always terminated together;
+     * one shaft bottom per floor — floor 1 excepted, for the same reason, and
+       floor 20, which is where the roof hoist sits down.
+
+   The parking hoist's engine room already claims floor 1, so no local lift may
+   top out there. Lengths are drawn at random and the search backtracks when a
+   run would land its head or its pit on a floor that is already spoken for. */
+
+/** One column, bottom to top: a list of [firstFloor, lastFloor] runs, or null
+ *  if no legal stack fits. Marks its heads and pits in `tops`/`bots` as it
+ *  goes and unwinds them again on the way back out of a dead end. */
+function splitColumn(col, R, tops, bots, strict) {
+  const topFree = (f) => !strict || f === FLOORS || !tops[f];
+  const botFree = (f) => !strict || f === 1 || f === FLOORS || !bots[f];
+  function place(a) {
+    if (a > col.f1) return [];
+    const lens = [];
+    for (let L = RUN_MIN; L <= RUN_MAX; L++) lens.push(L);
+    for (let i = lens.length - 1; i > 0; i--) {          // shuffle, on the shaft stream
+      const j = Math.floor(R() * (i + 1)), t = lens[i]; lens[i] = lens[j]; lens[j] = t;
+    }
+    for (let k = 0; k < lens.length; k++) {
+      const b = a + lens[k] - 1;
+      if (b > col.f1) continue;
+      const rest = col.f1 - b;
+      if (rest > 0 && rest < RUN_MIN) continue;          // no strandable remainder
+      if (!topFree(b) || !botFree(a)) continue;
+      const hadTop = tops[b], hadBot = bots[a];
+      tops[b] = true; bots[a] = true;
+      const tail = place(b + 1);
+      if (tail) return [[a, b]].concat(tail);
+      if (!hadTop) delete tops[b];
+      if (!hadBot) delete bots[a];
+    }
+    return null;
+  }
+  return place(col.f0);
+}
+
+/** Runs for all three columns, sharing one head/pit ledger. Retries the whole
+ *  stack when a later column cannot fit around the earlier ones; if the rules
+ *  simply cannot be met for this building height, the last pass drops them
+ *  rather than shipping no lifts at all. */
+function planRuns(R) {
+  for (let attempt = 0; attempt < 400; attempt++) {
+    const strict = attempt < 399;
+    const tops = { 1: true }, bots = {}, plan = {};   // floor 1: the parking hoist's head
+    let ok = true;
+    for (let i = 0; i < COLUMNS.length; i++) {
+      const runs = splitColumn(COLUMNS[i], R, tops, bots, strict);
+      if (!runs) { ok = false; break; }
+      plan[COLUMNS[i].id] = runs;
+    }
+    if (ok) return plan;
+  }
+  return null;
+}
+
+/** id: column letter + position in the stack, counted from the bottom, so A1
+ *  is the lift off floor 1 and the numbers climb with the floors. `pax` marks
+ *  the local lifts, the only ones that drift about while nobody is watching. */
+const SHAFTS = (function () {
+  const R = mulberry32(0x5a17c0de);          // its own stream, so floor plans stay put
+  const plan = planRuns(R) || {};
+  const out = [];
+  for (let i = 0; i < COLUMNS.length; i++) {
+    const col = COLUMNS[i], runs = plan[col.id] || [];
+    for (let j = 0; j < runs.length; j++) {
+      const a = runs[j][0], b = runs[j][1];
+      out.push({
+        id: col.id + (j + 1), x: col.x,
+        lo: (a - 1) * FH, hi: (b - 1) * FH,
+        start: (a - 1 + Math.floor(R() * (b - a + 1))) * FH,
+        pax: true
+      });
+    }
+  }
+  out.push({ id: 'R', x: 0, lo: (FLOORS - 1) * FH, hi: ROOF_Y, start: ROOF_Y, pax: false });
+  out.push({ id: 'P', x: 0, lo: BASE_Y, hi: 0, start: 0, pax: false });
+  return out;
+})();
+
+/** The opening a shaft needs in a slab: a shade wider than the 3.6 car, so the
+ *  deck fills it flush when the car parks at that level. */
+const shaftHole = (s) => rect(s.x - 2, s.x + 2, -2, 2);
+
+/** Split rect r by hole h, returning up to four surviving pieces. */
+function splitRect(r, h) {
+  if (h.x1 <= r.x0 || h.x0 >= r.x1 || h.z1 <= r.z0 || h.z0 >= r.z1) return [r];
+  const out = [];
+  const mx0 = Math.max(r.x0, h.x0), mx1 = Math.min(r.x1, h.x1);
+  if (r.x0 < mx0) out.push(rect(r.x0, mx0, r.z0, r.z1));
+  if (mx1 < r.x1) out.push(rect(mx1, r.x1, r.z0, r.z1));
+  if (r.z0 < h.z0) out.push(rect(mx0, mx1, r.z0, h.z0));
+  if (h.z1 < r.z1) out.push(rect(mx0, mx1, h.z1, r.z1));
+  return out;
+}
+/** Punch every hole out of every rect — used for slabs with shafts/wells. */
+function subtract(rects, holes) {
+  let out = rects;
+  for (let i = 0; i < holes.length; i++) {
+    const next = [];
+    for (let j = 0; j < out.length; j++) {
+      const parts = splitRect(out[j], holes[i]);
+      for (let k = 0; k < parts.length; k++) next.push(parts[k]);
+    }
+    out = next;
+  }
+  return out;
+}
+
+const boxOverlap = (a, b) =>
+  a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0 && a.z0 < b.z1 && a.z1 > b.z0;
+
+/** Slab-method ray/AABB. Returns hit distance or Infinity. */
+function rayBox(ox, oy, oz, dx, dy, dz, b) {
+  let t0 = -Infinity, t1 = Infinity;
+  let lo, hi, ta, tb, s;
+  lo = b.x0; hi = b.x1;
+  if (Math.abs(dx) < 1e-9) { if (ox < lo || ox > hi) return Infinity; }
+  else { ta = (lo - ox) / dx; tb = (hi - ox) / dx; if (ta > tb) { s = ta; ta = tb; tb = s; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) return Infinity; }
+  lo = b.y0; hi = b.y1;
+  if (Math.abs(dy) < 1e-9) { if (oy < lo || oy > hi) return Infinity; }
+  else { ta = (lo - oy) / dy; tb = (hi - oy) / dy; if (ta > tb) { s = ta; ta = tb; tb = s; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) return Infinity; }
+  lo = b.z0; hi = b.z1;
+  if (Math.abs(dz) < 1e-9) { if (oz < lo || oz > hi) return Infinity; }
+  else { ta = (lo - oz) / dz; tb = (hi - oz) / dz; if (ta > tb) { s = ta; ta = tb; tb = s; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) return Infinity; }
+  if (t1 < 0) return Infinity;
+  return t0 > 0 ? t0 : 0;
+}
+
+/* ------------------------------- 3. ENGINE ------------------------------- */
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.6));   // touch mode drops this in setTouchMode()
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById('game').appendChild(renderer.domElement);
+
+const scene  = new THREE.Scene();
+scene.background = new THREE.Color(0x05070c);
+scene.fog = new THREE.Fog(0x05070c, 16, 74);
+
+const camera = new THREE.PerspectiveCamera(74, window.innerWidth / window.innerHeight, 0.05, 500);
+const controls = new THREE.PointerLockControls(camera, renderer.domElement);
+scene.add(camera);
+
+window.addEventListener('resize', function () {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// --- shared primitive geometry: every mesh in the game reuses these ---
+const GEO = {
+  box:  new THREE.BoxGeometry(1, 1, 1),
+  cyl:  new THREE.CylinderGeometry(0.5, 0.5, 1, 12),
+  cone: new THREE.ConeGeometry(0.5, 1, 14, 1, true),
+  ico:  new THREE.IcosahedronGeometry(0.5, 0),
+  sph:  new THREE.SphereGeometry(0.5, 10, 8),
+  tube: new THREE.CylinderGeometry(0.5, 0.5, 1, 6)
+};
+
+function lam(hex, opts) {
+  const o = Object.assign({ color: hex }, opts || {});
+  return new THREE.MeshLambertMaterial(o);
+}
+const MAT = {
+  slab:      lam(0x8d8e92),
+  slabDark:  lam(0x55565c),
+  carpet:    lam(0x6b3a3f),
+  wall:      lam(0x9a9484),
+  wainscot:  lam(0x3d4652),
+  hallwall:  lam(0x7d8794),
+  metal:     lam(0x9aa3ae),
+  metalDark: lam(0x3f4650),
+  rail:      lam(0xc8b25a),
+  concrete:  lam(0x74747c),
+  concreteD: lam(0x4d4d55),
+  machine:   lam(0x5c626b),          // plant room + hoist housing, one colour
+  shade:     lam(0x121216, { side: THREE.DoubleSide }),
+  // a shade off its chain catches the light differently — that faint warmth is
+  // the only thing telling you it is worth walking over
+  shadeLoose:lam(0x1d1a1c, { side: THREE.DoubleSide, emissive: 0x4a2c0c }),
+  chain:     lam(0x2a2a30),
+  doorB:     lam(0x2f6fd0),
+  doorY:     lam(0xd6a92c),
+  doorR:     lam(0xa9271d),
+  lock:      lam(0xd8d2c0),
+  wood:      lam(0x6b4a2f),
+  suit:      lam(0x22242c),
+  suit2:     lam(0x3a3340),
+  shirt:     lam(0xdcdce2),
+  tie:       lam(0x8e2020),
+  skin:      lam(0xc79367),
+  hat:       lam(0x121218),
+  gunmetal:  lam(0x2c2f36),
+  safe:      lam(0x2b3038),
+  gold:      lam(0xd8b64a),
+  paper:     new THREE.MeshBasicMaterial({ color: 0xf4ecd4 }),
+  carBody:   lam(0xc41f1f),
+  carDark:   lam(0x6d1010),
+  glass:     lam(0x1b2a3a),
+  tire:      lam(0x18181a),
+  chrome:    lam(0xc9ced6),
+  blood:     lam(0x5a1414),
+  tracer:    new THREE.MeshBasicMaterial({ color: 0xffd9a0 }),
+  tracerE:   new THREE.MeshBasicMaterial({ color: 0xff8a4a }),
+  spark:     new THREE.MeshBasicMaterial({ color: 0xffcf80 })
+};
+
+const exterior = { group: null, halfWidth: ESCX1 + 0.35, halfDepth: ROOMZ1 + 0.35 };
+
+/* ------------------------------- plaques -------------------------------- */
+const PLAQUE_CACHE = {};
+function plaqueMat(text, opts) {
+  const key = text + '_' + (opts ? JSON.stringify(opts) : '');
+  if (PLAQUE_CACHE[key]) return PLAQUE_CACHE[key];
+  const o = Object.assign({ w: 128, h: 128, bg: '#1a1612', fg: '#f2a33c', border: '#8a5c22' }, opts || {});
+  const cvs = document.createElement('canvas');
+  cvs.width = o.w; cvs.height = o.h;
+  const ctx = cvs.getContext('2d');
+  ctx.fillStyle = o.bg;
+  ctx.fillRect(0, 0, o.w, o.h);
+  ctx.strokeStyle = o.border;
+  ctx.lineWidth = 6;
+  ctx.strokeRect(3, 3, o.w - 6, o.h - 6);
+  ctx.fillStyle = o.fg;
+  if (o.tri) {                              // a direction arrow rather than a legend
+    const c = o.w / 2, r = o.w * 0.30, d = o.tri === 'up' ? -1 : 1;
+    ctx.beginPath();
+    ctx.moveTo(c, c + d * r);               // apex, pointing the way you travel
+    ctx.lineTo(c - r, c - d * r * 0.75);
+    ctx.lineTo(c + r, c - d * r * 0.75);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.font = 'bold 72px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, o.w / 2, o.h / 2 + 4);
+  }
+  const tex = new THREE.CanvasTexture(cvs);
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.LinearFilter;
+  const mat = new THREE.MeshBasicMaterial({ map: tex });
+  PLAQUE_CACHE[key] = mat;
+  return mat;
+}
+// lift ids run to two characters (A1 .. C5), so their plaques get a canvas cut
+// to the same aspect as the plate they are painted on and stay undistorted
+const LIFT_PLAQUE  = { w: 208 };
+const RANGE_PLAQUE = { w: 320, fg: '#cbd3dd', border: '#4d5a68' };
+
+/** What a landing is called on a lift's range plate. */
+const landingName = (y) => y <= BASE_Y + 0.05 ? 'B' : (y >= ROOF_Y - 0.05 ? 'R' : String(y / FH + 1));
+/** "10-13": the two ends of a lift's run. With three or four cars stacked in
+ *  every hoistway, this is the only way to tell from the hall whether the one
+ *  in front of you can still take you down. */
+const shaftRange = (s) => landingName(s.lo) + '-' + landingName(s.hi);
+
+function makePlaque(F, text, x, y, z, sx, sy, sz, ry, opts) {
+  const m = new THREE.Mesh(GEO.box, plaqueMat(text, opts));
+  m.position.set(x, y, z);
+  m.scale.set(sx, sy, sz);
+  if (ry !== undefined) m.rotation.y = ry;
+  F.group.add(m);
+  return m;
+}
+
+// GLSL port of SkyscraperGenerator's interior mapping for this game's r128 renderer.
+// Rays enter a room behind each pane, then hit its shell or the nearest furnishing.
+function exteriorWindowMaterial() {
+  return new THREE.ShaderMaterial({
+    name: 'ParallaxRoomWindows',
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog]),
+    fog: true,
+    vertexShader: `
+      attribute vec3 roomCenter;
+      attribute vec2 roomSize;
+      attribute vec4 roomSeed;
+      varying vec2 vUv;
+      varying vec3 vRoomOrigin;
+      varying vec3 vRoomRay;
+      varying vec2 vRoomSize;
+      varying vec4 vRoomSeed;
+      #include <fog_pars_vertex>
+      void main() {
+        vUv = uv;
+        vec3 outward = normalize(mat3(modelMatrix) * normal);
+        vec3 across = normalize(cross(vec3(0.0, 1.0, 0.0), outward));
+        vec3 worldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+        vec3 center = (modelMatrix * vec4(roomCenter, 1.0)).xyz;
+        vec3 delta = worldPosition - center;
+        vec3 ray = worldPosition - cameraPosition;
+        vRoomOrigin = vec3(dot(delta, across), delta.y, 0.0);
+        vRoomRay = vec3(dot(ray, across), ray.y, -dot(ray, outward));
+        vRoomSize = roomSize;
+        vRoomSeed = roomSeed;
+        vec4 mvPosition = viewMatrix * vec4(worldPosition, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+        #include <fog_vertex>
+      }
+    `,
+    fragmentShader: `
+      varying vec2 vUv;
+      varying vec3 vRoomOrigin;
+      varying vec3 vRoomRay;
+      varying vec2 vRoomSize;
+      varying vec4 vRoomSeed;
+      #include <fog_pars_fragment>
+
+      float panel(vec2 p, vec2 center, vec2 halfSize) {
+        vec2 mask = 1.0 - smoothstep(halfSize - 0.006, halfSize + 0.006, abs(p - center));
+        return mask.x * mask.y;
+      }
+      float edgeAO(float p) {
+        return smoothstep(0.0, 0.15, p) * smoothstep(0.0, 0.15, 1.0 - p);
+      }
+      float falloff(float z, float depth) {
+        return mix(1.0, 0.42, clamp((z - 0.1) / depth, 0.0, 1.0));
+      }
+      void furnishing(vec3 origin, vec3 ray, vec3 invRay, vec3 bMin, vec3 bMax,
+                      vec3 paint, float depth, float curtain,
+                      inout float bestT, inout vec3 bestColor) {
+        vec3 a = (bMin - origin) * invRay;
+        vec3 b = (bMax - origin) * invRay;
+        vec3 lo = min(a, b), hi = max(a, b);
+        float nearT = max(max(lo.x, lo.y), lo.z);
+        float farT = min(min(hi.x, hi.y), hi.z);
+        if (nearT > 0.0 && farT > nearT && nearT < bestT) {
+          vec3 hit = origin + ray * nearT;
+          vec3 q = (hit - bMin) / (bMax - bMin);
+          float shade = q.y > 0.99 ? 1.18 : (q.z < 0.01 ? 0.86 : 0.67);
+          if (curtain > 0.5) shade = (0.58 + 0.16 * sin(hit.x * 19.0)) * 0.7;
+          bestColor = paint * shade * falloff(hit.z, depth);
+          bestT = nearT;
+        }
+      }
+      void main() {
+        vec3 ray = normalize(vRoomRay);
+        // Signed epsilon avoids NaNs for head-on and horizontal views.
+        vec3 invRay = mix(vec3(-1.0), vec3(1.0), step(vec3(0.0), ray)) / max(abs(ray), vec3(0.00001));
+        vec3 origin = vRoomOrigin;
+        float depth = vRoomSize.y * 1.55;
+        vec3 bMax = vec3(vRoomSize * 0.5, 0.1 + depth);
+        vec3 bMin = vec3(-bMax.xy, 0.1);
+        vec3 farT = max((bMin - origin) * invRay, (bMax - origin) * invRay);
+        float bestT = min(min(farT.x, farT.y), farT.z);
+        vec3 hit = origin + ray * bestT;
+        vec3 q = clamp((hit - bMin) / (bMax - bMin), 0.0, 1.0);
+        float seed = vRoomSeed.x, seed2 = vRoomSeed.y;
+        float lit = step(0.72, vRoomSeed.z);
+        vec3 light = mix(vec3(1.0, 0.64, 0.29), vec3(1.0, 0.90, 0.65), seed2);
+        if (vRoomSeed.w > 0.88) light = vec3(0.64, 0.78, 1.0);
+        vec3 wall = mix(vec3(0.60, 0.54, 0.45), vec3(0.44, 0.49, 0.54), seed);
+        vec3 surface = wall * mix(0.48, 1.0, smoothstep(0.035, 0.055, q.y));
+        vec2 faceUv = q.yz;
+        if (q.z > 0.998) {
+          faceUv = q.xy;
+          float doorX = mix(0.22, 0.78, seed);
+          float pictureX = doorX < 0.5 ? 0.76 : 0.24;
+          surface = mix(surface, vec3(0.25, 0.18, 0.12), panel(q.xy, vec2(doorX, 0.33), vec2(0.07, 0.35)));
+          surface = mix(surface, vec3(0.08), panel(q.xy, vec2(pictureX, 0.59), vec2(0.075, 0.10)));
+          surface = mix(surface, mix(vec3(0.18, 0.30, 0.40), vec3(0.53, 0.34, 0.20), seed2),
+                        panel(q.xy, vec2(pictureX, 0.59), vec2(0.059, 0.083)));
+        } else if (q.y < 0.002) {
+          faceUv = q.xz;
+          surface = vec3(0.32, 0.22, 0.14) * (1.0 - 0.24 * step(0.94, fract(hit.x * 2.0)));
+          surface = mix(surface, mix(vec3(0.42, 0.18, 0.14), vec3(0.18, 0.31, 0.35), seed2),
+                        panel(q.xz, vec2(0.5, 0.60), vec2(0.31, 0.27)));
+        } else if (q.y > 0.998) {
+          faceUv = q.xz;
+          float lamp = 1.0 - smoothstep(0.10, 0.13, length((q.xz - 0.5) * vec2(vRoomSize.x / depth, 1.0)));
+          surface = mix(mix(wall, vec3(1.0), 0.4), light * mix(0.7, 2.5, lit), lamp);
+        }
+        vec3 bestColor = surface * mix(0.65, 1.0, edgeAO(faceUv.x) * edgeAO(faceUv.y)) * falloff(hit.z, depth);
+        float fy = bMin.y, back = bMax.z;
+        float tableX = mix(-0.7, 0.7, seed);
+        furnishing(origin, ray, invRay, vec3(tableX - 0.9, fy, depth * 0.46),
+                   vec3(tableX + 0.9, fy + 0.85, depth * 0.46 + 0.85),
+                   vec3(0.40, 0.27, 0.16), depth, 0.0, bestT, bestColor);
+        furnishing(origin, ray, invRay, vec3(-1.4, fy, back - 1.2), vec3(1.4, fy + 0.95, back - 0.12),
+                   mix(vec3(0.34, 0.25, 0.20), vec3(0.24, 0.34, 0.43), seed), depth, 0.0, bestT, bestColor);
+        if (seed2 > 0.35) {
+          furnishing(origin, ray, invRay, vec3(bMin.x + 0.12, fy, back - 0.85),
+                     vec3(bMin.x + 1.1, fy + 2.2, back - 0.12), vec3(0.29, 0.23, 0.17), depth, 0.0, bestT, bestColor);
+        }
+        vec3 fabric = mix(vec3(0.72, 0.66, 0.55), vec3(0.34, 0.43, 0.47), vRoomSeed.w);
+        float left = pow(smoothstep(0.3, 1.0, seed), 2.0) * bMax.x;
+        float right = pow(smoothstep(0.3, 1.0, seed2), 2.0) * bMax.x;
+        if (left > 0.05) furnishing(origin, ray, invRay, vec3(bMin.xy, 0.1),
+          vec3(bMin.x + left, bMax.y, 0.22), fabric, depth, 1.0, bestT, bestColor);
+        if (right > 0.05) furnishing(origin, ray, invRay, vec3(bMax.x - right, bMin.y, 0.1),
+          vec3(bMax.xy, 0.22), fabric, depth, 1.0, bestT, bestColor);
+
+        bestColor *= mix(vec3(0.085, 0.12, 0.17), light * 1.35, lit);
+        // Fresnel glass stays faint head-on and reflects more sky at grazing angles.
+        float fresnel = 0.06 + 0.65 * pow(1.0 - max(ray.z, 0.0), 5.0);
+        vec3 sky = mix(vec3(0.025, 0.04, 0.065), vec3(0.14, 0.20, 0.29), clamp(0.5 - ray.y, 0.0, 1.0));
+        float grime = 1.0 - 0.13 * (1.0 - edgeAO(vUv.x) * edgeAO(vUv.y));
+        gl_FragColor = vec4(mix(bestColor * grime, sky, fresnel), 1.0);
+        #include <fog_fragment>
+      }
+    `,
+    side: THREE.FrontSide
+  });
+}
+
+function buildExterior() {
+  const group = new THREE.Group();
+  group.name = 'ExteriorSkyscraper';
+  // Match the playable roof's footprint; the old side faces cut through offices.
+  const width = exterior.halfWidth * 2, depth = exterior.halfDepth * 2;
+  const wallMat = lam(0x9a8b73, { emissive: 0x16130f });
+  const trimMat = lam(0xc4a370, { emissive: 0x1b160f });
+  const frameMat = lam(0x5b5148);
+  const batches = new Map();
+  const box = (mat, x, y, z, sx, sy, sz) => {
+    if (!batches.has(mat)) batches.set(mat, []);
+    const matrix = new THREE.Matrix4().makeScale(sx, sy, sz);
+    matrix.setPosition(x, y, z);
+    batches.get(mat).push(matrix);
+  };
+  const faces = [
+    { nx: 0, nz: -1, length: width, distance: depth / 2 },
+    { nx: 0, nz: 1, length: width, distance: depth / 2 },
+    { nx: -1, nz: 0, length: depth, distance: width / 2 },
+    { nx: 1, nz: 0, length: depth, distance: width / 2 }
+  ];
+  const pane = { position: [], normal: [], uv: [], roomCenter: [], roomSize: [], roomSeed: [] };
+  const windowH = 3.25, centerY = 3.35;
+  const corners = [[-1, -1], [1, -1], [1, 1], [-1, -1], [1, 1], [-1, 1]];
+  // Separate PRNG: adding facade details must not change floors, enemies or loot.
+  const roomRandom = mulberry32(73021);
+  for (const face of faces) {
+    const ux = face.nz, uz = -face.nx;
+    const bays = Math.max(1, Math.round(face.length / 6.5));
+    const pitch = face.length / bays, windowW = Math.min(4.6, pitch - 0.9);
+    const faceBox = (mat, u, y, w, h, thickness, offset) => {
+      box(mat, ux * u + face.nx * (face.distance + offset), y,
+          uz * u + face.nz * (face.distance + offset),
+          face.nx === 0 ? w : thickness, h, face.nx === 0 ? thickness : w);
+    };
+    for (let floor = 0; floor < FLOORS; floor++) {
+      const base = floor * FH, y = base + centerY;
+      const sill = centerY - windowH / 2, lintel = centerY + windowH / 2;
+      faceBox(wallMat, 0, base + sill / 2, face.length, sill, 0.22, -0.16);
+      faceBox(wallMat, 0, base + (lintel + FH) / 2, face.length, FH - lintel, 0.22, -0.16);
+      for (let bay = 0; bay <= bays; bay++) {
+        const edge = bay === 0 || bay === bays;
+        const pierW = (pitch - windowW) * (edge ? 0.5 : 1);
+        const u = bay * pitch - face.length / 2 + (bay === 0 ? pierW / 2 : (bay === bays ? -pierW / 2 : 0));
+        faceBox(wallMat, u, y, pierW, windowH, 0.22, -0.16);
+      }
+      // Two or three adjacent windows share a room, as in the generator.
+      const span = roomRandom() < 0.5 ? 2 : 3;
+      for (let first = 0; first < bays; first += span) {
+        const count = Math.min(span, bays - first);
+        const roomU = (first + count / 2) * pitch - face.length / 2;
+        const seed = [roomRandom(), roomRandom(), roomRandom(), roomRandom()];
+        for (let bay = first; bay < first + count; bay++) {
+          const u = (bay + 0.5) * pitch - face.length / 2;
+          for (const corner of corners) {
+            const pu = u + corner[0] * windowW / 2;
+            pane.position.push(ux * pu + face.nx * face.distance, y + corner[1] * windowH / 2, uz * pu + face.nz * face.distance);
+            pane.normal.push(face.nx, 0, face.nz);
+            pane.uv.push((corner[0] + 1) / 2, (corner[1] + 1) / 2);
+            pane.roomCenter.push(ux * roomU + face.nx * face.distance, y, uz * roomU + face.nz * face.distance);
+            pane.roomSize.push(count * pitch, FH - 1);
+            pane.roomSeed.push(...seed);
+          }
+          for (const side of [-1, 1]) {
+            faceBox(frameMat, u + side * (windowW / 2 + 0.055), y, 0.11, windowH + 0.22, 0.16, 0.015);
+            faceBox(frameMat, u, y + side * (windowH / 2 + 0.055), windowW, 0.11, 0.16, 0.015);
+          }
+          faceBox(frameMat, u, y, 0.065, windowH, 0.10, 0.025);
+        }
+      }
+    }
+    for (let floor = 1; floor < FLOORS; floor += 4) {
+      faceBox(trimMat, 0, floor * FH, face.length + 0.3, 0.28, 0.38, 0.03);
+    }
+    faceBox(trimMat, 0, ROOF_Y - 0.3, face.length + 0.4, 0.6, 0.5, 0.04);
+  }
+  const glassGeometry = new THREE.BufferGeometry();
+  for (const key of Object.keys(pane)) {
+    const size = key === 'uv' || key === 'roomSize' ? 2 : (key === 'roomSeed' ? 4 : 3);
+    glassGeometry.setAttribute(key, new THREE.Float32BufferAttribute(pane[key], size));
+  }
+  glassGeometry.computeBoundingSphere();
+  const glass = new THREE.Mesh(glassGeometry, exteriorWindowMaterial());
+  glass.name = 'ExteriorParallaxWindows';
+  group.add(glass);
+  // The whole facade uses four draws instead of thousands of individual meshes.
+  for (const [material, matrices] of batches) {
+    const mesh = new THREE.InstancedMesh(GEO.box, material, matrices.length);
+    matrices.forEach((matrix, i) => mesh.setMatrixAt(i, matrix));
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.frustumCulled = false; // r128 does not compute an InstancedMesh bound.
+    group.add(mesh);
+  }
+  exterior.group = group;
+  scene.add(group);
+}
+
+buildExterior();
+
+
+// --- lighting: cheap ambient bed + a recycled pool of point lights ---
+scene.add(new THREE.AmbientLight(0x2b3346, 0.5));
+scene.add(new THREE.HemisphereLight(0x4a5568, 0x14151a, 0.3));
+const LIGHTS = [];
+for (let i = 0; i < 8; i++) {
+  const l = new THREE.PointLight(0xffe0aa, 0, 15, 2);
+  l.visible = false; scene.add(l); LIGHTS.push(l);
+}
+const muzzleLight = new THREE.PointLight(0xffcf88, 0, 12, 2);
+scene.add(muzzleLight);
+const torch = new THREE.SpotLight(0xfff2d8, 0, 30, 0.55, 0.6, 1.2);
+torch.visible = false;
+camera.add(torch); camera.add(torch.target); torch.target.position.set(0, 0, -1);
+
+// stars, so the roof reads as open sky
+(function stars() {
+  const g = new THREE.BufferGeometry(), n = 420, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const th = rnd() * Math.PI * 2, ph = Math.acos(rr(0.02, 1));
+    pos[i * 3] = Math.sin(ph) * Math.cos(th) * 260;
+    pos[i * 3 + 1] = Math.cos(ph) * 260 + 120;
+    pos[i * 3 + 2] = Math.sin(ph) * Math.sin(th) * 260;
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0x9fb4d8, size: 1.4, sizeAttenuation: false, fog: false }));
+  scene.add(pts);
+})();
+
+/* ------------------------------- INPUT ---------------------------------- */
+const keys = Object.create(null);
+let firing = false, wantKick = false, wantThrow = false;
+
+// Analog input, written by the touch pad (section 7b) and read alongside the
+// keyboard. On a desktop it simply stays at rest.
+const INPUT = { fwd: 0, str: 0, run: false, jump: false, brake: false, up: false, down: false };
+const TOUCH = { on: false, look: -1, fire: -1, stick: -1, lx: 0, ly: 0, sx: 0, sy: 0, sens: 0.0044, sensStep: 3 };
+
+window.addEventListener('keydown', function (e) {
+  keys[e.code] = true;
+  if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown') e.preventDefault();
+  if (e.repeat) return;
+  if (game.state !== 'play') return;
+  if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+    // standing on a car, the arrows drive it; standing in the hall, they call one
+    if (!player.inCar && !player.riding) callElevator(e.code === 'ArrowUp' ? 1 : -1);
+  }
+  if (e.code === 'KeyE') interact();
+  if (e.code === 'KeyR') reload();
+  if (e.code === 'KeyB') toggleBulletTime();
+  if (e.code === 'KeyL') { torch.visible = !torch.visible; torch.intensity = torch.visible ? 1.5 : 0; }
+  if (e.code === 'KeyV') wantKick = true;
+  if (e.code === 'KeyQ') toggleWeapon();     // for anyone without a middle button
+});
+window.addEventListener('keyup', function (e) { keys[e.code] = false; });
+
+renderer.domElement.addEventListener('mousedown', function (e) {
+  if (e.button === 1) e.preventDefault();          // no autoscroll circle, ever
+  if (!controls.isLocked) return;
+  if (e.button === 0) { firing = true; wantThrow = true; }
+  if (e.button === 1) toggleWeapon();
+  if (e.button === 2) wantKick = true;
+});
+window.addEventListener('mouseup', function (e) { if (e.button === 0) { firing = false; wantThrow = false; } });
+renderer.domElement.addEventListener('auxclick', function (e) { if (e.button === 1) e.preventDefault(); });
+window.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+controls.addEventListener('unlock', function () {
+  if (game.state === 'play') { game.state = 'pause'; show('pause'); }
+});
+
+/* ------------------------------- AUDIO ---------------------------------- */
+// Tiny synth: no asset files, everything is oscillators and shaped noise.
+const AUD = { ctx: null, master: null };
+function audioInit() {
+  if (AUD.ctx) return;
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!C) return;
+  AUD.ctx = new C();
+  AUD.master = AUD.ctx.createGain();
+  AUD.master.gain.value = 0.32;
+  AUD.master.connect(AUD.ctx.destination);
+}
+function noiseBurst(dur, freq, gain, type) {
+  if (!AUD.ctx) return;
+  const ctx = AUD.ctx, n = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const flt = ctx.createBiquadFilter(); flt.type = type || 'lowpass'; flt.frequency.value = freq;
+  const g = ctx.createGain(); g.gain.value = gain;
+  src.connect(flt); flt.connect(g); g.connect(AUD.master); src.start();
+}
+function tone(f0, f1, dur, gain, type) {
+  if (!AUD.ctx) return;
+  const ctx = AUD.ctx, o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(f0, ctx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), ctx.currentTime + dur);
+  g.gain.setValueAtTime(gain, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+  o.connect(g); g.connect(AUD.master); o.start(); o.stop(ctx.currentTime + dur + 0.02);
+}
+const SFX = {
+  shot:   () => { noiseBurst(0.16, 2400, 0.55); tone(320, 60, 0.12, 0.22, 'sawtooth'); },
+  eshot:  () => { noiseBurst(0.12, 1500, 0.20); },
+  dry:    () => tone(180, 140, 0.05, 0.12),
+  reload: () => { tone(700, 500, 0.05, 0.1); setTimeout(() => tone(500, 900, 0.06, 0.1), 130); },
+  hit:    () => { noiseBurst(0.09, 700, 0.30); tone(160, 70, 0.1, 0.15, 'square'); },
+  kick:   () => noiseBurst(0.14, 900, 0.22),
+  woosh:  () => { noiseBurst(0.26, 1100, 0.14, 'bandpass'); tone(520, 240, 0.18, 0.07, 'sine'); },
+  clatter:() => { noiseBurst(0.18, 1800, 0.22, 'highpass'); tone(420, 180, 0.1, 0.09, 'triangle'); },
+  swap:   () => { tone(520, 760, 0.05, 0.1, 'square'); setTimeout(() => tone(760, 620, 0.05, 0.08, 'square'), 55); },
+  door:   () => { noiseBurst(0.28, 420, 0.16); },
+  lock:   () => { noiseBurst(0.1, 3200, 0.4, 'highpass'); tone(900, 300, 0.08, 0.12); },
+  safe:   () => { tone(240, 120, 0.16, 0.2, 'square'); noiseBurst(0.2, 900, 0.3); },
+  pickup: () => { tone(660, 990, 0.09, 0.18, 'triangle'); setTimeout(() => tone(990, 1320, 0.1, 0.15, 'triangle'), 90); },
+  crush:  () => { noiseBurst(0.5, 260, 0.5); tone(120, 40, 0.4, 0.25, 'sawtooth'); },
+  bt:     (on) => tone(on ? 900 : 300, on ? 220 : 800, 0.3, 0.16, 'sine'),
+  hurt:   () => { tone(200, 90, 0.18, 0.2, 'sawtooth'); },
+  elev:   () => tone(90, 90, 0.2, 0.06, 'sine'),
+  call:   () => { tone(1180, 1180, 0.06, 0.14, 'square'); setTimeout(() => tone(880, 880, 0.09, 0.12, 'square'), 70); },
+  arrive: () => { tone(1320, 1320, 0.16, 0.16, 'triangle'); setTimeout(() => tone(990, 990, 0.3, 0.13, 'triangle'), 160); },
+  denied: () => tone(200, 150, 0.14, 0.12, 'square'),
+  engine: () => tone(70, 110, 0.5, 0.14, 'sawtooth'),
+  win:    () => { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, f, 0.28, 0.2, 'triangle'), i * 150)); },
+  lose:   () => { [330, 262, 196, 131].forEach((f, i) => setTimeout(() => tone(f, f * 0.9, 0.4, 0.22, 'sawtooth'), i * 200)); }
+};
+/* ---------------------------- 4. WORLD BUILD ----------------------------- */
+const world = {
+  levels: {},        // 0 = basement, 1..20 = floors, 21 = roof
+  elevators: [],
+  doors: [],
+  lamps: [],
+  safes: [],
+  enemies: [],
+  pickups: [],
+  car: null,
+  colCache: {},
+  stamp: 0,          // bumped whenever new geometry appears, invalidates caches
+  dyn: []            // dynamic colliders (elevator platforms, car body)
+};
+
+const game = {
+  state: 'start',    // start | play | pause | over | win
+  docs: 0,
+  hp: 100,
+  mag: 12, magSize: 12, ammo: 48,
+  bt: 4, btMax: 4, btOn: false,
+  fireCd: 0, kickCd: 0, kickT: 0, reloading: 0,
+  weapon: 'gun',     // gun | shade
+  shades: 0,         // lampshades carried
+  throwCd: 0, throwT: 0,
+  alertLevel: -99
+};
+
+// Eight offices per floor: two per corridor side, both corridors.
+const ROOMS = [];
+for (const sx of [1, -1]) for (const sz of [1, -1]) for (const rx of ROOMS_X) {
+  const x0 = sx > 0 ? rx[0] : -rx[1], x1 = sx > 0 ? rx[1] : -rx[0];
+  const z0 = sz > 0 ? ROOMZ0 : -ROOMZ1, z1 = sz > 0 ? ROOMZ1 : -ROOMZ0;
+  ROOMS.push({ sx, sz, x0, x1, z0, z1, cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, doorZ: sz * CORZ });
+}
+
+/** Escalators between floor f and f+1 sit at this end (+1 = east, -1 = west),
+ *  alternating so the player has to walk the length of every floor. */
+const escEnd = (f) => (f % 2 === 1 ? 1 : -1);
+const levelOfY = (y) => y < -0.6 ? 0 : (y >= ROOF_Y - 0.6 ? 21 : clamp(Math.floor((y + 0.35) / FH) + 1, 1, 20));
+const levelY = (i) => i === 0 ? BASE_Y : (i === 21 ? ROOF_Y : (i - 1) * FH);
+
+/* --- layout is decided up-front (deterministic), geometry is built lazily -- */
+const layout = [];
+(function planBuilding() {
+  for (let f = 1; f <= FLOORS; f++) {
+    layout[f] = { red: -1, guards: [], yellow: [], pickups: [] };
+    for (let i = 0; i < ROOMS.length; i++) layout[f].yellow.push(rnd() < 0.45);
+    const g = shuffled([0, 1, 2, 3, 4, 5, 6, 7]);
+    layout[f].guards = [g[0], g[1]];
+    layout[f].pickups = [{ room: g[2], type: f % 2 ? 'ammo' : 'health' }];
+  }
+  // Six red doors, spread over the height of the building.
+  const picks = shuffled([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]).slice(0, DOCS_TOTAL);
+  for (const f of picks) {
+    const room = ri(0, 7);
+    layout[f].red = room;
+    if (layout[f].guards.indexOf(room) < 0) layout[f].guards.push(room);   // a safe gets a minder
+  }
+})();
+
+/* ------------------------------ primitives ------------------------------- */
+function put(F, geo, mat, x, y, z, sx, sy, sz) {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  m.scale.set(sx, sy, sz);
+  F.group.add(m);
+  return m;
+}
+/** A rect extruded upward from y0 by h: one mesh plus one collider. */
+function solid(F, r, y0, h, mat) {
+  const m = put(F, GEO.box, mat, (r.x0 + r.x1) / 2, y0 + h / 2, (r.z0 + r.z1) / 2, r.x1 - r.x0, h, r.z1 - r.z0);
+  F.colliders.push({ x0: r.x0, x1: r.x1, y0: y0, y1: y0 + h, z0: r.z0, z1: r.z1, disabled: false });
+  return m;
+}
+// Keep the slab top just below the landing plane so it cannot share depth with
+// wall bases or a parked lift deck.
+function slabAt(F, r, y, mat) {
+  const m = put(F, GEO.box, mat, (r.x0 + r.x1) / 2, y - 0.21, (r.z0 + r.z1) / 2, r.x1 - r.x0, 0.38, r.z1 - r.z0);
+  F.colliders.push({ x0: r.x0, x1: r.x1, y0: y - 0.4, y1: y, z0: r.z0, z1: r.z1, disabled: false });
+  return m;
+}
+
+function mkLevel(idx, y) {
+  const F = { idx, y, group: new THREE.Group(), colliders: [], ramps: [], lamps: [], doors: [], esc: [], built: true };
+  scene.add(F.group);
+  world.levels[idx] = F;
+  world.colCache = {};        // collider caches now stale
+  world.stamp++;
+  return F;
+}
+function ensureLevel(i) {
+  if (i < 0 || i > 21 || world.levels[i]) return world.levels[i] || null;
+  if (i === 0) buildBasement();
+  else if (i === 21) buildRoof();
+  else buildFloor(i);
+  return world.levels[i];
+}
+/** Colliders for a level plus its neighbours, cached until new geometry appears. */
+function colsFor(i) {
+  let c = world.colCache[i];
+  if (!c) {
+    c = [];
+    for (let k = i - 1; k <= i + 1; k++) {
+      const F = world.levels[k];
+      if (F) for (let j = 0; j < F.colliders.length; j++) c.push(F.colliders[j]);
+    }
+    // a body on level i is resolved against levels i-1..i+1, so a car counts
+    // only if its run reaches into that band (ry0/ry1 absent = always counts)
+    const y0 = levelY(i - 1), y1 = levelY(i + 1) + FH;
+    for (let j = 0; j < world.dyn.length; j++) {
+      const d = world.dyn[j];
+      if (d.ry0 === undefined || (d.ry1 > y0 && d.ry0 < y1)) c.push(d);
+    }
+    world.colCache[i] = c;
+  }
+  return c;
+}
+const rampCache = {};
+function rampsFor(i) {
+  let out = rampCache[i];
+  if (!out || out.stamp !== world.stamp) {
+    out = [];
+    out.stamp = world.stamp;
+    for (let k = i - 1; k <= i + 1; k++) {
+      const F = world.levels[k];
+      if (F) for (let j = 0; j < F.ramps.length; j++) out.push(F.ramps[j]);
+    }
+    rampCache[i] = out;
+  }
+  return out;
+}
+
+/* ------------------------------- fittings -------------------------------- */
+function makeLamp(F, x, z, ceilY, zone, drop) {
+  const g = new THREE.Group();
+  g.position.set(x, ceilY, z);
+  F.group.add(g);
+  const dl = drop || 1.0;
+  put({ group: g }, GEO.cyl, MAT.chain, 0, -dl / 2, 0, 0.05, dl, 0.05);
+  const shadeMesh = put({ group: g }, GEO.cone, MAT.shade, 0, -dl - 0.26, 0, 0.95, 0.52, 0.95);
+  const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffe2ac });
+  const bulb = new THREE.Mesh(GEO.sph, bulbMat);
+  bulb.position.set(0, -dl - 0.46, 0);
+  bulb.scale.set(0.17, 0.17, 0.17);
+  g.add(bulb);
+  const lamp = {
+    group: g, bulbMat, shadeMesh, x, y: ceilY, z, zone, on: true, dropped: false, landed: false, vy: 0,
+    level: F.idx, lit: ceilY - dl - 0.4,
+    hit: { x0: x - 0.5, x1: x + 0.5, y0: ceilY - dl - 0.6, y1: ceilY, z0: z - 0.5, z1: z + 0.5 }
+  };
+  F.lamps.push(lamp);
+  world.lamps.push(lamp);
+  return lamp;
+}
+
+function makeRoofLampPost(F, x, z, ceilY) {
+  const postX = x + 1.25;
+  solid(F, rect(postX - 0.1, postX + 0.1, z - 0.1, z + 0.1), ROOF_Y, ceilY - ROOF_Y, MAT.metalDark);
+  put(F, GEO.box, MAT.metalDark, (postX + x) / 2, ceilY - 0.08, z, Math.abs(postX - x) + 0.2, 0.16, 0.16);
+}
+
+function makeDoor(F, rm, mat, red) {
+  const zc = rm.doorZ, y = F.y;
+  const panel = put(F, GEO.box, mat, rm.cx, y + 1.2, zc, 1.6, 2.4, 0.11);
+  const col = { x0: rm.cx - 0.8, x1: rm.cx + 0.8, y0: y, y1: y + 2.4, z0: zc - 0.09, z1: zc + 0.09, disabled: false };
+  F.colliders.push(col);
+  const knob = put(F, GEO.sph, red ? MAT.lock : MAT.chrome, rm.cx + 0.55, y + 1.1, zc + rm.sz * 0.1, 0.16, 0.16, 0.16);
+  const door = {
+    mesh: panel, knob, col, cx: rm.cx, cz: zc, y, level: F.idx, room: rm,
+    open: false, amt: 0, locked: !!red, red: !!red, breached: false,
+    lockBox: red ? { x0: rm.cx - 0.8, x1: rm.cx + 0.8, y0: y + 0.1, y1: y + 2.4, z0: zc - 0.22, z1: zc + 0.22 } : null
+  };
+  F.doors.push(door);
+  world.doors.push(door);
+  return door;
+}
+
+function makeSafe(F, rm) {
+  const y = F.y, x = rm.cx + (rnd() < 0.5 ? -1.4 : 1.4), z = rm.cz + rm.sz * 2.2;
+  const body = put(F, GEO.box, MAT.safe, x, y + 0.75, z, 1.3, 1.5, 0.85);
+  const dial = put(F, GEO.cyl, MAT.gold, x + 0.24, y + 0.85, z - rm.sz * 0.45, 0.34, 0.1, 0.34);
+  dial.rotation.x = Math.PI / 2;
+  put(F, GEO.box, MAT.gold, x - 0.32, y + 0.85, z - rm.sz * 0.45, 0.1, 0.6, 0.06);
+  const safe = {
+    mesh: body, dial, x, y, z, hits: 0, open: false, level: F.idx,
+    box: { x0: x - 0.65, x1: x + 0.65, y0: y, y1: y + 1.5, z0: z - 0.43, z1: z + 0.43, disabled: false }
+  };
+  safe.box.safe = safe;                 // shots that land on this box open the safe
+  F.colliders.push(safe.box);
+  world.safes.push(safe);
+  return safe;
+}
+
+function furnish(F, rm) {
+  const y = F.y, sz = rm.sz;
+  // desk + chair, pushed against the back of the office
+  const dx = rm.cx + rr(-1.2, 1.2), dz = rm.cz + sz * rr(-1.2, 1.2);
+  put(F, GEO.box, MAT.wood, dx, y + 0.72, dz, 2.0, 0.1, 1.0);
+  put(F, GEO.box, MAT.wood, dx - 0.9, y + 0.36, dz, 0.12, 0.72, 0.9);
+  put(F, GEO.box, MAT.wood, dx + 0.9, y + 0.36, dz, 0.12, 0.72, 0.9);
+  F.colliders.push({ x0: dx - 1, x1: dx + 1, y0: y, y1: y + 0.78, z0: dz - 0.5, z1: dz + 0.5 });
+  put(F, GEO.box, MAT.suit2, dx, y + 0.45, dz - sz * 1.1, 0.6, 0.1, 0.6);
+  put(F, GEO.box, MAT.suit2, dx, y + 0.75, dz - sz * 1.35, 0.6, 0.7, 0.1);
+  // filing cabinet in a corner
+  const cx = rm.cx + (rnd() < 0.5 ? -2.6 : 2.6), cz = rm.cz + sz * 2.6;
+  put(F, GEO.box, MAT.metalDark, cx, y + 0.8, cz, 0.9, 1.6, 0.6);
+  put(F, GEO.box, MAT.chrome, cx, y + 1.2, cz - sz * 0.32, 0.5, 0.05, 0.05);
+  F.colliders.push({ x0: cx - 0.45, x1: cx + 0.45, y0: y, y1: y + 1.6, z0: cz - 0.3, z1: cz + 0.3 });
+  // window on the outer wall
+  put(F, GEO.box, MAT.glass, rm.cx, y + 3.1, rm.sz * (ROOMZ1 - 0.2), 3.2, 1.8, 0.06);
+}
+
+/* ------------------------------ the floors ------------------------------- */
+function buildFloor(f) {
+  const Y = (f - 1) * FH;
+  const F = mkLevel(f, Y);
+  const L = layout[f];
+
+  /* --- slab: punch out the lift shafts and the escalator wells --- */
+  const holes = [];
+  // a shaft opens this slab wherever it passes through or tops out; the slab
+  // it takes off from stays solid, so the parked car rests on real concrete
+  for (const s of SHAFTS) if (Y > s.lo + 0.05 && Y <= s.hi + 0.05) holes.push(shaftHole(s));
+  if (f >= 2) {                                                // well for the escalators from below
+    const e = escEnd(f - 1), a = e > 0 ? 32 : -46, b = e > 0 ? 46 : -32;
+    holes.push(rect(a, b, -5, -1.4), rect(a, b, 1.4, 5));
+  }
+  const regions = [
+    { r: rect(-HALLX, HALLX, -HALLZ, HALLZ), m: MAT.slab },
+    { r: rect(HALLX, CORX, -CORZ, CORZ), m: MAT.carpet },
+    { r: rect(-CORX, -HALLX, -CORZ, CORZ), m: MAT.carpet },
+    { r: rect(ESCX0, ESCX1, -ESCZ, ESCZ), m: MAT.slab },
+    { r: rect(-ESCX1, -ESCX0, -ESCZ, ESCZ), m: MAT.slab }
+  ];
+  for (const rm of ROOMS) regions.push({ r: rect(rm.x0, rm.x1, rm.z0, rm.z1), m: MAT.carpet });
+  for (const rg of regions) for (const p of subtract([rg.r], holes)) slabAt(F, p, Y, rg.m);
+
+  /* --- walls --- */
+  const H = FH;
+  solid(F, rect(-HALLX, HALLX, HALLZ - WT, HALLZ + WT), Y, H, MAT.hallwall);
+  solid(F, rect(-HALLX, HALLX, -HALLZ - WT, -HALLZ + WT), Y, H, MAT.hallwall);
+  for (const sx of [1, -1]) {
+    for (const sz of [1, -1]) {
+      solid(F, rect(sx * HALLX - WT, sx * HALLX + WT, Math.min(sz * CORZ, sz * HALLZ), Math.max(sz * CORZ, sz * HALLZ)), Y, H, MAT.hallwall);
+      // The wall at x = ±ESCX0 is the party wall between the escalator hall
+      // and the end office behind it, and that office raises its own outer
+      // side wall in exactly the same place. Build only the stretch no office
+      // covers — two boxes in one spot share faces and flicker.
+      const px = sx * ESCX0;
+      const owned = ROOMS.filter(r => r.sz === sz && (r.x0 === px || r.x1 === px)).map(r => [r.z0, r.z1]);
+      const span = [Math.min(sz * CORZ, sz * ESCZ), Math.max(sz * CORZ, sz * ESCZ)];
+      for (const s of cutSpans([span], owned))
+        solid(F, rect(px - WT, px + WT, s[0], s[1]), Y, H, MAT.hallwall);
+    }
+    const ex0 = sx > 0 ? ESCX0 : -ESCX1, ex1 = sx > 0 ? ESCX1 : -ESCX0;
+    solid(F, rect(ex0, ex1, ESCZ - WT, ESCZ + WT), Y, H, MAT.hallwall);
+    solid(F, rect(ex0, ex1, -ESCZ - WT, -ESCZ + WT), Y, H, MAT.hallwall);
+    solid(F, rect(sx * ESCX1 - WT, sx * ESCX1 + WT, -ESCZ, ESCZ), Y, H, MAT.hallwall);
+
+    // corridor walls, cut open for every office door
+    for (const sz of [1, -1]) {
+      const mine = ROOMS.filter(r => r.sx === sx && r.sz === sz);
+      const cuts = mine.map(r => [r.cx - 0.85, r.cx + 0.85]);
+      const segs = cutSpans([[sx > 0 ? HALLX : -CORX, sx > 0 ? CORX : -HALLX]], cuts);
+      const zw0 = sz > 0 ? CORZ - WT : -CORZ - WT, zw1 = sz > 0 ? CORZ + WT : -CORZ + WT;
+      for (const s of segs) {
+        solid(F, rect(s[0], s[1], zw0, zw1), Y, H, MAT.wall);
+        put(F, GEO.box, MAT.wainscot, (s[0] + s[1]) / 2, Y + 0.55, (zw0 + zw1) / 2 - sz * 0.16, s[1] - s[0], 1.1, 0.06);
+      }
+      for (const c of cuts) solid(F, rect(c[0], c[1], zw0, zw1), Y + 2.4, H - 2.4, MAT.wall);
+    }
+  }
+
+  /* --- shaft heads: every shaft that terminates on this floor gets its plant
+         room and hoist housing, so there is no headroom left over the car --- */
+  const tops = SHAFTS.filter(s => Math.abs(s.hi - Y) < 0.05);
+  for (const s of tops) buildMachineRoom(F, s, Y, Y + FH - 0.4);
+  const capped = (x) => tops.some(s => x > s.x - 1.8 && x < s.x + 1.8);
+
+  /* --- offices --- */
+  for (let i = 0; i < ROOMS.length; i++) {
+    const rm = ROOMS[i], isRed = L.red === i;
+    const back = rm.sz > 0 ? rect(rm.x0, rm.x1, ROOMZ1 - WT, ROOMZ1 + WT) : rect(rm.x0, rm.x1, -ROOMZ1 - WT, -ROOMZ1 + WT);
+    solid(F, back, Y, H, MAT.wall);
+    solid(F, rect(rm.x0 - WT, rm.x0 + WT, rm.z0, rm.z1), Y, H, MAT.wall);
+    solid(F, rect(rm.x1 - WT, rm.x1 + WT, rm.z0, rm.z1), Y, H, MAT.wall);
+    makeDoor(F, rm, isRed ? MAT.doorR : (L.yellow[i] ? MAT.doorY : MAT.doorB), isRed);
+    makeLamp(F, rm.cx, rm.cz, Y + FH - 0.4, 'room' + i, 0.7);
+    furnish(F, rm);
+    if (isRed) makeSafe(F, rm);
+  }
+
+  /* --- corridor and hall lighting --- */
+  for (const sx of [1, -1]) {
+    for (const bx of [14, 20, 26, 39]) makeLamp(F, sx * bx, 0, Y + FH - 0.4, 'cor' + sx, 1.15);
+  }
+  makeLamp(F, -3.5, 3.5, Y + FH - 0.4, 'hall', 1.15);
+  makeLamp(F, 3.5, -3.5, Y + FH - 0.4, 'hall', 1.15);
+
+  // floor number stencilled on the hall wall
+  const fNum = String(f);
+  for (const sz of [1, -1]) {
+    // central elevator hall — slide clear of a plant room if one is in the way
+    let px = sz * 5;
+    if (sz > 0 && capped(px)) px = capped(0) ? -px : 0;
+    makePlaque(F, fNum, px, Y + 3, sz * (HALLZ - 0.22), 2.2, 0.9, 0.06, sz > 0 ? 0 : Math.PI);
+  }
+  // lift letters above each shaft, so the call announcements mean something,
+  // and under each one the pair of landings that lift actually runs between
+  for (const sh of SHAFTS) {
+    if (Y < sh.lo - 0.05 || Y > sh.hi + 0.05) continue;
+    for (const sz of [1, -1]) {
+      if (sz > 0 && capped(sh.x)) continue;      // the plant room front carries it
+      const zw = sz * (HALLZ - 0.22), ry = sz > 0 ? 0 : Math.PI;
+      makePlaque(F, sh.id, sh.x, Y + 4.6, zw, 1.15, 0.7, 0.06, ry, LIFT_PLAQUE);
+      makePlaque(F, shaftRange(sh), sh.x, Y + 3.8, zw, 1.5, 0.6, 0.06, ry, RANGE_PLAQUE);
+    }
+  }
+
+  // escalator landing plaques — both end walls, facing back down the corridor.
+  // Every floor has an escalator hall at each end, so both get the number. The
+  // arrows only mark flights you can actually board:
+  //   escEnd(f)     — the up flight to f+1 starts here; the flight coming down
+  //                   from f+1 only drops people off, so it carries no arrow.
+  //   escEnd(f-1)   — the down flight to f-1 starts here (right at the wall);
+  //                   the flight coming up from f-1 only drops people off.
+  for (const sx of [1, -1]) {
+    const ex = sx > 0 ? ESCX1 - 0.16 : -ESCX1 + 0.16;
+    const er = sx > 0 ? Math.PI / 2 : -Math.PI / 2;
+    makePlaque(F, fNum, ex, Y + 3, 0, 2.2, 0.9, 0.06, er);
+    // the up band runs at negative z, the down band at positive z
+    if (f < FLOORS && sx === escEnd(f))
+      makePlaque(F, 'up', ex, Y + 3, -2.2, 0.9, 0.9, 0.06, er, { tri: 'up' });
+    if (f >= 2 && sx === escEnd(f - 1))
+      makePlaque(F, 'down', ex, Y + 3, 2.2, 0.9, 0.9, 0.06, er, { tri: 'down' });
+  }
+
+  /* --- escalators up to the next floor --- */
+  if (f < FLOORS) buildEscalators(F, f);
+
+  /* --- inhabitants and supplies --- */
+  for (const gi of L.guards) {
+    const rm = ROOMS[gi];
+    spawnEnemy(F, rm.cx + rr(-1.5, 1.5), Y, rm.cz + rr(-1.5, 1.5), rm);
+  }
+  for (const pk of L.pickups) {
+    const rm = ROOMS[pk.room];
+    spawnPickup(F, pk.type, rm.cx + rr(-2, 2), Y + 0.5, rm.cz + rr(-1.5, 1.5));
+  }
+  return F;
+}
+
+/* ----------------------------- escalators -------------------------------- */
+function buildEscalators(F, f) {
+  const Y = F.y, e = escEnd(f);
+  const xa = e > 0 ? 32 : -46, xb = e > 0 ? 46 : -32;   // xa < xb, geometry span
+  const ya = e > 0 ? Y : Y + FH, yb = e > 0 ? Y + FH : Y;
+  const run = xb - xa, rise = FH;
+  const bands = [
+    { z0: -5.0, z1: -1.4, up: true },     // up to the next floor
+    { z0: 1.4, z1: 5.0, up: false }       // down to the floor below the landing
+  ];
+  // one loop for every tread: flat approach -> slanted rail -> dive into the
+  // far landing -> hard snap back to the start. The loop is exactly N+1 tread
+  // pitches long, so 16 treads sit on the rail and one is always in transit,
+  // filling the gap at the boarding end while the leader sinks away.
+  const slope = Math.hypot(run, rise);
+  const cosA = run / slope, sinA = rise / slope;
+  const N = 16, pitch = slope / N;
+  const FIN = 0.35, FOUT = pitch - FIN;   // approach + dive == one pitch
+  const DIVE = Math.SQRT1_2;              // the far landing swallows steps at 45°
+  const xBot = e > 0 ? xa : xb, xTop = e > 0 ? xb : xa;
+
+  for (const b of bands) {
+    const dirToTop = e > 0 ? 1 : -1;      // +1 means the top is at xb
+    const push = ESC_SPD * (b.up ? dirToTop : -dirToTop);
+    F.ramps.push({ axis: 'x', x0: xa, x1: xb, z0: b.z0, z1: b.z1, ya, yb, push });
+
+    // stepped treads, marching from one landing to the other
+    const zc = (b.z0 + b.z1) / 2, zw = b.z1 - b.z0;
+    const sgn = b.up ? dirToTop : -dirToTop;              // travel direction in x
+    const rx = b.up ? xBot : xTop, ry = b.up ? Y : Y + FH;   // foot of the rail
+    const dx = b.up ? xTop : xBot, dy = b.up ? Y + FH : Y;   // head of the rail
+    const st = {
+      sx: rx - sgn * FIN, sy: ry,                        // where a tread is born
+      rx, ry, dx, dy,
+      ux: sgn * cosA, uy: b.up ? sinA : -sinA,           // rail direction
+      vx: sgn * DIVE, vy: -DIVE,                         // dive direction
+      fin: FIN, rail: slope, L: FIN + slope + FOUT,
+      spd: ESC_SPD / cosA,                               // matches the conveyor push
+      steps: []
+    };
+    for (let i = 0; i <= N; i++) {
+      const m = put(F, GEO.box, i % 2 ? MAT.metal : MAT.metalDark, 0, 0, zc, run / N + 0.04, 0.24, zw - 0.1);
+      st.steps.push({ m: m, s: (FIN + (i + 0.5) * pitch) % st.L });
+    }
+    escAdvance(st, 0);
+    F.esc.push(st);
+    // balustrades: sloped slabs, decoration only so nobody gets snagged
+    const ang = Math.atan2(yb - ya, run), len = Math.hypot(run, rise);
+    for (const s of [-1, 1]) {
+      const m = put(F, GEO.box, MAT.metalDark, (xa + xb) / 2, (ya + yb) / 2 + 0.5, zc + s * (zw / 2 - 0.06), len, 1.0, 0.12);
+      m.rotation.z = ang;
+      const h = put(F, GEO.box, MAT.chain, (xa + xb) / 2, (ya + yb) / 2 + 1.05, zc + s * (zw / 2 - 0.06), len, 0.1, 0.2);
+      h.rotation.z = ang;
+    }
+    // comb plates at both landings
+    put(F, GEO.box, MAT.rail, xa + 0.4, ya + 0.02, zc, 0.8, 0.06, zw - 0.1);
+    put(F, GEO.box, MAT.rail, xb - 0.4, yb + 0.02, zc, 0.8, 0.06, zw - 0.1);
+  }
+}
+
+/** Walk one band's treads `d` further along their loop and place them.
+ *  Treads never rotate — they slide, so a step stays a step all the way up. */
+function escAdvance(st, d) {
+  for (let i = 0; i < st.steps.length; i++) {
+    const t = st.steps[i];
+    let s = t.s + d;
+    if (s >= st.L) s -= st.L;        // recycled with a hard cut, never lerped
+    if (s < 0) s += st.L;
+    t.s = s;
+    let x, y, hide = false;
+    if (s < st.fin) {                                  // flat, flush with the floor
+      const k = s / st.fin;
+      x = st.sx + (st.rx - st.sx) * k;
+      y = st.sy + 0.012 * (1 - k);
+    } else if (s < st.fin + st.rail) {                 // climbing the slanted rail
+      const r = s - st.fin;
+      x = st.rx + st.ux * r;
+      y = st.ry + st.uy * r;
+    } else {                                           // receding into the landing
+      const r = s - st.fin - st.rail;
+      x = st.dx + st.vx * r;
+      y = st.dy + st.vy * r;
+      hide = st.dy - y > 0.16;       // swallowed by the slab, nothing pokes through
+    }
+    t.m.position.x = x;
+    t.m.position.y = y - 0.12;
+    t.m.visible = !hide;
+  }
+}
+
+/* ---------------------------- shaft heads -------------------------------- */
+/** Cap shaft s at its top landing: the plant room fills the hall from the car
+ *  side out to the +z wall, and the hoist housing fills what is left between
+ *  the parked car's roof and the ceiling. `ceil` is the underside of whatever
+ *  roofs this level. Both blocks are one lump of machinery, so one colour. */
+function buildMachineRoom(F, s, y, ceil) {
+  const x0 = s.x - 1.8, x1 = s.x + 1.8, h = ceil - y;
+  solid(F, rect(x0, x1, MR_Z0, MR_Z1), y, h, MAT.machine);                       // plant room
+  solid(F, rect(x0, x1, -1.8, MR_Z0), y + CAR_TOP, h - CAR_TOP, MAT.machine);    // hoist housing
+  // Keep the heat exhaust on the side of the machine room; the hall face is for
+  // the lift signage and should remain visually clear.
+  for (let i = 0; i < 4; i++)
+    put(F, GEO.box, MAT.metalDark, x1 + 0.04, y + 0.9 + i * 0.28, 2.35, 0.06, 0.16, 1.0);
+  makePlaque(F, s.id, s.x, y + h * 0.62, MR_Z0 - 0.04, 1.15, 0.7, 0.06, 0, LIFT_PLAQUE);
+  makePlaque(F, shaftRange(s), s.x, y + h * 0.62 - 0.72, MR_Z0 - 0.04, 1.5, 0.6, 0.06, 0, RANGE_PLAQUE);
+}
+
+/* ------------------------------ elevators -------------------------------- */
+function buildElevators() {
+  for (const s of SHAFTS) {
+    const g = new THREE.Group();
+    scene.add(g);
+    const holder = { group: g };
+    put(holder, GEO.box, MAT.metal, 0, -0.125, 0, 3.6, 0.25, 3.6);          // pallet deck
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      put(holder, GEO.box, MAT.rail, sx * 1.7, 0.03, sz * 1.7, 0.2, 0.1, 0.2);
+      put(holder, GEO.box, MAT.metalDark, sx * 1.7, 1.2, sz * 1.7, 0.14, 2.4, 0.14);
+    }
+    put(holder, GEO.box, MAT.metalDark, 0, 2.46, 0, 3.6, 0.14, 3.6);        // head frame
+    for (const sx of [-1, 1]) put(holder, GEO.box, MAT.metalDark, sx * 1.7, 1.9, 0, 0.1, 0.08, 3.4);
+    const lampMat = new THREE.MeshBasicMaterial({ color: 0xffd79a });
+    const cage = new THREE.Mesh(GEO.sph, lampMat);
+    cage.position.set(0, 2.3, 0); cage.scale.set(0.2, 0.2, 0.2);
+    g.add(cage);
+
+    // ry0/ry1: the slice of the building this car can ever reach. There are a
+    // dozen and a half cars now and every one of them is a dynamic collider on
+    // every level's list, so colsFor uses this to hand a body only the ones it
+    // could actually walk into.
+    const ry0 = s.lo - 0.4, ry1 = s.hi + CAR_TOP + 0.1;
+    const el = {
+      id: s.id, x: s.x, lo: s.lo, hi: s.hi, y: s.start, dy: 0, pax: s.pax,
+      target: s.start, idle: 0, called: false, blink: 0, group: g, lampMat,
+      duty: null, callerP: false,    // who rang for it: a goon, or you
+      colP: { x0: s.x - 1.8, x1: s.x + 1.8, y0: s.start - 0.25, y1: s.start, z0: -1.8, z1: 1.8, disabled: false, elev: true, ry0, ry1 },
+      colT: { x0: s.x - 1.8, x1: s.x + 1.8, y0: s.start + 2.39, y1: s.start + CAR_TOP, z0: -1.8, z1: 1.8, disabled: false, elev: true, ry0, ry1 }
+    };
+    world.dyn.push(el.colP, el.colT);
+    world.elevators.push(el);
+
+    // guide rails, always visible so the shaft reads as a shaft
+    const rails = new THREE.Group();
+    scene.add(rails);
+    for (const sx of [-1, 1]) {
+      const h = s.hi - s.lo + 3;
+      const m = new THREE.Mesh(GEO.box, MAT.metalDark);
+      m.position.set(s.x + sx * 1.95, (s.lo + s.hi) / 2 + 0.5, 0);
+      m.scale.set(0.16, h, 0.16);
+      rails.add(m);
+    }
+  }
+}
+
+/* -------------------------------- roof ----------------------------------- */
+function buildRoof() {
+  const F = mkLevel(21, ROOF_Y);
+  const wells = SHAFTS.filter(s => s.hi > ROOF_Y - 0.05).map(shaftHole);
+  for (const p of subtract([rect(-48, 48, -9, 9)], wells)) slabAt(F, p, ROOF_Y, MAT.concrete);
+  // parapet
+  solid(F, rect(-48, 48, 8.8, 9.2), ROOF_Y, 1.2, MAT.concreteD);
+  solid(F, rect(-48, 48, -9.2, -8.8), ROOF_Y, 1.2, MAT.concreteD);
+  solid(F, rect(-48.2, -47.8, -9, 9), ROOF_Y, 1.2, MAT.concreteD);
+  solid(F, rect(47.8, 48.2, -9, 9), ROOF_Y, 1.2, MAT.concreteD);
+  // hoist gantry over the shaft: corner posts only, so the car is still
+  // reachable from all four sides
+  for (const sx of [-1, 1]) for (const sz of [-1, 1])
+    solid(F, rect(sx * 3.2 - 0.2, sx * 3.2 + 0.2, sz * 3.2 - 0.2, sz * 3.2 + 0.2), ROOF_Y, 3, MAT.metalDark);
+  for (const sx of [-1, 1]) put(F, GEO.box, MAT.metalDark, sx * 3.2, ROOF_Y + 3.1, 0, 0.4, 0.3, 7);
+  put(F, GEO.box, MAT.metalDark, 0, ROOF_Y + 3.3, 0, 7.2, 0.3, 7.2);
+  // shaft R terminates here: plant room and hoist housing packed up under the
+  // gantry deck, same as every shaft head inside the building
+  for (const s of SHAFTS) if (Math.abs(s.hi - ROOF_Y) < 0.05) buildMachineRoom(F, s, ROOF_Y, ROOF_Y + 3.15);
+  for (let i = 0; i < 7; i++) {
+    const x = rr(-42, 42), z = rr(-7, 7);
+    if (Math.abs(x) < 9) continue;
+    solid(F, rect(x - 1.4, x + 1.4, z - 1.2, z + 1.2), ROOF_Y, 1.4, MAT.metalDark);
+    put(F, GEO.cyl, MAT.metal, x, ROOF_Y + 1.6, z, 1.6, 0.4, 1.6);
+  }
+  solid(F, rect(-30, -26, -3, 1), ROOF_Y, 3.4, MAT.metal);                 // water tank
+  put(F, GEO.cyl, MAT.metalDark, 28, ROOF_Y + 5, 5, 0.2, 10, 0.2);         // aerial
+  // roof level plaque
+  for (const sz of [1, -1]) {
+    makePlaque(F, 'R', sz * 5, ROOF_Y + 3, sz * (HALLZ - 0.22), 2.2, 0.9, 0.06, sz > 0 ? 0 : Math.PI);
+    solid(F, rect(Math.min(sz * 4.9, sz * 5.1), Math.max(sz * 4.9, sz * 5.1),
+      Math.min(sz * (HALLZ - 0.32), sz * (HALLZ - 0.12)), Math.max(sz * (HALLZ - 0.32), sz * (HALLZ - 0.12))),
+      ROOF_Y, 2.55, MAT.metalDark);
+  }
+  for (const x of [-34, -18, 18, 34]) {
+    makeLamp(F, x, 0, ROOF_Y + 3.2, 'roof', 0.6);
+    makeRoofLampPost(F, x, 0, ROOF_Y + 3.2);
+  }
+  makeLamp(F, 0, -5.6, ROOF_Y + 3.2, 'roof', 0.6);   // +z side is the plant room now
+  makeRoofLampPost(F, 0, -5.6, ROOF_Y + 3.2);
+  return F;
+}
+
+/* ------------------------------ basement --------------------------------- */
+function buildBasement() {
+  const F = mkLevel(0, BASE_Y);
+  const H = BASE_CEIL - BASE_Y;   // 8 units of headroom
+  slabAt(F, rect(-50, 50, -26, RAMP_Z0), BASE_Y, MAT.concrete);
+  // ceiling, opened up for the lift shaft and the ramp
+  const wells = SHAFTS.filter(s => s.lo < BASE_Y + 0.05).map(shaftHole);
+  for (const p of subtract([rect(-50, 50, -26, RAMP_Z0)], wells))
+    solid(F, p, BASE_CEIL, 0.5, MAT.concreteD);
+  // perimeter
+  solid(F, rect(-50.3, -49.7, -26, RAMP_Z0), BASE_Y, H, MAT.concreteD);
+  solid(F, rect(49.7, 50.3, -26, RAMP_Z0), BASE_Y, H, MAT.concreteD);
+  solid(F, rect(-50, 50, -26.3, -25.7), BASE_Y, H, MAT.concreteD);
+  solid(F, rect(-50, -14, RAMP_Z0 - 0.3, RAMP_Z0 + 0.3), BASE_Y, H, MAT.concreteD);
+  solid(F, rect(14, 50, RAMP_Z0 - 0.3, RAMP_Z0 + 0.3), BASE_Y, H, MAT.concreteD);
+
+  // pillars
+  for (const x of [-40, -26, -12, 12, 26, 40]) for (const z of [-20, -8, 4]) {
+    solid(F, rect(x - 0.7, x + 0.7, z - 0.7, z + 0.7), BASE_Y, H, MAT.concrete);
+    put(F, GEO.box, MAT.rail, x, BASE_Y + 1.1, z, 1.5, 0.25, 1.5);
+  }
+  // parking bays
+  for (let i = -3; i <= 3; i++) put(F, GEO.box, MAT.rail, i * 6, BASE_Y + 0.02, -16, 0.12, 0.02, 5);
+
+  // exit ramp out to the street
+  F.ramps.push({ axis: 'z', x0: -14, x1: 14, z0: RAMP_Z0, z1: RAMP_Z1, ya: BASE_Y, yb: RAMP_TOP_Y, push: 0 });
+  const N = 10, run = RAMP_Z1 - RAMP_Z0, rise = RAMP_TOP_Y - BASE_Y;
+  const angle = Math.atan2(rise, run), segmentLength = Math.hypot(run, rise) / N;
+  for (let i = 0; i < N; i++) {
+    const t = (i + 0.5) / N, z = lerp(RAMP_Z0, RAMP_Z1, t), y = lerp(BASE_Y, RAMP_TOP_Y, t);
+    // Offset along the surface normal so the top faces meet on the driving plane.
+    const deck = put(F, GEO.box, MAT.concrete, 0, y - 0.25 * Math.cos(angle),
+      z + 0.25 * Math.sin(angle), 28, 0.5, segmentLength);
+    deck.rotation.x = -angle;
+    for (const s of [-1, 1]) {
+      solid(F, rect(s * 14 - 0.3, s * 14 + 0.3, z - (RAMP_Z1 - RAMP_Z0) / (2 * N), z + (RAMP_Z1 - RAMP_Z0) / (2 * N)), y, 2.2, MAT.concreteD);
+    }
+  }
+  // street level landing
+  slabAt(F, rect(-14, 14, RAMP_Z1, 52), RAMP_TOP_Y, MAT.concreteD);
+  solid(F, rect(-14.3, -13.7, RAMP_Z1, 52), RAMP_TOP_Y, 2.2, MAT.concreteD);
+  solid(F, rect(13.7, 14.3, RAMP_Z1, 52), RAMP_TOP_Y, 2.2, MAT.concreteD);
+
+  for (const x of [-34, -18, 0, 18, 34]) for (const z of [-20, -4]) makeLamp(F, x, z, BASE_CEIL, 'base', 0.5);
+  makeLamp(F, 0, 10, BASE_CEIL, 'base', 0.5);
+  // basement level plaque
+  for (const sz of [1, -1]) makePlaque(F, 'B', sz * 5, BASE_CEIL + 3, sz * (HALLZ - 0.22), 2.2, 0.9, 0.06, sz > 0 ? 0 : Math.PI);
+
+  buildCar(F);
+  for (const p of [[-30, -10], [22, 2], [-4, -20]]) spawnEnemy(F, p[0], BASE_Y, p[1], null);
+  return F;
+}
+
+/* ------------------------------- the car --------------------------------- */
+function buildCar(F) {
+  const g = new THREE.Group();
+  scene.add(g);
+  const h = { group: g };
+  put(h, GEO.box, MAT.carBody, 0, 0.55, 0, 2.0, 0.5, 4.4);       // hull
+  put(h, GEO.box, MAT.carBody, 0, 0.95, -0.35, 1.8, 0.35, 2.0);  // cowl
+  put(h, GEO.box, MAT.glass, 0, 1.2, 0.35, 1.5, 0.42, 0.12);     // screen
+  put(h, GEO.box, MAT.carDark, 0, 0.9, 0.75, 1.7, 0.3, 1.4);     // tonneau
+  put(h, GEO.box, MAT.chrome, 0, 0.5, -2.15, 1.9, 0.22, 0.2);    // bumpers
+  put(h, GEO.box, MAT.chrome, 0, 0.5, 2.15, 1.9, 0.22, 0.2);
+  for (const s of [-1, 1]) {
+    const l = put(h, GEO.sph, MAT.paper, s * 0.7, 0.85, -2.05, 0.32, 0.32, 0.32);
+    l.scale.set(0.32, 0.32, 0.32);
+    put(h, GEO.box, MAT.carDark, s * 0.55, 0.9, 1.9, 0.3, 0.14, 0.2);
+  }
+  const wheels = [];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const w = put(h, GEO.cyl, MAT.tire, sx * 1.0, 0.42, sz * 1.5, 0.84, 0.32, 0.84);
+    w.rotation.z = Math.PI / 2;
+    wheels.push(w);
+    const hub = put(h, GEO.cyl, MAT.chrome, sx * 1.16, 0.42, sz * 1.5, 0.4, 0.06, 0.4);
+    hub.rotation.z = Math.PI / 2;
+  }
+  const car = {
+    group: g, wheels, x: -6, z: 4, y: BASE_Y, head: Math.PI, speed: 0,   // nosed at the ramp
+    box: { x0: -7, x1: -5, y0: BASE_Y, y1: BASE_Y + 1.4, z0: 3, z1: 5, disabled: false }
+  };
+  world.dyn.push(car.box);
+  world.car = car;
+  world.colCache = {};
+  g.position.set(car.x, car.y, car.z);
+  g.rotation.y = car.head;
+  return car;
+}
+/* ------------------------------ 5. ENTITIES ------------------------------ */
+const player = {
+  pos: new THREE.Vector3(-24, ROOF_Y, 0),
+  vel: new THREE.Vector3(),
+  r: P.r, h: P.h,
+  onGround: false, hitHead: false, groundCol: null, riding: null,
+  level: 21, inCar: false, bob: 0, fallV: 0
+};
+
+const bodyBox = (b) => ({
+  x0: b.pos.x - b.r, x1: b.pos.x + b.r,
+  y0: b.pos.y, y1: b.pos.y + b.h,
+  z0: b.pos.z - b.r, z1: b.pos.z + b.r
+});
+
+/** Shared kinematics: axis-by-axis AABB resolution plus ramp snapping. */
+function stepBody(b, dt, cols, ramps) {
+  b.onGround = false; b.hitHead = false; b.groundCol = null;
+  b.vel.y -= GRAV * dt;
+  if (b.vel.y < -60) b.vel.y = -60;
+
+  // conveyor from any escalator we are standing in
+  let conv = null;
+  for (let i = 0; i < ramps.length; i++) {
+    const r = ramps[i];
+    if (b.pos.x > r.x0 && b.pos.x < r.x1 && b.pos.z > r.z0 && b.pos.z < r.z1) {
+      const sy = rampY(r, b.pos);
+      if (b.pos.y > sy - 1.6 && b.pos.y < sy + 1.2) { conv = r; break; }
+    }
+  }
+
+  let dx = b.vel.x * dt, dz = b.vel.z * dt;
+  if (conv && conv.push) { if (conv.axis === 'x') dx += conv.push * dt; else dz += conv.push * dt; }
+
+  b.pos.x += dx; resolve(b, cols, 'x');
+  b.pos.z += dz; resolve(b, cols, 'z');
+  b.pos.y += b.vel.y * dt; resolve(b, cols, 'y');
+
+  // ramp surface wins over gravity once we are inside its footprint
+  for (let i = 0; i < ramps.length; i++) {
+    const r = ramps[i];
+    if (b.pos.x > r.x0 && b.pos.x < r.x1 && b.pos.z > r.z0 && b.pos.z < r.z1) {
+      const sy = rampY(r, b.pos);
+      if (b.vel.y <= 0.2 && b.pos.y < sy + 0.3 && b.pos.y > sy - 4) {
+        b.pos.y = sy; b.vel.y = 0; b.onGround = true; b.groundCol = null;
+      }
+    }
+  }
+  return b.onGround && b.hitHead;     // squeezed
+}
+function rampY(r, p) {
+  const t = r.axis === 'x' ? (p.x - r.x0) / (r.x1 - r.x0) : (p.z - r.z0) / (r.z1 - r.z0);
+  return lerp(r.ya, r.yb, clamp(t, 0, 1));
+}
+function resolve(b, cols, axis) {
+  const r = b.r, h = b.h, p = b.pos;
+  for (let i = 0; i < cols.length; i++) {
+    const c = cols[i];
+    if (c.disabled) continue;
+    const x0 = p.x - r, x1 = p.x + r, y0 = p.y, y1 = p.y + h, z0 = p.z - r, z1 = p.z + r;
+    if (x0 >= c.x1 || x1 <= c.x0 || y0 >= c.y1 || y1 <= c.y0 || z0 >= c.z1 || z1 <= c.z0) continue;
+    if (axis === 'x') {
+      const a = c.x1 - x0, d = x1 - c.x0;
+      if (a < d) p.x += a; else p.x -= d;
+      b.vel.x = 0;
+    } else if (axis === 'z') {
+      const a = c.z1 - z0, d = z1 - c.z0;
+      if (a < d) p.z += a; else p.z -= d;
+      b.vel.z = 0;
+    } else {
+      const a = c.y1 - y0, d = y1 - c.y0;
+      if (a < d) { p.y += a; b.vel.y = 0; b.onGround = true; b.groundCol = c; }
+      else { p.y -= d; if (b.vel.y > 0) b.vel.y = 0; b.hitHead = true; }
+    }
+  }
+}
+
+/* ------------------------------- enemies --------------------------------- */
+function enemyMesh() {
+  const g = new THREE.Group();
+  const suit = rnd() < 0.5 ? MAT.suit : MAT.suit2;
+  const h = { group: g };
+  put(h, GEO.box, suit, 0, 1.18, 0, 0.62, 0.78, 0.36);              // torso
+  put(h, GEO.box, MAT.shirt, 0, 1.30, -0.19, 0.22, 0.48, 0.04);     // shirt front
+  put(h, GEO.box, MAT.tie, 0, 1.26, -0.22, 0.09, 0.34, 0.03);       // tie
+  const head = put(h, GEO.ico, MAT.skin, 0, 1.74, 0, 0.46, 0.5, 0.46);
+  put(h, GEO.cyl, MAT.hat, 0, 1.93, 0, 0.86, 0.07, 0.86);           // fedora brim
+  put(h, GEO.cyl, MAT.hat, 0, 2.05, 0, 0.5, 0.26, 0.5);             // crown
+  put(h, GEO.box, MAT.rail, 0, 2.02, -0.24, 0.5, 0.06, 0.06);       // hat band
+  const armL = put(h, GEO.box, suit, -0.40, 1.20, 0, 0.17, 0.66, 0.17);
+  const armR = put(h, GEO.box, suit, 0.40, 1.20, 0, 0.17, 0.66, 0.17);
+  const legL = put(h, GEO.box, MAT.gunmetal, -0.16, 0.40, 0, 0.21, 0.82, 0.23);
+  const legR = put(h, GEO.box, MAT.gunmetal, 0.16, 0.40, 0, 0.21, 0.82, 0.23);
+  put(h, GEO.box, MAT.gunmetal, 0.42, 1.12, -0.28, 0.09, 0.11, 0.34);  // piece
+  return { group: g, head, armL, armR, legL, legR };
+}
+
+function spawnEnemy(F, x, y, z, room) {
+  const m = enemyMesh();
+  m.group.position.set(x, y, z);
+  scene.add(m.group);
+  const e = {
+    mesh: m, group: m.group, pos: new THREE.Vector3(x, y, z), vel: new THREE.Vector3(),
+    r: E.r, h: E.h, onGround: false, hitHead: false, groundCol: null, riding: null,
+    level: F.idx, home: F.idx, room, alert: false, dead: false, deadT: 0,
+    hp: 40, hpMax: 40, fireCd: rr(0.6, 2.2), walk: 0, face: 0, stuck: 0,
+    // what he is going to look at, and how he means to get there
+    hunt: null, act: null, seenT: 0, searchT: 0, huntT: 0, casting: false, castT: 0,
+    viaLift: rnd() < 0.55, moving: false, sideT: 0, side: 1, los: false, losT: 0, retry: 0
+  };
+  world.enemies.push(e);
+  return e;
+}
+
+/* ------------------------ noise, hearing, hunting -------------------------
+   A gunshot is the loudest thing in this building and it goes straight through
+   the slabs. Everyone within two floors hears it and comes looking — not for
+   you, for the spot the noise came from — and they have to travel like anybody
+   else: down the corridor to the escalators, or into the hall to ring for a
+   car. Fire a round at one end of a floor and walk away, and the men who
+   answer it arrive at an empty corridor; fire one and wait round the corner,
+   and you know exactly which lift door they will step out of.                */
+
+/* A floor is a corridor with walls in it and a hall with holes in it, and a
+   goon has to respect both. The walls at x = ±HALLX and ±ESCX0 are solid
+   except for the four-wide corridor mouth, so those are crossed on the
+   centreline. The hall is worse: the three hoistways run down the middle of
+   it, and each one opens the slab from z = -2 to z = +2, so the centreline is
+   the one line across the hall a man must not take. He uses the strip south of
+   the shafts instead — which is where the call buttons are anyway — and steps
+   up to the mouth only at the solid corner beside the hall wall. */
+const GATES = [-ESCX0, -HALLX, HALLX, ESCX0];
+const HALL_LANE = -2.9;      // clear of every shaft mouth, and where he waits
+const HALL_EDGE = 9.2;       // solid strip between the outer shaft and the wall
+
+/** Nobody stands in an open hoistway: a spot in the hall comes back on the lane. */
+function safeSpot(p) {
+  if (Math.abs(p.x) < HALLX && p.z > HALL_LANE + 0.4) p.z = HALL_LANE;
+  return p;
+}
+
+function nextWaypoint(e, tx, tz) {
+  if (e.level < 1 || e.level > FLOORS) return { x: tx, z: tz };
+  const px = e.pos.x, pz = e.pos.z;
+  if (Math.abs(tx) < HALLX && tz > HALL_LANE + 0.4) tz = HALL_LANE;
+
+  if (Math.abs(px) < HALLX) {                       // in the hall
+    const lane = pz < HALL_LANE + 0.35;
+    if (Math.abs(tx) < HALLX) {
+      if (!lane) return { x: px, z: HALL_LANE };
+      return Math.abs(px - tx) > 1.0 ? { x: tx, z: HALL_LANE } : { x: tx, z: tz };
+    }
+    const side = tx > 0 ? HALL_EDGE : -HALL_EDGE;   // the corner he leaves by
+    if (!lane) {
+      if (Math.abs(px - side) < 0.9) return { x: tx > 0 ? HALLX + 1.4 : -HALLX - 1.4, z: 0 };
+      return { x: px, z: HALL_LANE };
+    }
+    if (Math.abs(px - side) > 0.8) return { x: side, z: HALL_LANE };
+    return { x: side, z: 0 };
+  }
+
+  let g = null;
+  for (let i = 0; i < GATES.length; i++) {
+    const gx = GATES[i];
+    if ((px < gx && tx > gx) || (px > gx && tx < gx)) {
+      if (g === null || Math.abs(gx - px) < Math.abs(g - px)) g = gx;
+    }
+  }
+  if (g === null) return { x: tx, z: tz };
+  // step in as far as the solid corner, not into the mouth of the first shaft
+  if (Math.abs(g) === HALLX) return { x: g > 0 ? HALL_EDGE : -HALL_EDGE, z: 0 };
+  return { x: g + (px < g ? 1.4 : -1.4), z: 0 };
+}
+
+/** Is (x,z) inside the office this one came out of? */
+function inOffice(e, x, z) {
+  const rm = e.room;
+  return !!rm && x > rm.x0 && x < rm.x1 && (rm.sz > 0 ? z > CORZ : z < -CORZ);
+}
+
+/** The flight that carries a body from floor f to f±1, or null where there is
+ *  none. He steps on at (bx,bz) off a landing at by, steps off at (ex,ey), and
+ *  walks out to ax to clear the well before he is loose on the new floor. */
+function escRoute(f, dir) {
+  if (dir > 0) {
+    if (f < 1 || f >= FLOORS) return null;
+    const s = escEnd(f);                       // this floor carries the up flight
+    return { k: 'esc', ph: 0, t: 0, p: 0, from: f, to: f + 1,
+             bx: s * 32.7, bz: -3.2, by: levelY(f),
+             ex: s * 46, ey: levelY(f + 1), ax: s * 44.5 };
+  }
+  if (f < 2 || f > FLOORS) return null;
+  const s = escEnd(f - 1);                     // the flight below tops out here
+  return { k: 'esc', ph: 0, t: 0, p: 0, from: f, to: f - 1,
+           bx: s * 45.2, bz: 3.2, by: levelY(f),
+           ex: s * 32, ey: levelY(f - 1), ax: s * 33.5 };
+}
+
+/** Is somebody else already working this car? The claim is only good while
+ *  the man who made it is alive, still interested, and still on a leg that
+ *  uses this car, so it cleans up after itself and never wedges a shaft. */
+function liftHeldBy(el, e) {
+  const d = el.duty;
+  return !!d && d !== e && !d.dead && d.alert && !!d.act && d.act.k === 'lift' && d.act.el === el;
+}
+
+/** The car standing on floor f that gets him furthest towards floor `to`. No
+ *  lift runs the whole height, so this is usually only one leg of the trip —
+ *  he re-plans from wherever it puts him down. */
+function liftRoute(f, to, atX, self) {
+  const fy = levelY(f), ty = levelY(to);
+  let best = null, bestGain = 0, bestD = 0;
+  for (let i = 0; i < world.elevators.length; i++) {
+    const el = world.elevators[i];
+    if (fy < el.lo - 0.05 || fy > el.hi + 0.05) continue;      // does not stop here
+    if (liftHeldBy(el, self)) continue;                        // taken
+    const stop = clamp(ty, el.lo, el.hi);
+    const gain = Math.abs(fy - ty) - Math.abs(stop - ty);
+    if (gain < FH - 0.1) continue;                             // not worth the wait
+    const d = Math.abs(el.x - atX);
+    if (!best || gain > bestGain + 0.1 || (gain > bestGain - 0.1 && d < bestD)) {
+      best = el; bestGain = gain; bestD = d;
+    }
+  }
+  return best ? { k: 'lift', ph: 0, t: 0, from: f, el: best, dest: clamp(ty, best.lo, best.hi) } : null;
+}
+
+/** How this one means to get to the noise. The roof and the garage leave no
+ *  choice — only the two fixed hoists reach them — but on the office floors he
+ *  weighs the walk to the lift hall and the wait for a car against the walk to
+ *  the escalators, which are at the far end every other floor, and divides by
+ *  the floors each would win him. `viaLift` is his temper, and it tips a close
+ *  call either way, so a shot fired at one spot does not fetch five identical
+ *  men by five identical routes. */
+function planTransit(e) {
+  const f = e.level, to = e.hunt.level;
+  if (f === to) return null;
+  const lift = liftRoute(f, to, e.pos.x, e);
+  const esc = escRoute(f, to > f ? 1 : -1);
+  if (!lift || !esc) {
+    const pick = lift || esc;
+    if (pick && pick.k === 'lift') pick.el.duty = e;
+    return pick;
+  }
+  const gain = Math.max(1, Math.abs(lift.dest - levelY(f)) / FH);
+  const cLift = (Math.abs(e.pos.x - lift.el.x) + 14) / gain;   // hall walk plus the wait
+  const cEsc = Math.abs(e.pos.x - esc.bx) + 12;                // walk plus the ride
+  if (cLift * (e.viaLift ? 0.75 : 1.3) <= cEsc) { lift.el.duty = e; return lift; }
+  return esc;
+}
+
+/** A goon works the same call buttons you do — except while you are standing
+ *  in the car, when it answers to you and to nobody else. */
+function enemyCallLift(el, y, e) {
+  if (player.riding === el && !player.inCar) return false;
+  if (el.callerP && el.called) return false;           // you rang first; he waits
+  if (liftHeldBy(el, e)) return false;                 // another man got there first
+  el.duty = e;
+  el.target = clamp(y, el.lo, el.hi);
+  el.idle = 0;
+  el.called = Math.abs(el.target - el.y) > 0.05;
+  return true;
+}
+
+let huntTipT = 0;
+/** One line, rarely, so the first time it happens you know what you heard. */
+function huntTip(e) {
+  if (huntTipT > 0 || game.state !== 'play' || Math.abs(e.level - player.level) > 2) return;
+  huntTipT = 16;
+  toast(e.act.k === 'lift' ? 'A lift just answered somebody else.'
+                           : 'Boots on the escalator — that shot carried.');
+}
+
+/** Ride the escalator: walk to the landing, step across onto the treads, let
+ *  them do the work, then get clear of the well at the far end. */
+function escStep(e, a, dt, ghost) {
+  const hold = { x: e.pos.x, z: e.pos.z, move: false };
+  if (a.ph === 0) {                                       // along the middle band
+    if (Math.abs(e.pos.x - a.bx) < 1.4 && Math.abs(e.pos.y - a.by) < 2.5) a.ph = 1;
+    const w = nextWaypoint(e, a.bx, 0);
+    return { x: w.x, z: w.z, move: true };
+  }
+  if (a.ph === 1) {                                       // sideways onto the comb
+    if (Math.abs(e.pos.z - a.bz) < 1.1) { a.ph = 2; a.p = 0; }
+    return { x: a.bx, z: a.bz, move: true };
+  }
+  if (a.ph === 2) {                                       // riding
+    if (ghost) {
+      a.p = Math.min(1, a.p + dt * (ESC_SPD + 2) / Math.abs(a.ex - a.bx));
+      e.pos.set(lerp(a.bx, a.ex, a.p), lerp(a.by, a.ey, a.p), a.bz);
+      if (a.p >= 1) a.ph = 3;
+      return { x: e.pos.x, z: e.pos.z, move: false, driven: true };
+    }
+    if (Math.abs(e.pos.x - a.ex) < 2.0 && Math.abs(e.pos.y - a.ey) < 1.2) a.ph = 3;
+    return { x: a.ex, z: a.bz, move: true };
+  }
+  if (Math.abs(e.pos.z) < 1.3) { e.act = null; return hold; }
+  return { x: a.ax, z: 0, move: true };
+}
+
+/** Ride the lift: to the landing, press the button, wait for it, board, name a
+ *  floor, step back out into the hall. Call the car away while he is still
+ *  walking to it and he presses again; once he is aboard, he keeps it. */
+function liftStep(e, a, dt, ghost) {
+  const el = a.el, hold = { x: e.pos.x, z: e.pos.z, move: false };
+  const myY = levelY(e.level);
+  if (a.ph === 0) {
+    const at = Math.hypot(e.pos.x - el.x, e.pos.z + 2.9) < 5.5;
+    if (at && !enemyCallLift(el, myY, e) && a.t > 5) {    // it is not his to call
+      e.viaLift = false; e.act = null; return hold;       // he takes the escalator
+    }
+    if (at && Math.abs(el.y - myY) < 0.25) a.ph = 1;
+    const w = nextWaypoint(e, el.x, -2.9);
+    return { x: w.x, z: w.z, move: true };
+  }
+  if (a.ph === 1) {
+    enemyCallLift(el, myY, e);              // hold it at this floor while he steps in
+    const on = ghost || e.riding === el;    // feet actually on the deck
+    // the deck is only as wide as the hole in the slab it rides through, so he
+    // is not aboard until he is well inside it — an elbow over the edge is a
+    // dead man the moment the car moves
+    if (on && Math.abs(e.pos.x - el.x) < 0.9 && Math.abs(e.pos.z) < 0.9) {
+      a.ph = 2;
+      if (ghost) { e.pos.set(el.x, el.y, 0); e.riding = el; return { x: el.x, z: 0, move: false, driven: true }; }
+      return { x: el.x, z: 0, move: false };
+    }
+    if (!on && Math.abs(el.y - myY) > 0.7) { a.ph = 0; return hold; }   // it left without him
+    return { x: el.x, z: 0, move: true };
+  }
+  if (a.ph === 2) {                                       // riding
+    if (!ghost && (Math.abs(e.pos.x - el.x) > 1.9 || Math.abs(e.pos.z) > 1.9 ||
+                   Math.abs(e.pos.y - el.y) > 1.2)) {
+      e.act = null; return hold;                          // he is not in it any more
+    }
+    enemyCallLift(el, a.dest, e);
+    if (Math.abs(el.y - a.dest) < 0.12) a.ph = 3;
+    if (ghost) { e.pos.set(el.x, el.y, 0); e.riding = el; return { x: el.x, z: 0, move: false, driven: true }; }
+    return hold;
+  }
+  if (ghost) e.riding = null;
+  if (e.pos.z < -2.4) { e.act = null; return hold; }
+  return { x: el.x, z: -3.4, move: true };
+}
+
+/** Where an alerted goon wants his feet next while he cannot see you: out of
+ *  the office, across the building, up or down, and then a good look round the
+ *  spot the noise came from before he decides there was nothing in it. */
+function huntTarget(e, dt, ghost) {
+  const hold = { x: e.pos.x, z: e.pos.z, move: false };
+  if (!e.hunt) e.hunt = { level: e.level, x: e.pos.x, z: e.pos.z };
+  const g = e.hunt;
+  // however it goes, he is not chasing one gunshot round the building all night
+  e.huntT += dt;
+  if (e.huntT > 150) { e.alert = false; e.hunt = null; e.act = null; e.casting = false; return hold; }
+
+  // Out of the office first — before the route, not as part of it. The only
+  // way through the corridor wall is the door-width hole the door sits in, so
+  // he lines up with it and walks straight out; aiming a man at the lift hall
+  // from inside a room only grinds him along the side wall. He keeps doing
+  // this until he is properly in the corridor, doorway included.
+  const rm = e.room;
+  if (rm && e.pos.x > rm.x0 - 0.5 && e.pos.x < rm.x1 + 0.5 &&
+      (rm.sz > 0 ? e.pos.z > CORZ - 0.6 : e.pos.z < -CORZ + 0.6) &&
+      !(g.level === e.level && inOffice(e, g.x, g.z))) {
+    const d = doorAt(e.level, rm);
+    if (d && d.locked) {
+      // the red doors are locked from the corridor and he has no key either,
+      // so he stops where he can watch the only way in and waits for you
+      const post = rm.sz * (ROOMZ0 + 1.6);
+      return { x: rm.cx, z: post, move: Math.hypot(e.pos.x - rm.cx, e.pos.z - post) > 0.8 };
+    }
+    if (d && !d.open) openDoor(d, true);
+    const inner = rm.sz * (ROOMZ0 + 0.9);            // the mat just inside the door
+    if (Math.abs(e.pos.z) > Math.abs(inner) + 0.5 || Math.abs(e.pos.x - rm.cx) > 1.4)
+      return { x: rm.cx, z: inner, move: true };
+    return { x: rm.cx, z: rm.sz * (CORZ - 1.4), move: true };
+  }
+
+  if (!e.act && e.level !== g.level) {
+    e.retry -= dt;
+    if (e.retry <= 0) {
+      e.retry = rr(1.2, 2.6);
+      e.act = planTransit(e);
+      if (e.act) huntTip(e);
+    }
+    if (!e.act) {                               // nothing free that goes there
+      const w = nextWaypoint(e, 0, HALL_LANE);  // so he waits by the buttons
+      return { x: w.x, z: w.z, move: Math.hypot(w.x - e.pos.x, w.z - e.pos.z) > 1.2 };
+    }
+  }
+  if (e.act) {
+    // the walk to a landing only makes sense from the floor it was planned on
+    if (e.act.ph < 2 && e.level !== e.act.from) { e.act = null; return hold; }
+    e.act.t += dt;
+    // the escalators are at the far end of the floor every other floor, so a
+    // leg is a minute's work at the worst; the abort is only here to break a
+    // deadlock, and the budget above it guarantees he eventually stands down
+    if (e.act.t > 50) { e.act = null; return hold; }
+    return e.act.k === 'esc' ? escStep(e, e.act, dt, ghost) : liftStep(e, e.act, dt, ghost);
+  }
+
+  if (!e.casting) {
+    if (Math.hypot(g.x - e.pos.x, g.z - e.pos.z) > 2.2) {
+      const w = nextWaypoint(e, g.x, g.z);
+      return { x: w.x, z: w.z, move: true };
+    }
+    e.casting = true; e.castT = rr(1.0, 2.0);
+  }
+  // arrived, and nobody here: work the corridor for a while, then stand down
+  e.searchT += dt;
+  if (e.searchT > 16) { e.alert = false; e.hunt = null; e.casting = false; return hold; }
+  e.castT -= dt;
+  if (e.castT <= 0) {
+    e.castT = rr(2.0, 3.6);
+    const lim = (e.level >= 1 && e.level <= FLOORS) ? CORX - 2 : 40;
+    g.x = clamp(g.x + rr(-9, 9), -lim, lim);
+    g.z = rr(-1.4, 1.4);
+    safeSpot(g);
+  }
+  return { x: g.x, z: g.z, move: Math.hypot(g.x - e.pos.x, g.z - e.pos.z) > 1.0 };
+}
+
+/** Men on floors that are not being simulated still answer a noise. Nobody can
+ *  see them, so they travel by dead reckoning — no collision, no gravity — but
+ *  they ride the real cars, and they step back into the world proper the
+ *  moment the journey brings them within a floor of you. */
+function updateRemote(e, dt) {
+  e.vel.set(0, 0, 0);
+  const T = huntTarget(e, dt, true);
+  if (!T.driven) {
+    if (T.move) {
+      const vx = T.x - e.pos.x, vz = T.z - e.pos.z, l = Math.hypot(vx, vz);
+      if (l > 0.02) { const s = Math.min(l, 3.1 * dt); e.pos.x += vx / l * s; e.pos.z += vz / l * s; }
+    }
+    if (!e.riding) e.pos.y = levelY(e.level);
+  }
+  e.level = levelOfY(e.pos.y);
+  e.group.position.copy(e.pos);
+}
+
+/** Something loud on `level` at (x,z). A gunshot goes through slabs, so anyone
+ *  within `carry` floors drops what he is doing and comes to look at the spot;
+ *  a door only rattles its own floor. Two floors out it is a direction and not
+ *  a place, so those men make for that floor's lift hall and start from there. */
+function alertNoise(level, x, z, carry) {
+  const reach = carry === undefined ? 2 : carry;
+  game.alertLevel = level;
+  for (let i = 0; i < world.enemies.length; i++) {
+    const e = world.enemies[i];
+    if (e.dead) continue;
+    const d = Math.abs(e.level - level);
+    if (d > reach) continue;
+    const vague = d >= 2 || x === undefined;
+    e.alert = true;
+    e.hunt = safeSpot({ level: level, x: vague ? rr(-6, 6) : x, z: vague ? rr(-3, 3) : z });
+    e.searchT = 0; e.huntT = 0; e.casting = false; e.castT = 0; e.retry = 0;
+    e.viaLift = rnd() < 0.55;
+    if (e.act && e.act.ph < 2) e.act = null;      // re-plan, unless he is aboard
+  }
+}
+
+function killEnemy(e, silent) {
+  if (e.dead) return;
+  e.dead = true; e.deadT = 0;
+  if (!silent) SFX.hit();
+  if (rnd() < 0.4) spawnPickup(world.levels[e.level] || world.levels[player.level], 'ammo', e.pos.x, e.pos.y + 0.4, e.pos.z);
+}
+
+function updateEnemies(dt) {
+  for (let i = 0; i < world.enemies.length; i++) {
+    const e = world.enemies[i];
+    const near = Math.abs(e.level - player.level) <= 1;
+    e.group.visible = near;
+    if (e.dead) {
+      e.deadT += dt;
+      e.group.rotation.x = Math.min(Math.PI / 2, e.deadT * 5);
+      e.group.position.y = e.pos.y - Math.min(0.55, e.deadT * 1.6);
+      if (e.deadT > 12) { scene.remove(e.group); world.enemies.splice(i, 1); i--; }
+      continue;
+    }
+    if (!near) {
+      // too far off to draw, but a man who heard something is still walking
+      if (e.alert && e.hunt) updateRemote(e, dt);
+      continue;
+    }
+
+    const cols = colsFor(e.level), ramps = rampsFor(e.level);
+    e.vel.x = 0; e.vel.z = 0;
+
+    if (e.alert) {
+      const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
+      const sameFloor = e.level === player.level;
+      const dist = Math.hypot(dx, dz);
+      // eyes, not a compass. He knows where you are while he can see you and
+      // for a couple of seconds after you break the line; the rest of the time
+      // he is working from the last thing he heard.
+      e.losT -= dt;
+      if (e.losT <= 0 || !sameFloor || dist >= 30) {
+        e.losT = rr(0.09, 0.16);
+        e.los = sameFloor && dist < 30 &&
+          !losBlocked(e.pos.x, e.pos.y + 1.3, e.pos.z, player.pos.x, player.pos.y + 1.2, player.pos.z, cols);
+      }
+      const sees = e.los && sameFloor && dist < 30;
+      if (sees) {
+        e.seenT = 2.4; e.searchT = 0; e.huntT = 0; e.casting = false;
+        e.hunt = { level: player.level, x: player.pos.x, z: player.pos.z };
+        if (e.act && !(e.riding && Math.abs(e.riding.dy) > 1e-4)) e.act = null;
+      } else e.seenT -= dt;
+
+      let T;
+      if (e.seenT > 0) {
+        let tx = player.pos.x, tz = player.pos.z;
+        if (Math.abs(dx) > 1.6 && Math.abs(tz) <= CORZ) tz = clamp(tz, -1.2, 1.2);
+        const w = nextWaypoint(e, tx, tz);
+        // the hall lane can leave him standing on his own waypoint while you
+        // are two metres off across a shaft; no sense shuffling on the spot
+        T = { x: w.x, z: w.z,
+              move: dist > 2.0 && Math.hypot(w.x - e.pos.x, w.z - e.pos.z) > 0.6 };
+      } else {
+        T = huntTarget(e, dt, false);
+      }
+
+      const spd = 3.1;
+      e.moving = !!T.move;
+      if (T.move) {
+        const vx = T.x - e.pos.x, vz = T.z - e.pos.z, l = Math.hypot(vx, vz) || 1;
+        e.vel.x = vx / l * spd; e.vel.z = vz / l * spd;
+        e.walk += dt * 9;
+        if (e.sideT > 0) {                    // shouldering round a corner he stuck on
+          e.sideT -= dt;
+          const a = Math.atan2(e.vel.x, e.vel.z) + e.side * 1.1;
+          e.vel.x = Math.sin(a) * spd; e.vel.z = Math.cos(a) * spd;
+        }
+      } else e.walk += dt * 1.5;
+
+      if (e.seenT > 0 || dist < 4) e.face = Math.atan2(dx, dz);
+      else if (T.move) e.face = Math.atan2(T.x - e.pos.x, T.z - e.pos.z);
+
+      // shooting
+      e.fireCd -= dt;
+      if (sees && dist < 28 && dist > 1.2) {
+        if (e.fireCd <= 0) {
+          e.fireCd = rr(1.0, 1.9);
+          const spread = clamp(dist / 60, 0.02, 0.22);
+          const hit = rnd() > spread * 2.6;
+          tracer(e.pos.x + 0.4, e.pos.y + 1.25, e.pos.z, player.pos.x + rr(-0.5, 0.5), player.pos.y + 1.1, player.pos.z + rr(-0.5, 0.5), MAT.tracerE);
+          SFX.eshot();
+          if (hit) hurtPlayer(7 + rnd() * 5);
+        }
+      } else if (dist < 1.9 && sameFloor) {
+        if (e.fireCd <= 0) { e.fireCd = 1.1; hurtPlayer(9); SFX.kick(); }
+      }
+    } else {
+      e.moving = false;
+      e.walk += dt * 1.2;
+      e.face = Math.sin(e.walk * 0.3) * 0.6;
+    }
+
+    const px = e.pos.x, pz = e.pos.z;
+    if (e.riding) { e.pos.y += e.riding.dy; if (e.riding.dy) e.vel.y = 0; }
+    const squeezed = stepBody(e, dt, cols, ramps);
+    if (squeezed) { killEnemy(e); SFX.crush(); }
+    // wedged on a corner: note how long for, and the steering takes a way round
+    if (e.moving) {
+      if (Math.hypot(e.pos.x - px, e.pos.z - pz) < 3.1 * dt * 0.4) {
+        e.stuck += dt;
+        if (e.stuck > 0.6) { e.stuck = 0; e.sideT = 0.9; e.side = rnd() < 0.5 ? 1 : -1; }
+      } else if (e.sideT <= 0) e.stuck = 0;
+    } else e.stuck = 0;
+    e.riding = carUnder(e);
+    if (e.pos.y < BASE_Y - 6) { e.pos.y = BASE_Y; killEnemy(e, true); }
+    e.level = levelOfY(e.pos.y);
+
+    e.group.position.copy(e.pos);
+    e.group.rotation.y = e.face;
+    const sw = Math.sin(e.walk) * 0.55;
+    e.mesh.legL.rotation.x = sw; e.mesh.legR.rotation.x = -sw;
+    e.mesh.armL.rotation.x = -sw * 0.7; e.mesh.armR.rotation.x = sw * 0.7;
+  }
+}
+
+function doorAt(level, room) {
+  const F = world.levels[level];
+  if (!F) return null;
+  for (let i = 0; i < F.doors.length; i++) if (F.doors[i].room === room) return F.doors[i];
+  return null;
+}
+function losBlocked(ax, ay, az, bx, by, bz, cols) {
+  const dx = bx - ax, dy = by - ay, dz = bz - az;
+  const len = Math.hypot(dx, dy, dz) || 1;
+  const nx = dx / len, ny = dy / len, nz = dz / len;
+  for (let i = 0; i < cols.length; i++) {
+    const c = cols[i];
+    if (c.disabled || c.elev) continue;
+    const t = rayBox(ax, ay, az, nx, ny, nz, c);
+    if (t < len - 0.4) return true;
+  }
+  return false;
+}
+
+/* --------------------------- doors, safes, loot -------------------------- */
+function openDoor(d, byEnemy) {
+  if (d.open) return;
+  if (d.locked) {
+    if (!byEnemy) toast('Locked — put a round through the lock');
+    return;
+  }
+  d.open = true;
+  SFX.door();
+  // a door is not a gunshot: it carries no further than the floor it is on,
+  // and the man who opened it already knows where he is going
+  if (!byEnemy) alertNoise(d.level, d.cx, d.cz, 0);
+}
+function updateDoors(dt) {
+  for (let i = 0; i < world.doors.length; i++) {
+    const d = world.doors[i];
+    const want = d.open ? 1 : 0;
+    if (d.amt !== want) {
+      d.amt = clamp(d.amt + (want ? dt * 2.6 : -dt * 2.6), 0, 1);
+      d.mesh.position.x = d.cx + d.amt * 1.62;
+      d.knob.position.x = d.cx + 0.55 + d.amt * 1.62;
+      d.col.disabled = d.amt > 0.45;
+    }
+  }
+}
+
+function hitSafe(s) {
+  if (s.open) return;
+  s.hits++;
+  SFX.safe();
+  s.mesh.material = s.hits >= 3 ? MAT.metalDark : MAT.safe;
+  if (s.hits >= 3) {
+    s.open = true;
+    s.dial.visible = false;
+    const F = world.levels[s.level];
+    s.box.disabled = false;
+    spawnPickup(F, 'doc', s.x, s.y + 0.8, s.z - 1.0);
+    toast('Safe open — take the documents');
+  } else {
+    toast(3 - s.hits === 1 ? 'One more on the door' : 'Two more on the door');
+  }
+}
+
+function spawnPickup(F, type, x, y, z) {
+  if (!F) return null;
+  const mat = type === 'doc' ? MAT.paper : (type === 'ammo' ? MAT.gunmetal : MAT.doorR);
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  scene.add(g);
+  if (type === 'shade') {
+    const m = new THREE.Mesh(GEO.cone, MAT.shadeLoose);
+    m.scale.set(0.9, 0.5, 0.9);
+    m.rotation.z = 1.5;                       // tipped over where it came to rest
+    g.add(m);
+  } else if (type === 'doc') {
+    const m = new THREE.Mesh(GEO.box, mat); m.scale.set(0.5, 0.06, 0.36); g.add(m);
+    const m2 = new THREE.Mesh(GEO.box, MAT.gold); m2.scale.set(0.52, 0.02, 0.1); m2.position.y = 0.05; g.add(m2);
+  } else if (type === 'ammo') {
+    const m = new THREE.Mesh(GEO.box, mat); m.scale.set(0.36, 0.2, 0.24); g.add(m);
+    const m2 = new THREE.Mesh(GEO.box, MAT.rail); m2.scale.set(0.38, 0.04, 0.26); m2.position.y = 0.11; g.add(m2);
+  } else {
+    const m = new THREE.Mesh(GEO.box, MAT.shirt); m.scale.set(0.34, 0.24, 0.24); g.add(m);
+    const m2 = new THREE.Mesh(GEO.box, mat); m2.scale.set(0.36, 0.07, 0.1); m2.position.y = 0.02; g.add(m2);
+    const m3 = new THREE.Mesh(GEO.box, mat); m3.scale.set(0.1, 0.07, 0.26); m3.position.y = 0.02; g.add(m3);
+  }
+  const p = { type, group: g, x, y, z, spin: rnd() * 6, level: F.idx };
+  world.pickups.push(p);
+  return p;
+}
+
+function updatePickups(dt) {
+  for (let i = 0; i < world.pickups.length; i++) {
+    const p = world.pickups[i];
+    p.group.visible = Math.abs(p.level - player.level) <= 1;
+    p.spin += dt * 2;
+    p.group.rotation.y = p.spin;
+    p.group.position.y = p.y + Math.sin(p.spin * 1.6) * 0.08;
+    if (player.inCar) continue;
+    const dx = p.x - player.pos.x, dy = p.y - (player.pos.y + 0.9), dz = p.z - player.pos.z;
+    if (dx * dx + dy * dy + dz * dz < 1.7) {
+      if (p.type === 'shade') {
+        game.shades++;
+        toast(tsay('Lampshade — press Q or middle click to sling it', 'Lampshade — tap SHD to sling it'));
+      } else if (p.type === 'doc') {
+        game.docs++;
+        toast(game.docs >= DOCS_TOTAL ? 'All six secured — get to the basement' : 'Documents secured (' + game.docs + ' of ' + DOCS_TOTAL + ')');
+      } else if (p.type === 'ammo') {
+        game.ammo += 18; toast('Ammunition +18');
+      } else {
+        game.hp = Math.min(100, game.hp + 28); toast('Patched up');
+      }
+      SFX.pickup();
+      scene.remove(p.group);
+      world.pickups.splice(i, 1); i--;
+    }
+  }
+}
+
+/* ------------------------------- lamps ----------------------------------- */
+const _lampW = new THREE.Vector3();
+function dropLamp(l) {
+  if (l.dropped) return;
+  l.dropped = true;
+  l.on = false;
+  const F = world.levels[l.level];
+  const floorY = F ? F.y : l.y - FH;
+  // anything standing under it is finished
+  for (let i = 0; i < world.enemies.length; i++) {
+    const e = world.enemies[i];
+    if (e.dead) continue;
+    if (Math.abs(e.pos.x - l.x) < 1.0 && Math.abs(e.pos.z - l.z) < 1.0 && Math.abs(e.pos.y - floorY) < 2.6) killEnemy(e);
+  }
+  if (Math.abs(player.pos.x - l.x) < 1.0 && Math.abs(player.pos.z - l.z) < 1.0 && Math.abs(player.pos.y - floorY) < 2.6) {
+    hurtPlayer(42); toast('Watch the ceiling');
+  }
+  // corridors and halls go dark as a circuit; offices are wired separately
+  if (l.zone.indexOf('room') !== 0 && F) {
+    for (let i = 0; i < F.lamps.length; i++) if (F.lamps[i].zone === l.zone) F.lamps[i].on = false;
+  }
+  SFX.crush();
+}
+function updateLamps(dt) {
+  for (let i = 0; i < world.lamps.length; i++) {
+    const l = world.lamps[i];
+    l.bulbMat.color.setHex(l.on ? 0xffe2ac : 0x2a2a2e);
+    if (l.dropped) {
+      const F = world.levels[l.level];
+      const floorY = F ? F.y : l.y - FH;
+      const rest = floorY + 0.3;
+      if (l.group.position.y > rest) {
+        l.vy -= GRAV * dt;
+        l.group.position.y = Math.max(rest, l.group.position.y + l.vy * dt);
+        l.group.rotation.z = Math.min(1.4, l.group.rotation.z + dt * 2.2);
+      } else if (!l.landed) {
+        // it has finished falling: the shade comes off the chain and lies there
+        l.landed = true;
+        l.shadeMesh.visible = false;
+        l.group.updateMatrixWorld(true);
+        const w = l.shadeMesh.getWorldPosition(_lampW);
+        spawnPickup(F, 'shade', w.x, floorY + 0.32, w.z);
+      }
+    }
+  }
+}
+/** Recycle a small pool of point lights onto whichever lamps are closest. */
+let poolTick = 0;
+function updateLightPool() {
+  if (poolTick++ % 3) return;
+  const cands = [];
+  for (let k = player.level - 1; k <= player.level + 1; k++) {
+    const F = world.levels[k];
+    if (!F) continue;
+    for (let i = 0; i < F.lamps.length; i++) {
+      const l = F.lamps[i];
+      if (!l.on) continue;
+      const dx = l.x - camera.position.x, dy = l.lit - camera.position.y, dz = l.z - camera.position.z;
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 < 900) cands.push({ l, d2 });
+    }
+  }
+  cands.sort((a, b) => a.d2 - b.d2);
+  for (let i = 0; i < LIGHTS.length; i++) {
+    const L = LIGHTS[i];
+    if (i < cands.length) {
+      const l = cands[i].l;
+      L.visible = true;
+      L.position.set(l.x, l.lit, l.z);
+      L.intensity = 1.15;
+      L.distance = 16;
+    } else { L.visible = false; L.intensity = 0; }
+  }
+}
+
+/* ------------------------------ 6. COMBAT -------------------------------- */
+const gunGroup = new THREE.Group();
+camera.add(gunGroup);
+gunGroup.position.set(0.26, -0.24, -0.45);
+(function buildGun() {
+  const h = { group: gunGroup };
+  put(h, GEO.box, MAT.gunmetal, 0, 0, -0.14, 0.085, 0.11, 0.44);
+  put(h, GEO.box, MAT.metalDark, 0, 0.045, -0.30, 0.05, 0.03, 0.14);
+  const grip = put(h, GEO.box, MAT.gunmetal, 0, -0.16, 0.06, 0.08, 0.26, 0.12);
+  grip.rotation.x = -0.22;
+  put(h, GEO.box, MAT.chrome, 0, -0.06, -0.02, 0.05, 0.05, 0.1);
+})();
+const flash = new THREE.Mesh(GEO.sph, new THREE.MeshBasicMaterial({ color: 0xffdda0 }));
+flash.scale.set(0.16, 0.16, 0.26);
+flash.position.set(0, 0.02, -0.4);
+flash.visible = false;
+gunGroup.add(flash);
+
+const bootGroup = new THREE.Group();
+camera.add(bootGroup);
+bootGroup.position.set(-0.1, -0.9, -0.5);
+bootGroup.visible = false;
+(function buildBoot() {
+  const h = { group: bootGroup };
+  put(h, GEO.box, MAT.gunmetal, 0, 0, -0.2, 0.24, 0.26, 0.7);
+  put(h, GEO.box, MAT.hat, 0, -0.06, -0.52, 0.28, 0.16, 0.34);
+})();
+
+// A shade held ready: cocked across the body, edge-on, like a discus.
+const shadeGroup = new THREE.Group();
+camera.add(shadeGroup);
+shadeGroup.position.set(0.30, -0.26, -0.48);
+shadeGroup.visible = false;
+const heldShade = new THREE.Mesh(GEO.cone, MAT.shadeLoose);
+heldShade.scale.set(0.46, 0.26, 0.46);
+heldShade.rotation.set(-0.34, 0, Math.PI / 2 - 0.22);
+shadeGroup.add(heldShade);
+
+// tracer pool
+const TRACERS = [];
+for (let i = 0; i < 14; i++) {
+  const m = new THREE.Mesh(GEO.cyl, MAT.tracer);
+  m.visible = false;
+  scene.add(m);
+  TRACERS.push({ mesh: m, life: 0 });
+}
+const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3(), _q = new THREE.Quaternion(), _up = new THREE.Vector3(0, 1, 0);
+function tracer(ax, ay, az, bx, by, bz, mat) {
+  for (let i = 0; i < TRACERS.length; i++) {
+    const t = TRACERS[i];
+    if (t.life > 0) continue;
+    t.life = 0.07;
+    t.mesh.material = mat || MAT.tracer;
+    _v1.set(ax, ay, az); _v2.set(bx, by, bz);
+    const d = _v2.clone().sub(_v1);
+    const len = d.length() || 0.01;
+    t.mesh.position.copy(_v1).addScaledVector(d, 0.5);
+    _q.setFromUnitVectors(_up, d.normalize());
+    t.mesh.quaternion.copy(_q);
+    t.mesh.scale.set(0.035, len, 0.035);
+    t.mesh.visible = true;
+    return;
+  }
+}
+function updateTracers(dt) {
+  for (let i = 0; i < TRACERS.length; i++) {
+    const t = TRACERS[i];
+    if (t.life > 0) { t.life -= dt; if (t.life <= 0) t.mesh.visible = false; }
+  }
+}
+
+const SPARKS = [];
+for (let i = 0; i < 10; i++) {
+  const m = new THREE.Mesh(GEO.ico, MAT.spark);
+  m.scale.set(0.1, 0.1, 0.1); m.visible = false;
+  scene.add(m);
+  SPARKS.push({ mesh: m, life: 0 });
+}
+function spark(x, y, z) {
+  for (let i = 0; i < SPARKS.length; i++) {
+    const s = SPARKS[i];
+    if (s.life > 0) continue;
+    s.life = 0.12; s.mesh.position.set(x, y, z); s.mesh.visible = true; return;
+  }
+}
+function updateSparks(dt) {
+  for (let i = 0; i < SPARKS.length; i++) {
+    const s = SPARKS[i];
+    if (s.life > 0) { s.life -= dt; s.mesh.rotation.y += dt * 20; if (s.life <= 0) s.mesh.visible = false; }
+  }
+}
+
+function reload() {
+  if (game.reloading > 0 || game.mag >= game.magSize || game.ammo <= 0) return;
+  game.reloading = 0.9;
+  SFX.reload();
+}
+
+function shoot() {
+  if (game.reloading > 0) return;
+  if (game.mag <= 0) { SFX.dry(); toast(tsay('Empty — press R', 'Empty — tap RLD')); return; }
+  game.mag--;
+  game.fireCd = 0.16;
+  SFX.shot();
+  flash.visible = true;
+  muzzleLight.intensity = 3.2;
+  gunGroup.position.z = -0.35;
+  gunGroup.rotation.x = 0.22;
+  alertNoise(player.level, player.pos.x, player.pos.z);
+
+  const o = camera.getWorldPosition(_v1.set(0, 0, 0)).clone();
+  const d = camera.getWorldDirection(_v2.set(0, 0, 0)).clone();
+  const cols = colsFor(player.level);
+
+  let best = Infinity, kind = null, ref = null;
+  for (let i = 0; i < cols.length; i++) {
+    const c = cols[i];
+    if (c.disabled) continue;
+    const t = rayBox(o.x, o.y, o.z, d.x, d.y, d.z, c);
+    if (t < best) { best = t; kind = 'wall'; ref = c; }
+  }
+  for (let i = 0; i < world.enemies.length; i++) {
+    const e = world.enemies[i];
+    if (e.dead || Math.abs(e.level - player.level) > 1) continue;
+    const t = rayBox(o.x, o.y, o.z, d.x, d.y, d.z, bodyBox(e));
+    if (t < best) { best = t; kind = 'enemy'; ref = e; }
+  }
+  for (let k = player.level - 1; k <= player.level + 1; k++) {
+    const F = world.levels[k];
+    if (!F) continue;
+    for (let i = 0; i < F.lamps.length; i++) {
+      const l = F.lamps[i];
+      if (l.dropped) continue;
+      const t = rayBox(o.x, o.y, o.z, d.x, d.y, d.z, l.hit);
+      if (t < best) { best = t; kind = 'lamp'; ref = l; }
+    }
+    for (let i = 0; i < F.doors.length; i++) {
+      const dr = F.doors[i];
+      if (!dr.lockBox || dr.open || !dr.locked) continue;
+      const t = rayBox(o.x, o.y, o.z, d.x, d.y, d.z, dr.lockBox);
+      if (t < best) { best = t; kind = 'lock'; ref = dr; }
+    }
+  }
+  if (kind === 'wall' && ref.safe && !ref.safe.open) { kind = 'safe'; ref = ref.safe; }
+
+  const dist = best === Infinity ? 60 : best;
+  const hx = o.x + d.x * dist, hy = o.y + d.y * dist, hz = o.z + d.z * dist;
+  tracer(o.x + d.x * 0.6 + 0.12, o.y + d.y * 0.6 - 0.18, o.z + d.z * 0.6, hx, hy, hz, MAT.tracer);
+  if (kind) spark(hx, hy, hz);
+
+  if (kind === 'enemy') killEnemy(ref);
+  else if (kind === 'lamp') dropLamp(ref);
+  else if (kind === 'safe') hitSafe(ref);
+  else if (kind === 'lock') {
+    ref.locked = false; ref.breached = true;
+    ref.knob.material = MAT.metalDark;
+    SFX.lock();
+    toast(tsay('Lock shot off — press E', 'Lock shot off — tap USE'));
+  }
+}
+
+function kick() {
+  if (game.kickCd > 0) return;
+  game.kickCd = 0.55;
+  game.kickT = 0.3;
+  SFX.kick();
+  const d = camera.getWorldDirection(_v2.set(0, 0, 0)).clone();
+  const airborne = !player.onGround;
+  for (let i = 0; i < world.enemies.length; i++) {
+    const e = world.enemies[i];
+    if (e.dead || Math.abs(e.level - player.level) > 1) continue;
+    const dx = e.pos.x - player.pos.x, dy = e.pos.y - player.pos.y, dz = e.pos.z - player.pos.z;
+    const dist = Math.hypot(dx, dy, dz);
+    if (dist > 2.6) continue;
+    if ((dx * d.x + dz * d.z) / (dist || 1) < 0.35) continue;
+    if (airborne) { killEnemy(e); toast('Jump kick'); }
+    else {
+      e.hp -= 26;
+      if (e.hp <= 0) killEnemy(e);
+      else {                                   // he has seen quite enough of you
+        e.alert = true; e.seenT = 2.4; e.searchT = 0; e.huntT = 0; e.casting = false;
+        e.hunt = { level: player.level, x: player.pos.x, z: player.pos.z };
+      }
+    }
+  }
+  // a boot works on doors too
+  const F = world.levels[player.level];
+  if (F) for (let i = 0; i < F.doors.length; i++) {
+    const dr = F.doors[i];
+    if (dr.open || dr.locked) continue;
+    if (Math.hypot(dr.cx - player.pos.x, dr.cz - player.pos.z) < 2.4 && Math.abs(dr.y - player.pos.y) < 3) openDoor(dr);
+  }
+}
+
+/* --------------------------- thrown lampshades ---------------------------- */
+/* The gun is loud: every shot pulls two floors of men towards you. A shade is
+   not. It sails flat and silent, and only the man it lands on has anything to
+   say about it — miss, and the clatter gives you away to this floor alone. */
+
+function setWeapon(w) {
+  game.weapon = w;
+  const shade = w === 'shade';
+  gunGroup.visible = !shade;
+  shadeGroup.visible = shade;
+  if (!shade) flash.visible = false;
+}
+
+function toggleWeapon() {
+  if (game.state !== 'play' || player.inCar) return;
+  if (game.weapon === 'gun') {
+    if (game.shades <= 0) {
+      SFX.denied();
+      toast('No lampshades — shoot one down and walk over it');
+      return;
+    }
+    setWeapon('shade');
+    SFX.swap();
+    toast(tsay('Lampshade ready — left click throws', 'Lampshade ready — FIRE throws'));
+  } else {
+    setWeapon('gun');
+    SFX.swap();
+  }
+}
+
+const SHADES = [];                       // discs in flight
+function throwShade() {
+  if (game.throwCd > 0) return;
+  if (game.shades <= 0) { setWeapon('gun'); SFX.dry(); return; }
+  game.shades--;
+  game.throwCd = SHADE_CD;
+  game.throwT = 0.3;
+  SFX.woosh();
+
+  const o = camera.getWorldPosition(_v1.set(0, 0, 0)).clone();
+  const d = camera.getWorldDirection(_v2.set(0, 0, 0)).clone();
+
+  const m = new THREE.Mesh(GEO.cone, MAT.shadeLoose);
+  m.scale.set(0.92, 0.34, 0.92);
+  scene.add(m);
+  const s = {
+    mesh: m,
+    x: o.x + d.x * 0.5, y: o.y + d.y * 0.5 - 0.1, z: o.z + d.z * 0.5,
+    vx: d.x * SHADE_SPEED, vy: d.y * SHADE_SPEED + 1.4, vz: d.z * SHADE_SPEED,
+    spin: 0, roll: rr(-0.4, 0.4), life: SHADE_LIFE, level: player.level
+  };
+  // a slung disc drifts off its launch heading — true up close, curving at range
+  s.cx = -d.z * 1.6; s.cz = d.x * 1.6;
+  SHADES.push(s);
+
+  if (game.shades <= 0) {                 // empty hands: back to the .45
+    setWeapon('gun');
+    toast(tsay('Out of shades — back on the .45', 'Out of shades — back on the .45'));
+  }
+}
+
+/** Land the disc where it stopped so it can be picked up and thrown again.
+ *  It backs off the face it struck, or you would be reaching into a wall. */
+function restShade(s, x, y, z) {
+  const m = Math.hypot(s.vx, s.vz) || 1;
+  const bx = x - (s.vx / m) * 0.5, bz = z - (s.vz / m) * 0.5;
+  const lvl = levelOfY(y);
+  const F = world.levels[lvl] || world.levels[s.level] || world.levels[player.level];
+  scene.remove(s.mesh);
+  s.done = true;
+  if (F) spawnPickup(F, 'shade', bx, F.y + 0.32, bz);
+}
+
+function updateShades(dt) {
+  for (let i = 0; i < SHADES.length; i++) {
+    const s = SHADES[i];
+    s.life -= dt;
+
+    // frisbee flight: gravity fights a little lift, and the line drifts
+    s.vy += (SHADE_LIFT - SHADE_GRAV) * dt;
+    s.vx += s.cx * dt; s.vz += s.cz * dt;
+
+    let dx = s.vx * dt, dy = s.vy * dt, dz = s.vz * dt;
+    const len = Math.hypot(dx, dy, dz);
+    const steps = Math.max(1, Math.ceil(len / 0.35));   // no tunnelling through men
+    const cols = colsFor(s.level);
+    const reach = len + SHADE_R + 1.4;                  // coarse cull for the body tests
+    let hit = null;
+
+    for (let k = 0; k < steps && !hit; k++) {
+      const px = s.x, py = s.y, pz = s.z;
+      const sx = dx / steps, sy = dy / steps, sz = dz / steps;
+      const seg = Math.hypot(sx, sy, sz) || 1e-6;
+      const nx = sx / seg, ny = sy / seg, nz = sz / seg;
+
+      let best = seg, kind = null, ref = null;
+
+      for (let j = 0; j < world.enemies.length; j++) {
+        const e = world.enemies[j];
+        if (e.dead || Math.abs(e.level - s.level) > 1) continue;
+        if (Math.abs(e.pos.x - px) > reach || Math.abs(e.pos.z - pz) > reach) continue;
+        const b = bodyBox(e);
+        b.x0 -= SHADE_R; b.x1 += SHADE_R; b.z0 -= SHADE_R; b.z1 += SHADE_R;
+        b.y0 -= SHADE_R * 0.5; b.y1 += SHADE_R * 0.5;
+        const t = rayBox(px, py, pz, nx, ny, nz, b);
+        if (t < best) { best = t; kind = 'enemy'; ref = e; }
+      }
+
+      for (let j = 0; j < cols.length; j++) {
+        const c = cols[j];
+        if (c.disabled) continue;
+        const t = rayBox(px, py, pz, nx, ny, nz, c);
+        if (t < best) { best = t; kind = 'wall'; ref = c; }
+      }
+
+      for (let L = s.level - 1; L <= s.level + 1; L++) {
+        const F = world.levels[L];
+        if (!F) continue;
+        for (let j = 0; j < F.lamps.length; j++) {
+          const l = F.lamps[j];
+          if (l.dropped) continue;
+          const t = rayBox(px, py, pz, nx, ny, nz, l.hit);
+          if (t < best) { best = t; kind = 'lamp'; ref = l; }
+        }
+      }
+
+      if (kind) {
+        hit = { kind, ref, x: px + nx * best, y: py + ny * best, z: pz + nz * best };
+      } else {
+        s.x += sx; s.y += sy; s.z += sz;
+      }
+    }
+
+    if (hit) {
+      if (hit.kind === 'enemy') {
+        const e = hit.ref;
+        e.hp -= (e.hpMax || 40) * SHADE_DMG_FRAC;
+        SFX.hit();
+        spark(hit.x, hit.y, hit.z);
+        if (e.hp <= 0) killEnemy(e);
+        else {                                  // he did not see that coming, but he does now
+          e.alert = true; e.searchT = 0; e.huntT = 0; e.casting = false;
+          e.hunt = { level: player.level, x: player.pos.x, z: player.pos.z };
+        }
+      } else if (hit.kind === 'lamp') {
+        dropLamp(hit.ref);
+      } else {
+        SFX.clatter();
+        alertNoise(s.level, hit.x, hit.z, 0);    // a miss carries no further than this floor
+      }
+      restShade(s, hit.x, hit.y, hit.z);
+    } else {
+      s.level = levelOfY(s.y);
+      const F = world.levels[s.level];
+      const floorY = F ? F.y : -1e9;
+      if (s.y <= floorY + 0.3 || s.life <= 0) {
+        SFX.clatter();
+        restShade(s, s.x, s.y, s.z);
+      } else {
+        s.spin += dt * 26;
+        s.mesh.position.set(s.x, s.y, s.z);
+        s.mesh.rotation.set(s.roll * 0.35, s.spin, s.roll * 0.55);   // flat, banked, spinning
+      }
+    }
+
+    if (s.done) { SHADES.splice(i, 1); i--; }
+  }
+}
+
+function hurtPlayer(n) {
+  if (game.state !== 'play') return;
+  game.hp -= n;
+  SFX.hurt();
+  const f = document.getElementById('flash');
+  f.style.opacity = '1';
+  setTimeout(() => { f.style.opacity = '0'; }, 90);
+  if (game.hp <= 0) { game.hp = 0; endGame(false); }
+}
+/* ------------------------------ 7. SYSTEMS ------------------------------- */
+const UI = {
+  hud: document.getElementById('hud'),
+  docs: document.getElementById('docs'),
+  floor: document.getElementById('floorlabel'),
+  hp: document.getElementById('hpnum'),
+  hpbar: document.getElementById('healthbar'),
+  ammo: document.getElementById('ammo'),
+  ammolabel: document.getElementById('ammolabel'),
+  ammohint: document.getElementById('ammohint'),
+  shadetip: document.getElementById('shadetip'),
+  bt: document.getElementById('btlabel'),
+  redtip: document.getElementById('redtip'),
+  btbar: document.getElementById('btbar'),
+  hint: document.getElementById('hint'),
+  toast: document.getElementById('toast'),
+  tint: document.getElementById('tint')
+};
+function segs(el, n) { let s = ''; for (let i = 0; i < n; i++) s += '<i></i>'; el.innerHTML = s; }
+segs(UI.hpbar, 12); segs(UI.btbar, 10);
+function setBar(el, frac) {
+  const kids = el.children, n = kids.length, on = Math.round(frac * n);
+  for (let i = 0; i < n; i++) kids[i].className = i < on ? 'on' : '';
+}
+let toastT = 0;
+function toast(msg) { UI.toast.textContent = msg; UI.toast.classList.add('show'); toastT = 2.4; }
+function show(id) {
+  ['start', 'pause', 'over', 'win'].forEach(k => document.getElementById(k).classList.add('hide'));
+  if (id) document.getElementById(id).classList.remove('hide');
+  syncTouchLayer();
+}
+
+const levelName = (i) => i === 0 ? 'basement' : (i === 21 ? 'roof' : 'floor ' + i);
+
+function updateHUD(dt) {
+  UI.docs.textContent = game.docs + '/' + DOCS_TOTAL;
+  UI.floor.innerHTML = 'position &mdash; ' + levelName(player.level);
+  const L = layout[player.level];
+  let tip = '';
+  if (L && L.red >= 0) {
+    const s = world.safes.find(x => x.level === player.level);
+    if (!s || !s.open) tip = 'red door on this floor';
+  }
+  UI.redtip.textContent = tip;
+  UI.hp.textContent = Math.ceil(game.hp);
+  UI.hp.className = game.hp <= 30 ? 'big lo' : 'big';
+  UI.hpbar.className = game.hp > 30 ? 'bar ok' : 'bar';
+  setBar(UI.hpbar, game.hp / 100);
+  if (game.weapon === 'shade') {
+    UI.ammolabel.textContent = 'lampshade';
+    UI.ammo.innerHTML = game.shades + '<small style="font-size:.44em;color:#8a5c22"> in hand</small>';
+    UI.ammohint.textContent = tsay('left click throws', 'FIRE throws');
+    UI.shadetip.textContent = tsay('Q or middle click for the .45', 'SHD for the .45');
+  } else {
+    UI.ammolabel.textContent = '.45 automatic';
+    UI.ammo.innerHTML = game.mag + '<small style="font-size:.44em;color:#8a5c22"> / ' + game.ammo + '</small>';
+    UI.ammohint.textContent = game.reloading > 0 ? 'reloading'
+      : (game.mag === 0 ? tsay('press R now', 'tap RLD now') : tsay('R to reload', 'RLD to reload'));
+    UI.shadetip.textContent = game.shades > 0
+      ? game.shades + (game.shades === 1 ? ' shade · ' : ' shades · ') + tsay('Q or middle click', 'tap SHD')
+      : '';
+  }
+  UI.bt.textContent = game.btOn ? 'ACTIVE' : (game.bt >= game.btMax - 0.05 ? 'READY' : Math.ceil(game.bt * 10) / 10 + 's');
+  UI.btbar.className = game.bt < 0.6 && !game.btOn ? 'bar spent' : 'bar';
+  setBar(UI.btbar, game.bt / game.btMax);
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) UI.toast.classList.remove('show'); }
+  if (huntTipT > 0) huntTipT -= dt;
+}
+
+function updateHint() {
+  let msg = '', canUse = false, canLift = false;
+  if (player.inCar) { msg = tsay('W to pull away · E to get out', 'stick forward to pull away · USE to get out'); canUse = true; }
+  else if (player.riding) { msg = tsay('↑ / ↓ to run the lift', 'hold ↑ / ↓ to run the lift'); canLift = true; }
+  else {
+    const F = world.levels[player.level];
+    if (F) for (let i = 0; i < F.doors.length; i++) {
+      const d = F.doors[i];
+      if (Math.abs(d.cx - player.pos.x) < 1.6 && Math.abs(d.cz - player.pos.z) < 2.2 && Math.abs(d.y - player.pos.y) < 2.6) {
+        canUse = !d.open;
+        msg = d.open ? '' : (d.locked ? 'Locked — shoot the lock' : tsay('E to open', 'USE to open'));
+        break;
+      }
+    }
+    if (!msg && player.level === 0 && world.car) {
+      const c = world.car;
+      if (Math.hypot(c.x - player.pos.x, c.z - player.pos.z) < 3.6) {
+        canUse = game.docs >= DOCS_TOTAL;
+        msg = canUse ? tsay('E to get in', 'USE to get in') : 'The car stays put until all six are secured';
+      }
+    }
+    canLift = callableElevators().length > 0;
+    if (!msg && canLift) msg = tsay('\u2191 / \u2193 to call a lift to this floor', 'tap \u2191 / \u2193 to call a lift here');
+  }
+  if (msg) { UI.hint.textContent = msg; UI.hint.classList.add('show'); }
+  else UI.hint.classList.remove('show');
+  if (TOUCH.on) {
+    TL.jump.textContent = player.inCar ? 'BRK' : 'JUMP';
+    TL.use.classList.toggle('dim', !canUse);
+    TL.up.classList.toggle('dim', !canLift);
+    TL.dn.classList.toggle('dim', !canLift);
+    TL.kick.classList.toggle('dim', player.inCar);
+    TL.fire.classList.toggle('dim', player.inCar);
+    TL.shd.classList.toggle('dim', player.inCar || (game.shades <= 0 && game.weapon === 'gun'));
+  }
+}
+
+/* ------------------------------ escalators ------------------------------- */
+/** Only the flights the player can actually see are worth marching. */
+function updateEscalators(dt) {
+  const pl = player.level;
+  for (let i = pl - 1; i <= pl + 1; i++) {
+    const F = world.levels[i];
+    if (!F || !F.esc.length) continue;
+    for (let j = 0; j < F.esc.length; j++) {
+      const st = F.esc[j];
+      escAdvance(st, st.spd * dt);
+    }
+  }
+}
+
+/* ------------------------------- elevators ------------------------------- */
+/** The car a body is standing on. groundCol normally says so outright, but at
+ *  a shaft's bottom landing the deck is flush with the slab it parks on, the
+ *  resolver credits the concrete instead, and the lift you just rode down can
+ *  no longer be ridden back up — so fall back to a footprint test there. */
+function carUnder(b) {
+  if (b.groundCol && b.groundCol.elev) return b.groundCol.elev;
+  if (!b.onGround) return null;
+  for (let i = 0; i < world.elevators.length; i++) {
+    const el = world.elevators[i];
+    if (Math.abs(b.pos.y - el.y) < 0.1 &&
+        Math.abs(b.pos.x - el.x) < 1.8 && Math.abs(b.pos.z) < 1.8) return el;
+  }
+  return null;
+}
+
+/** Somebody is standing in the car: the player, or any living goon. */
+function elevOccupied(el, ignorePlayer) {
+  if (!ignorePlayer && player.riding === el && !player.inCar) return true;
+  for (let i = 0; i < world.enemies.length; i++) {
+    const e = world.enemies[i];
+    if (e.dead) continue;
+    if (e.riding === el) return true;
+    // frozen goons on a distant floor keep no riding flag, so check the deck too
+    if (Math.abs(e.pos.x - el.x) < 1.9 && Math.abs(e.pos.z) < 1.9 &&
+        e.pos.y > el.y - 0.5 && e.pos.y < el.y + 2.4) return true;
+  }
+  return false;
+}
+
+/** The call buttons live in the lift hall — the same footprint on every level,
+ *  including the hoist bay in the garage and the well on the roof. */
+function inLiftHall() {
+  return Math.abs(player.pos.x) <= HALLX + 0.5 && Math.abs(player.pos.z) <= HALLZ + 0.5;
+}
+
+/** Does this shaft stop at the floor the player is standing on? */
+function servesPlayerFloor(el) {
+  const y = levelY(player.level);
+  return y >= el.lo - 0.05 && y <= el.hi + 0.05 && Math.abs(player.pos.y - y) < 2.6;
+}
+
+/** Every shaft whose call buttons the player could press right now. */
+function callableElevators() {
+  const out = [];
+  if (!inLiftHall()) return out;
+  for (let i = 0; i < world.elevators.length; i++) {
+    if (servesPlayerFloor(world.elevators[i])) out.push(world.elevators[i]);
+  }
+  return out;
+}
+
+/** Up / Down in the lift hall: bring an empty car to the floor you are on.
+ *  Up prefers a car sitting below you, Down one sitting above; either way it
+ *  ends up at your feet. A car with somebody in it ignores the button. */
+function callElevator(dir) {
+  const near = callableElevators();
+  if (!near.length) return false;
+  const y = clamp(levelY(player.level), -1e9, 1e9);
+
+  const free = [], busy = [];
+  for (const el of near) (elevOccupied(el) ? busy : free).push(el);
+
+  if (!free.length) {
+    SFX.denied();
+    toast('Somebody is already in that lift.');
+    return true;
+  }
+
+  const here = free.filter(el => Math.abs(el.y - clamp(y, el.lo, el.hi)) < 0.2 && !el.called);
+  const wanted = free.filter(el => (dir > 0 ? el.y < y - 0.2 : el.y > y + 0.2));
+  const pool = wanted.length ? wanted : free;
+  if (!wanted.length && here.length) {          // one is already waiting for you
+    SFX.call();
+    toast('Lift ' + here[0].id + ' (' + shaftRange(here[0]) + ') is already at this floor.');
+    return true;
+  }
+
+  // nearest of the candidates, so the one you are standing next to answers first
+  let best = pool[0];
+  for (const el of pool) {
+    if (Math.abs(el.x - player.pos.x) < Math.abs(best.x - player.pos.x)) best = el;
+  }
+  best.target = clamp(y, best.lo, best.hi);
+  best.called = Math.abs(best.target - best.y) > 0.05;
+  best.callerP = best.called;            // it is yours until it gets here
+  best.duty = null;
+  best.idle = 0;
+  SFX.call();
+  toast('Lift ' + best.id + ' (' + shaftRange(best) + ') ' +
+        (best.called ? 'called to ' + levelName(player.level) + '.' : 'is already at this floor.'));
+  return true;
+}
+
+/** The hoist housing sits a fixed CAR_TOP above each shaft's top landing, so
+ *  the clearance over the car roof is simply hi - y. Anything riding up there
+ *  runs out of headroom before the car parks, and the resolver would otherwise
+ *  squeeze it down through the thin roof plate instead of killing it. */
+function crushOnCarRoof(el, prev) {
+  const clear = el.hi - el.y;
+  if (clear > E.h) return;                          // still room for the tallest body
+  // bodies have not been stepped yet this frame, so they are still riding the
+  // roof plate at its pre-move height
+  const onRoof = (b) => Math.abs(b.pos.x - el.x) < 1.95 && Math.abs(b.pos.z) < 1.95 &&
+                        b.pos.y > prev + 2.1 && b.pos.y < prev + 3.1;
+  for (let i = 0; i < world.enemies.length; i++) {
+    const e = world.enemies[i];
+    if (!e.dead && clear < E.h && onRoof(e)) { killEnemy(e); SFX.crush(); }
+  }
+  if (game.state === 'play' && !player.inCar && clear < P.h && onRoof(player)) {
+    SFX.crush();
+    game.hp = 0;
+    endGame(false, 'Crushed between the car roof and the hoist housing of lift ' + el.id + '.');
+  }
+}
+
+/** Standing at the bottom landing while the car comes down is the mirror
+ *  case: the floor is the fixed point this time, so clearance is simply how
+ *  far the car still has to fall. Anyone waiting in the shaft footprint who
+ *  is not actually riding the car gets pinned against the floor once that
+ *  runs out, same as being pinned against the housing above. */
+function crushUnderCar(el) {
+  // only while the car is actually still falling: once it parks, the deck is
+  // flush with the real floor and "riding" it there is just how you get off
+  // — the danger is the descent itself, not standing on a stopped car
+  if (el.dy >= -1e-4) return;
+  // measured to the deck's underside (it is 0.25 thick), not its top surface —
+  // that is the same line the generic resolver uses to shove a standing body
+  // sideways out of the footprint, and this check has to win that race by
+  // running first, not just eventually agree with it
+  const clear = el.y - 0.25 - el.lo;
+  if (clear > E.h) return;                          // still room for the tallest body
+  const underfoot = (b) => Math.abs(b.pos.x - el.x) < 1.95 && Math.abs(b.pos.z) < 1.95 &&
+                           b.pos.y > el.lo - 0.1 && b.pos.y < el.lo + 0.6;
+  for (let i = 0; i < world.enemies.length; i++) {
+    const e = world.enemies[i];
+    if (!e.dead && e.riding !== el && clear < E.h && underfoot(e)) { killEnemy(e); SFX.crush(); }
+  }
+  if (game.state === 'play' && !player.inCar && player.riding !== el && clear < P.h && underfoot(player)) {
+    SFX.crush();
+    game.hp = 0;
+    endGame(false, 'Crushed under lift ' + el.id + ' as it landed.');
+  }
+}
+
+function updateElevators(dt) {
+  for (let i = 0; i < world.elevators.length; i++) {
+    const el = world.elevators[i];
+    const ridden = (player.riding === el && !player.inCar);
+    let dir = 0;
+    if (ridden) { if (keys.ArrowUp || INPUT.up) dir = 1; else if (keys.ArrowDown || INPUT.down) dir = -1; }
+    let spd = ELEV_SPD;
+    if (dir !== 0) { el.target = dir > 0 ? el.hi : el.lo; el.idle = 0; el.called = false; }
+    else if (ridden) { el.target = el.y; el.idle = 0; el.called = false; }
+    else if (el.called) {
+      // answering a call — yours, or one a goon two floors down pressed to
+      // come and find out what the shooting was. Same run, same ding, and the
+      // ding carries down the corridor, so a car you did not call announces
+      // itself before the doors are anywhere near open.
+      el.idle = 0; spd = ELEV_CALL_SPD;
+      if (Math.abs(el.target - el.y) < 0.02) {
+        el.called = false; el.callerP = false;
+        if (Math.abs(player.pos.y - el.y) < 3.2 &&
+            Math.hypot(player.pos.x - el.x, player.pos.z) < 26) SFX.arrive();
+      }
+    } else {
+      el.idle += dt; spd = ELEV_IDLE_SPD;
+      // only the local lifts wander, and never one within reach of you —
+      // across the hall, or anywhere on your own floor — so the car you just
+      // stepped out of is still there if you turn round. The two fixed hoists
+      // always wait where you left them.
+      if (el.pax && el.idle > 8 && Math.abs(el.target - el.y) < 0.05 &&
+          (Math.hypot(player.pos.x - el.x, player.pos.z) > 13 || Math.abs(el.y - player.pos.y) > 9)) {
+        el.target = clamp(Math.round(rr(el.lo, el.hi) / FH) * FH, el.lo, el.hi);
+        el.idle = 0;
+      }
+    }
+    const prev = el.y;
+    if (el.y < el.target) el.y = Math.min(el.target, el.y + spd * dt);
+    else if (el.y > el.target) el.y = Math.max(el.target, el.y - spd * dt);
+    el.y = clamp(el.y, el.lo, el.hi);
+    el.dy = el.y - prev;
+    el.group.position.set(el.x, el.y, 0);
+    el.colP.y0 = el.y - 0.25; el.colP.y1 = el.y;
+    el.colT.y0 = el.y + 2.39; el.colT.y1 = el.y + CAR_TOP;
+    crushOnCarRoof(el, prev);
+    crushUnderCar(el);
+    el.blink += dt;
+    el.lampMat.color.setHex(el.called ? (el.blink % 0.7 < 0.35 ? 0xffe2a8 : 0x7a3a12)
+                                      : (Math.abs(el.dy) > 1e-4 ? 0xffd79a : 0x5c4622));
+    if (Math.abs(el.dy) > 1e-4 && Math.abs(el.y - player.pos.y) < 14 && rnd() < 0.02) SFX.elev();
+  }
+}
+
+/* -------------------------------- player --------------------------------- */
+const _fwd = new THREE.Vector3(), _rgt = new THREE.Vector3(), _wish = new THREE.Vector3();
+function updatePlayer(dt) {
+  camera.updateMatrixWorld();
+  const cols = colsFor(player.level), ramps = rampsFor(player.level);
+
+  camera.getWorldDirection(_fwd);
+  _fwd.y = 0;
+  if (_fwd.lengthSq() < 1e-6) _fwd.set(0, 0, -1);
+  _fwd.normalize();
+  _rgt.crossVectors(_fwd, _up).normalize();
+
+  let f = 0, s = 0;
+  if (keys.KeyW) f += 1;
+  if (keys.KeyS) f -= 1;
+  if (keys.KeyD) s += 1;
+  if (keys.KeyA) s -= 1;
+  f += INPUT.fwd; s += INPUT.str;              // thumbstick, analog
+  const analog = clamp(Math.hypot(f, s), 0, 1);
+  _wish.set(0, 0, 0).addScaledVector(_fwd, f).addScaledVector(_rgt, s);
+  if (_wish.lengthSq() > 0) _wish.normalize();
+
+  const spd = ((keys.ShiftLeft || keys.ShiftRight || INPUT.run) ? RUN : WALK) * analog;
+  const k = clamp(dt * (player.onGround ? 18 : 18 * AIR), 0, 1);
+  player.vel.x = lerp(player.vel.x, _wish.x * spd, k);
+  player.vel.z = lerp(player.vel.z, _wish.z * spd, k);
+
+  if ((keys.Space || INPUT.jump) && player.onGround) { player.vel.y = JUMP_V; player.onGround = false; }
+
+  if (player.riding) player.pos.y += player.riding.dy;
+
+  const preVy = player.vel.y;
+  const squeezed = stepBody(player, dt, cols, ramps);
+  if (squeezed) { hurtPlayer(80 * dt); if (rnd() < 0.1) SFX.crush(); }
+  if (player.onGround && preVy < -17) hurtPlayer((-preVy - 17) * 4.5);
+
+  player.riding = carUnder(player);
+  player.level = levelOfY(player.pos.y);
+  if (player.pos.y < BASE_Y - 10) { game.hp = 0; endGame(false, 'The shaft goes a long way down.'); return; }
+
+  // head bob, kept subtle
+  const moving = Math.hypot(player.vel.x, player.vel.z);
+  player.bob += dt * moving * 1.5;
+  const bob = player.onGround ? Math.sin(player.bob * 2) * 0.035 * Math.min(1, moving / 4) : 0;
+  camera.position.set(player.pos.x, player.pos.y + P.eye + bob, player.pos.z);
+
+  // weapon sway / recoil recovery
+  gunGroup.position.x = 0.26 + Math.sin(player.bob) * 0.006;
+  gunGroup.position.y = -0.24 + Math.cos(player.bob * 2) * 0.006;
+  gunGroup.position.z = lerp(gunGroup.position.z, -0.45, clamp(dt * 12, 0, 1));
+  gunGroup.rotation.x = lerp(gunGroup.rotation.x, 0, clamp(dt * 12, 0, 1));
+  if (flash.visible && game.fireCd < 0.11) flash.visible = false;
+  muzzleLight.intensity = Math.max(0, muzzleLight.intensity - dt * 30);
+  muzzleLight.position.copy(camera.position);
+
+  // shade sway / throw follow-through
+  shadeGroup.position.x = 0.30 + Math.sin(player.bob) * 0.008;
+  shadeGroup.position.y = -0.26 + Math.cos(player.bob * 2) * 0.008;
+  if (game.throwT > 0) {
+    game.throwT -= dt;
+    const u = clamp(1 - game.throwT / 0.3, 0, 1);      // 0 wind-up, 1 released
+    shadeGroup.position.z = -0.48 + Math.sin(u * Math.PI) * 0.34;
+    shadeGroup.position.x += Math.sin(u * Math.PI) * -0.26;
+    heldShade.rotation.y = u * 3.2;
+  } else {
+    shadeGroup.position.z = lerp(shadeGroup.position.z, -0.48, clamp(dt * 10, 0, 1));
+    heldShade.rotation.y = lerp(heldShade.rotation.y, 0, clamp(dt * 10, 0, 1));
+  }
+
+  // firing / reloading / kicking
+  game.fireCd -= dt; game.kickCd -= dt; game.throwCd -= dt;
+  if (game.reloading > 0) {
+    game.reloading -= dt;
+    if (game.reloading <= 0) {
+      const need = Math.min(game.magSize - game.mag, game.ammo);
+      game.mag += need; game.ammo -= need;
+    }
+  }
+  const armed = controls.isLocked || TOUCH.on;
+  if (game.weapon === 'shade') {
+    if (wantThrow && game.throwCd <= 0 && armed) { wantThrow = false; throwShade(); }
+  } else if (firing && game.fireCd <= 0 && armed) shoot();
+  if (wantKick) { wantKick = false; kick(); }
+  if (game.kickT > 0) {
+    game.kickT -= dt;
+    bootGroup.visible = true;
+    bootGroup.position.y = -0.9 + Math.sin(clamp(1 - game.kickT / 0.3, 0, 1) * Math.PI) * 0.55;
+    bootGroup.position.z = -0.5 - Math.sin(clamp(1 - game.kickT / 0.3, 0, 1) * Math.PI) * 0.5;
+    if (game.kickT <= 0) bootGroup.visible = false;
+  }
+}
+
+/* ---------------------------------- car ---------------------------------- */
+const groundYAt = (z) => z <= RAMP_Z0 ? BASE_Y : (z >= RAMP_Z1 ? RAMP_TOP_Y : lerp(BASE_Y, RAMP_TOP_Y, (z - RAMP_Z0) / (RAMP_Z1 - RAMP_Z0)));
+const PILLARS = [];
+for (const x of [-40, -26, -12, 12, 26, 40]) for (const z of [-20, -8, 4]) PILLARS.push([x, z]);
+
+function carFree(x, z) {
+  if (z < RAMP_Z0) { if (x < -48.5 || x > 48.5 || z < -24.5) return false; }
+  else { if (x < -12.6 || x > 12.6 || z > 50) return false; }
+  for (let i = 0; i < PILLARS.length; i++) {
+    if (Math.abs(x - PILLARS[i][0]) < 1.9 && Math.abs(z - PILLARS[i][1]) < 1.9) return false;
+  }
+  if (Math.abs(x) < 2.6 && Math.abs(z) < 2.6) return false;       // the garage hoist is in the way
+  return true;
+}
+function updateCar(dt) {
+  const c = world.car;
+  let th = 0, st = 0;
+  if (keys.KeyW) th += 1;
+  if (keys.KeyS) th -= 1;
+  if (keys.KeyA) st += 1;
+  if (keys.KeyD) st -= 1;
+  th = clamp(th + INPUT.fwd, -1, 1);           // stick forward is throttle
+  st = clamp(st - INPUT.str, -1, 1);           // stick sideways is steering
+  c.speed += th * 17 * dt;
+  if (keys.Space || INPUT.brake) c.speed *= (1 - 3.0 * dt);
+  c.speed *= (1 - 0.5 * dt);
+  c.speed = clamp(c.speed, -7, 23);
+  if (Math.abs(c.speed) > 0.05) {
+    c.head += st * clamp(Math.abs(c.speed) / 7, 0, 1) * 1.6 * dt * (c.speed < 0 ? -1 : 1);
+  }
+  const nx = c.x - Math.sin(c.head) * c.speed * dt;
+  const nz = c.z - Math.cos(c.head) * c.speed * dt;
+  if (carFree(nx, nz)) { c.x = nx; c.z = nz; }
+  else { c.speed *= -0.25; }
+  c.y = groundYAt(c.z);
+  c.group.position.set(c.x, c.y, c.z);
+  c.group.rotation.y = c.head;
+  const pitch = (c.z > RAMP_Z0 && c.z < RAMP_Z1) ? Math.atan2(RAMP_TOP_Y - BASE_Y, RAMP_Z1 - RAMP_Z0) : 0;
+  c.group.rotation.x = -pitch * Math.cos(c.head);
+  c.box.x0 = c.x - 1.1; c.box.x1 = c.x + 1.1;
+  c.box.y0 = c.y; c.box.y1 = c.y + 1.4;
+  c.box.z0 = c.z - 1.1; c.box.z1 = c.z + 1.1;
+  for (let i = 0; i < c.wheels.length; i++) c.wheels[i].rotation.x += c.speed * dt * 2.4;
+  if (Math.abs(c.speed) > 1 && rnd() < 0.04) SFX.engine();
+
+  // chase camera, straight behind the boot
+  camera.position.set(c.x + Math.sin(c.head) * 6.2, c.y + 2.9, c.z + Math.cos(c.head) * 6.2);
+  camera.lookAt(c.x, c.y + 1.1, c.z);
+  player.pos.set(c.x, c.y, c.z);
+  player.level = 0;
+
+  if (c.z > WIN_Z) endGame(true);
+}
+
+/* ------------------------------- interact -------------------------------- */
+function interact() {
+  const c = world.car;
+  if (player.inCar) {
+    player.inCar = false;
+    player.pos.set(c.x + 2.6, c.y + 0.2, c.z);
+    player.vel.set(0, 0, 0);
+    toast('Out of the car');
+    return;
+  }
+  if (player.level === 0 && c && Math.hypot(c.x - player.pos.x, c.z - player.pos.z) < 3.6) {
+    if (game.docs < DOCS_TOTAL) { toast('Not without all six documents'); return; }
+    player.inCar = true;
+    c.speed = 0;
+    SFX.engine();
+    toast('Up the ramp — go');
+    return;
+  }
+  const F = world.levels[player.level];
+  if (!F) return;
+  let best = null, bd = 3.0;
+  for (let i = 0; i < F.doors.length; i++) {
+    const d = F.doors[i];
+    if (Math.abs(d.y - player.pos.y) > 2.6) continue;
+    const dist = Math.hypot(d.cx - player.pos.x, d.cz - player.pos.z);
+    if (dist < bd) { bd = dist; best = d; }
+  }
+  if (best) { if (best.open) { best.open = false; SFX.door(); } else openDoor(best); }
+}
+
+/* ----------------------------- bullet time ------------------------------- */
+function toggleBulletTime() {
+  if (!game.btOn) {
+    if (game.bt < 0.6) { toast('Nothing left in the tank'); return; }
+    game.btOn = true; SFX.bt(true);
+  } else { game.btOn = false; SFX.bt(false); }
+  UI.tint.style.opacity = game.btOn ? '1' : '0';
+}
+function updateBulletTime(dt) {
+  if (game.btOn) {
+    game.bt -= dt;
+    if (game.bt <= 0) { game.bt = 0; game.btOn = false; UI.tint.style.opacity = '0'; SFX.bt(false); }
+  } else if (game.bt < game.btMax) {
+    game.bt = Math.min(game.btMax, game.bt + dt * 0.45);
+  }
+}
+
+/* ------------------------------ visibility ------------------------------- */
+function updateVisibility() {
+  const pl = player.level;
+  // The next floor's ceiling is the underside of the slab TWO levels above
+  // this one. Bring it in at the hall entrance, before boarding the escalator.
+  const inEscalatorHall = pl >= 1 && pl <= FLOORS &&
+                         Math.abs(player.pos.x) >= ESCX0 - P.r &&
+                         Math.abs(player.pos.x) <= ESCX1 + P.r &&
+                         Math.abs(player.pos.z) <= ESCZ + P.r;
+  const topVisible = Math.min(FLOORS + 1, pl + (inEscalatorHall ? 2 : 1));
+  for (let i = pl - 1; i <= topVisible; i++) ensureLevel(i);
+  for (const k in world.levels) {
+    const F = world.levels[k];
+    F.group.visible = F.idx >= pl - 1 && F.idx <= topVisible;
+  }
+  if (world.car) world.car.group.visible = pl <= 1;
+  // Have the facade ready on arrival in the basement, even while the camera
+  // is below ground; it can already be seen through the garage exit.
+  const outside = camera.position.y >= 0 &&
+                  (Math.abs(camera.position.x) > exterior.halfWidth ||
+                   Math.abs(camera.position.z) > exterior.halfDepth);
+  exterior.group.visible = pl === 0 || outside || pl === 21;
+  const openAir = outside || pl === 21;
+  // Ease into outdoor visibility around the ramp entrance, rather than popping
+  // the upper facade into view when the camera finally crosses ground level.
+  const approach = pl === 0 ? clamp((player.pos.z - (RAMP_Z0 - 4)) / 8, 0, 1) : 0;
+  const outdoorFog = openAir ? 1 : approach * approach * (3 - 2 * approach);
+  scene.fog.far = lerp(74, 260, outdoorFog);
+  scene.fog.near = lerp(16, 60, outdoorFog);
+}
+
+/* ------------------------------- end state ------------------------------- */
+function endGame(won, msg) {
+  if (game.state !== 'play') return;
+  game.state = won ? 'win' : 'over';
+  if (controls.isLocked) controls.unlock();
+  releaseTouch();
+  UI.hud.classList.remove('live');
+  UI.tint.style.opacity = '0';
+  if (won) {
+    SFX.win();
+    document.getElementById('wintxt').textContent =
+      'Six files out of the Corvino building and a roadster on the street. Health left: ' + Math.ceil(game.hp) + '.';
+    show('win');
+  } else {
+    SFX.lose();
+    document.getElementById('overtxt').textContent =
+      msg || ('You made it to ' + levelName(player.level) + ' with ' + game.docs + ' of ' + DOCS_TOTAL + ' documents.');
+    show('over');
+  }
+}
+
+/* --------------------------- 7b. TOUCH CONTROLS --------------------------- */
+/* A phone has no pointer lock, so looking is a drag and the keyboard becomes a
+   thumbstick plus a bank of arcade buttons. Everything below feeds the same
+   INPUT struct the movement code already reads, so the desktop path is
+   untouched: with touch mode off, none of this runs. */
+
+const SENS = [0.0018, 0.0026, 0.0034, 0.0044, 0.0058, 0.0076];
+
+const TL = {
+  layer:  document.getElementById('touch'),
+  look:   document.getElementById('t-look'),
+  zone:   document.getElementById('t-stickzone'),
+  stick:  document.getElementById('t-stick'),
+  knob:   document.getElementById('t-knob'),
+  fire:   document.getElementById('t-fire'),
+  jump:   document.getElementById('t-jump'),
+  kick:   document.getElementById('t-kick'),
+  use:    document.getElementById('t-use'),
+  shd:    document.getElementById('t-shd'),
+  up:     document.getElementById('t-up'),
+  dn:     document.getElementById('t-dn')
+};
+
+const CAN_LOCK = typeof renderer.domElement.requestPointerLock === 'function';
+const COARSE = (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) ||
+               (('ontouchstart' in window) && (navigator.maxTouchPoints || 0) > 0);
+
+/** Pick the wording that matches whichever control scheme is live. */
+function tsay(kb, tc) { return TOUCH.on ? tc : kb; }
+
+/** Pointer lock is a desktop luxury; never let a failed call break the boot. */
+function lockPointer() {
+  if (TOUCH.on || !CAN_LOCK) return;
+  try { controls.lock(); } catch (e) { /* browser said no; play unlocked */ }
+}
+
+function syncTouchLayer() {
+  const playing = game.state === 'play';
+  document.body.classList.toggle('playing', playing);
+  TL.layer.classList.toggle('off', !(TOUCH.on && playing));
+}
+
+/* ------------------------------- layout ---------------------------------- */
+const ORG = { x: 0, y: 0 };                 // padding-box origin of the touch layer
+function cacheOrigin() {
+  const r = TL.layer.getBoundingClientRect(), cs = getComputedStyle(TL.layer);
+  ORG.x = r.left + (parseFloat(cs.paddingLeft) || 0);
+  ORG.y = r.top + (parseFloat(cs.paddingTop) || 0);
+}
+function idleStick() {
+  const h = TL.layer.clientHeight || window.innerHeight;
+  TL.stick.style.left = '94px';
+  TL.stick.style.top = (h - 94) + 'px';
+}
+function relayoutTouch() { cacheOrigin(); if (TOUCH.stick === -1) idleStick(); }
+window.addEventListener('resize', relayoutTouch);
+window.addEventListener('orientationchange', function () { setTimeout(relayoutTouch, 260); });
+
+/* --------------------------------- look ---------------------------------- */
+const _te = new THREE.Euler(0, 0, 0, 'YXZ');
+function lookBy(dx, dy) {
+  if (game.state !== 'play' || player.inCar) return;   // the chase camera drives itself
+  _te.setFromQuaternion(camera.quaternion);
+  _te.y -= dx * TOUCH.sens;
+  _te.x -= dy * TOUCH.sens;
+  _te.x = clamp(_te.x, -Math.PI / 2 + 0.001, Math.PI / 2 - 0.001);
+  _te.z = 0;
+  camera.quaternion.setFromEuler(_te);
+}
+function lookDown(e) {
+  if (TOUCH.look !== -1) return false;
+  TOUCH.look = e.pointerId; TOUCH.lx = e.clientX; TOUCH.ly = e.clientY;
+  return true;
+}
+function lookMove(e) {
+  if (e.pointerId !== TOUCH.look) return;
+  lookBy(e.clientX - TOUCH.lx, e.clientY - TOUCH.ly);
+  TOUCH.lx = e.clientX; TOUCH.ly = e.clientY;
+}
+function lookUp(e) { if (e.pointerId === TOUCH.look) TOUCH.look = -1; }
+
+function grab(el, e) { try { el.setPointerCapture(e.pointerId); } catch (err) {} }
+
+TL.look.addEventListener('pointerdown', function (e) {
+  if (!TOUCH.on || game.state !== 'play') return;
+  e.preventDefault();
+  if (lookDown(e)) grab(TL.look, e);
+});
+TL.look.addEventListener('pointermove', lookMove);
+TL.look.addEventListener('pointerup', lookUp);
+TL.look.addEventListener('pointercancel', lookUp);
+
+/* -------------------------------- stick ---------------------------------- */
+const STICK_R = 56, DEAD = 0.16;
+TL.zone.addEventListener('pointerdown', function (e) {
+  if (!TOUCH.on || game.state !== 'play' || TOUCH.stick !== -1) return;
+  e.preventDefault();
+  TOUCH.stick = e.pointerId; grab(TL.zone, e);
+  TOUCH.sx = e.clientX; TOUCH.sy = e.clientY;
+  TL.stick.style.left = (e.clientX - ORG.x) + 'px';    // the gate lands under the thumb
+  TL.stick.style.top = (e.clientY - ORG.y) + 'px';
+  TL.stick.classList.add('live');
+});
+TL.zone.addEventListener('pointermove', function (e) {
+  if (e.pointerId !== TOUCH.stick) return;
+  e.preventDefault();
+  let dx = e.clientX - TOUCH.sx, dy = e.clientY - TOUCH.sy;
+  const m = Math.hypot(dx, dy);
+  if (m > STICK_R) { dx = dx / m * STICK_R; dy = dy / m * STICK_R; }
+  TL.knob.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+  const nx = dx / STICK_R, ny = dy / STICK_R, mag = Math.min(1, Math.hypot(nx, ny));
+  if (mag < DEAD) { INPUT.fwd = 0; INPUT.str = 0; INPUT.run = false; return; }
+  const k = (mag - DEAD) / (1 - DEAD) / mag;           // rescale so the dead zone is not a cliff
+  INPUT.str = nx * k; INPUT.fwd = -ny * k;
+  INPUT.run = mag > 0.82;                              // out at the rim is a run
+});
+function stickUp(e) {
+  if (e.pointerId !== TOUCH.stick) return;
+  TOUCH.stick = -1;
+  INPUT.fwd = 0; INPUT.str = 0; INPUT.run = false;
+  TL.knob.style.transform = 'translate(0,0)';
+  TL.stick.classList.remove('live');
+  idleStick();
+}
+TL.zone.addEventListener('pointerup', stickUp);
+TL.zone.addEventListener('pointercancel', stickUp);
+
+/* -------------------------------- buttons -------------------------------- */
+function tbtn(id, down, up) {
+  const el = document.getElementById(id);
+  el.addEventListener('pointerdown', function (e) {
+    if (!TOUCH.on || game.state !== 'play') return;
+    e.preventDefault(); grab(el, e);
+    el.classList.add('down');
+    if (down) down();
+  });
+  const end = function () { el.classList.remove('down'); if (up) up(); };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+  return el;
+}
+
+/* The trigger doubles as a look pad: hold it and drag, and you keep firing
+   while the view swings round — one thumb, no lifting off. */
+TL.fire.addEventListener('pointerdown', function (e) {
+  if (!TOUCH.on || game.state !== 'play') return;
+  e.preventDefault(); grab(TL.fire, e);
+  TL.fire.classList.add('down');
+  firing = true; wantThrow = true; TOUCH.fire = e.pointerId;
+  lookDown(e);
+});
+TL.fire.addEventListener('pointermove', lookMove);
+function fireUp(e) {
+  if (TOUCH.fire === e.pointerId) { TOUCH.fire = -1; firing = false; wantThrow = false; TL.fire.classList.remove('down'); }
+  lookUp(e);
+}
+TL.fire.addEventListener('pointerup', fireUp);
+TL.fire.addEventListener('pointercancel', fireUp);
+
+tbtn('t-jump', function () { INPUT.jump = true; INPUT.brake = true; },
+               function () { INPUT.jump = false; INPUT.brake = false; });
+tbtn('t-kick', function () { wantKick = true; });
+tbtn('t-use', function () { interact(); });
+tbtn('t-reload', function () { reload(); });
+tbtn('t-bt', function () { toggleBulletTime(); });
+tbtn('t-shd', function () { toggleWeapon(); });
+tbtn('t-lamp', function () { torch.visible = !torch.visible; torch.intensity = torch.visible ? 1.5 : 0; });
+tbtn('t-up', function () { INPUT.up = true; if (!player.inCar && !player.riding) callElevator(1); },
+             function () { INPUT.up = false; });
+tbtn('t-dn', function () { INPUT.down = true; if (!player.inCar && !player.riding) callElevator(-1); },
+             function () { INPUT.down = false; });
+tbtn('t-pause', function () {
+  game.state = 'pause'; UI.hud.classList.remove('live'); show('pause'); releaseTouch();
+});
+
+/* ------------------------------ mode switch ------------------------------ */
+function releaseTouch() {
+  TOUCH.look = -1; TOUCH.stick = -1; TOUCH.fire = -1;
+  INPUT.fwd = 0; INPUT.str = 0; INPUT.run = false; INPUT.jump = false;
+  INPUT.brake = false; INPUT.up = false; INPUT.down = false;
+  firing = false;
+  wantThrow = false;
+  TL.knob.style.transform = 'translate(0,0)';
+  TL.stick.classList.remove('live');
+  const down = document.querySelectorAll('.tb.down');
+  for (let i = 0; i < down.length; i++) down[i].classList.remove('down');
+  idleStick();
+}
+
+function setTouchMode(on) {
+  TOUCH.on = !!on;
+  document.body.classList.toggle('touch', TOUCH.on);
+  releaseTouch();
+  syncTouchLayer();
+  relayoutTouch();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, TOUCH.on ? 1.2 : 1.6));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  const label = 'touch controls: ' + (TOUCH.on ? 'on' : 'off');
+  document.getElementById('touchtog').textContent = label;
+  document.getElementById('touchtog2').textContent = label;
+  document.getElementById('pausetxt').textContent = TOUCH.on
+    ? 'Catch your breath. Tap below when you want back in.'
+    : 'Click to lock the mouse and go back in.';
+  if (TOUCH.on && controls.isLocked) controls.unlock();
+}
+
+function setSens(step) {
+  TOUCH.sensStep = clamp(step, 0, SENS.length - 1);
+  TOUCH.sens = SENS[TOUCH.sensStep];
+  document.getElementById('sensval').textContent = String(TOUCH.sensStep + 1);
+}
+document.getElementById('sensdn').addEventListener('click', function () { setSens(TOUCH.sensStep - 1); });
+document.getElementById('sensup').addEventListener('click', function () { setSens(TOUCH.sensStep + 1); });
+document.getElementById('touchtog').addEventListener('click', function () { setTouchMode(!TOUCH.on); });
+document.getElementById('touchtog2').addEventListener('click', function () { setTouchMode(!TOUCH.on); });
+
+// A stylus or a laptop touchscreen can fool the media query either way, so the
+// first real finger on the glass settles it — but never mid-firefight.
+window.addEventListener('touchstart', function (e) {
+  if (!TOUCH.on && game.state !== 'play') setTouchMode(true);
+}, { passive: true, capture: true });
+// iOS pinch-zoom would otherwise scale the whole cabinet
+window.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+
+setSens(3);
+setTouchMode(COARSE || !CAN_LOCK);
+
+/* -------------------------------- 8. LOOP -------------------------------- */
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  let dt = (now - last) / 1000;
+  last = now;
+  if (dt > 0.06) dt = 0.06;
+
+  if (game.state === 'play') {
+    updateBulletTime(dt);
+    const ts = game.btOn ? 0.30 : 1;
+    const dtW = dt * ts;                       // the world slows down
+    const dtP = dt * Math.min(1, ts * 2.3);    // the player barely does
+
+    updateElevators(dtW);
+    updateEscalators(dtW);
+    if (player.inCar) updateCar(dtP); else updatePlayer(dtP);
+    updateEnemies(dtW);
+    updateDoors(dtW);
+    updateLamps(dtW);
+    updateShades(dtW);
+    updateTracers(dtW);
+    updateSparks(dtW);
+    updatePickups(dtW);
+    updateVisibility();
+    updateLightPool();
+    updateHint();
+    updateHUD(dt);
+  }
+  renderer.render(scene, camera);
+}
+
+/* -------------------------------- BOOT ----------------------------------- */
+function begin() {
+  audioInit();
+  if (AUD.ctx && AUD.ctx.state === 'suspended') AUD.ctx.resume();
+  if (!world.elevators.length) {
+    buildElevators();
+    for (let i = 0; i < world.elevators.length; i++) {
+      const el = world.elevators[i];
+      el.colP.elev = el; el.colT.elev = el;
+    }
+    world.colCache = {};
+    ensureLevel(21);
+    ensureLevel(20);
+  }
+  player.pos.set(-24, ROOF_Y + 0.2, 0);
+  player.vel.set(0, 0, 0);
+  player.level = 21;
+  camera.position.set(player.pos.x, player.pos.y + P.eye, player.pos.z);
+  camera.rotation.set(0, -Math.PI / 2, 0);      // face the hoist
+  game.state = 'play';
+  show(null);
+  UI.hud.classList.add('live');
+  lockPointer();
+  if (TOUCH.on && document.documentElement.requestFullscreen) {
+    try { document.documentElement.requestFullscreen().catch(function () {}); } catch (e) {}
+  }
+  releaseTouch();
+  toast(tsay('Stand on the lift and hold ↓ · in the hall, ↑ ↓ call one to you',
+             'Stand on the lift and hold ↓ · in the hall, tap ↑ ↓ to call one'));
+}
+document.getElementById('startbtn').addEventListener('click', begin);
+document.getElementById('resumebtn').addEventListener('click', function () {
+  game.state = 'play'; show(null); UI.hud.classList.add('live'); releaseTouch(); lockPointer();
+});
+document.getElementById('againbtn').addEventListener('click', function () { location.reload(); });
+document.getElementById('winbtn').addEventListener('click', function () { location.reload(); });
+controls.addEventListener('lock', function () {
+  if (game.state === 'pause') { game.state = 'play'; show(null); UI.hud.classList.add('live'); }
+});
+
+updateVisibility();
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>

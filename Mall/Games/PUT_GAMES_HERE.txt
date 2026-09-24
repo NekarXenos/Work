@@ -1,0 +1,1 @@
+Drop game folders or HTML files here. See README.md for the names each cabinet looks for.

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>ZX SPECTRUM 3D &mdash; Voxel BASIC Machine</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+
+<!-- ============================ BOOT / LOADING ============================ -->
+<div id="loading">
+  <div class="rainbow"><i></i><i></i><i></i><i></i></div>
+  <h1>ZX SPECTRUM 3D</h1>
+  <p id="loadmsg">Loading three.js&hellip;</p>
+  <div id="loadbar"><span></span></div>
+  <p class="tiny">255 &times; 175 &times; 255 voxels &middot; 1 pixel = 1/8 m &middot; no attribute clash</p>
+</div>
+
+<!-- ============================ CLICK TO START ============================ -->
+<div id="start" class="hidden">
+  <div class="panel">
+    <div class="rainbow"><i></i><i></i><i></i><i></i></div>
+    <h1>ZX SPECTRUM 3D</h1>
+    <p class="sub">A Sinclair machine you can walk around inside.</p>
+    <p>The screen is <b>255&times;175 pixels</b> extruded <b>255 blocks</b> deep.
+       Every coordinate takes a third value. Every pixel may be any of the
+       16 Spectrum colours &mdash; there is no attribute clash.</p>
+    <p>Walk to any of the four <b>terminals</b> at the centre of each edge and type
+       ZX&nbsp;BASIC on the +2 keyboard. <code>SCREEN 4</code> sends your drawing
+       into the world itself.</p>
+    <button id="startbtn">CLICK TO ENTER</button>
+    <p class="tiny">W A S D move &middot; Space jump &middot; Mouse look &middot; E use terminal &middot; H help &middot; F4 save 3D</p>
+  </div>
+</div>
+
+<!-- ================================ HUD ================================== -->
+<div id="hud" class="hidden">
+  <div id="crosshair"></div>
+
+  <div id="stats">
+    <div><b id="st-mode">MINECRAFT</b> <span id="st-fly"></span></div>
+    <div>PIXEL <span id="st-pos">0,0,0</span></div>
+    <div>FPS <span id="st-fps">0</span> &middot; CHUNKS <span id="st-chunks">0</span></div>
+    <div>RAM <span id="st-mem">0</span></div>
+    <div id="st-membar"><span></span></div>
+  </div>
+
+  <div id="hintbar" class="hidden"></div>
+  <button id="hud-assets" title="Save the 3D screen for a BASIC game (F4)">SAVE 3D / ASSETS <kbd>F4</kbd></button>
+
+  <div id="palette">
+    <div id="swatches"></div>
+    <div id="matrow">
+      <button data-mat="0" class="on">SOLID</button>
+      <button data-mat="1">GLASS</button>
+      <button data-mat="2">GLOW</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<!-- ========================== TERMINAL TOOLBAR ============================ -->
+<div id="termbar" class="hidden">
+  <span class="tb-title">TERMINAL <b id="tb-which">N</b></span>
+  <button id="tb-typing" title="Switch between authentic single-key BASIC entry and free typing">TYPING: SPECTRUM</button>
+  <span class="tb-mode">MODE <b id="tb-cursor">K</b></span>
+  <span class="tb-keys">
+    <b id="tb-caps" class="shifty">CAPS SHIFT</b>
+    <b id="tb-sym" class="shifty">SYMBOL SHIFT</b>
+    <b id="tb-ext" class="shifty">EXT</b>
+  </span>
+  <span class="tb-preview">NEXT: <b id="tb-next">&mdash;</b></span>
+  <button id="tb-run">RUN</button>
+  <button id="tb-list">LIST</button>
+  <button id="tb-break">BREAK</button>
+  <button id="tb-tape">TAPE</button>
+  <button id="tb-assets">SAVE 3D</button>
+  <button id="tb-help">HELP</button>
+  <button id="tb-exit">LEAVE (Esc)</button>
+</div>
+
+<!-- ============================== HELP =================================== -->
+<div id="help" class="modal hidden">
+ <div class="modal-inner">
+  <button class="close" data-close="help">&times;</button>
+  <div class="rainbow"><i></i><i></i><i></i><i></i></div>
+  <h2>ZX SPECTRUM 3D &mdash; Operating Manual</h2>
+  <p><b>Save builds for your game:</b> press <kbd>F4</kbd> or click <b>SAVE 3D</b>.
+     Save the whole screen as scenery, or crop a character / sprite (optionally
+     within a coordinate box). Download a <code>.zx3d</code> file and import it
+     here later. Load scenery with <code>LOAD "name" SCREEN$</code>, or a character
+     with <code>LOAD "name" SPRITE 1</code>, then <code>PUT 1,x,y,z</code> and
+     <code>MOVE 1,x,y,z</code>. Colours and materials are preserved. The save
+     panel shows an example for your asset.</p>
+
+  <div class="cols">
+    <section>
+      <h3>1. Draw your first line</h3>
+      <p>Walk to a terminal, press <kbd>E</kbd>, then type:</p>
+<pre>10 SCREEN 4
+20 CLS
+30 INK 6
+40 PLOT 20,20,200
+50 DRAW 200,120,-150
+RUN</pre>
+      <p><code>PLOT x,y,z</code> lights one voxel. <code>DRAW dx,dy,dz</code> draws a
+      line <i>relative</i> to the last point &mdash; exactly like Sinclair BASIC, with a
+      third value for depth. Use <code>DRAW TO x,y,z</code> for absolute.</p>
+      <p>Coordinates: <b>x</b> 0&ndash;254 left&rarr;right, <b>y</b> 0&ndash;174
+      bottom&rarr;top, <b>z</b> 0&ndash;254 front&rarr;back (into the screen).
+      Origin is bottom-front-left, as PLOT always was.</p>
+      <p>Now press <kbd>Esc</kbd>, walk into the screen, and look at what you made.</p>
+    </section>
+
+    <section>
+      <h3>2. The 3D screen</h3>
+      <p><code>SCREEN 0</code> &mdash; output to the terminal CRT (32&times;24 text).<br>
+         <code>SCREEN 4</code> &mdash; output to the voxel world (31&times;21 text).</p>
+      <p><code>SCREEN 4</code> is this machine's answer to the SAM Coup&eacute;'s
+      <code>MODE 3</code>: the same idea, one dimension further on. Modes 1&ndash;3
+      are reserved for flat screens, so the solid display took the next free number.</p>
+      <p>All 16 colours are available on every single pixel. There is no attribute
+      cell and therefore no clash &mdash; the Coup&eacute; trick, in three dimensions.</p>
+    </section>
+
+    <section>
+      <h3>3. Graphics words</h3>
+      <table>
+        <tr><td><code>PLOT x,y,z</code></td><td>set one voxel</td></tr>
+        <tr><td><code>DRAW dx,dy,dz</code></td><td>relative 3D line</td></tr>
+        <tr><td><code>DRAW TO x,y,z</code></td><td>absolute 3D line</td></tr>
+        <tr><td><code>CIRCLE x,y,z,r</code></td><td>circle on the x/y plane at depth z</td></tr>
+        <tr><td><code>SPHERE x,y,z,r</code></td><td>hollow ball</td></tr>
+        <tr><td><code>CUBE x,y,z,w,h,d</code></td><td>filled box</td></tr>
+        <tr><td><code>BOX x,y,z,w,h,d</code></td><td>wireframe box</td></tr>
+        <tr><td><code>TEXT x,y,z,a$</code></td><td>3D text, 1 block deep</td></tr>
+        <tr><td><code>DEPTH z</code></td><td>default z for 2-argument PLOT/DRAW</td></tr>
+        <tr><td><code>MAT n</code></td><td>0 solid, 1 glass, 2 glowing</td></tr>
+        <tr><td><code>INK c</code> / <code>PAPER c</code></td><td>colour 0&ndash;15 (8&ndash;15 = BRIGHT)</td></tr>
+        <tr><td><code>OVER 1</code></td><td>XOR plotting</td></tr>
+        <tr><td><code>POINT(x,y,z)</code></td><td>colour at a voxel, &minus;1 if empty</td></tr>
+        <tr><td><code>SUN az,el</code></td><td>move the sun (degrees)</td></tr>
+        <tr><td><code>VIEW x,y,z</code></td><td>teleport the camera</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h3>4. Animated voxel sprites</h3>
+      <p>Define a sprite as a stack of coloured layers, then move it:</p>
+<pre>10 SPRITE 1,3,3,1,2
+20 SDATA 1,0,0,".6."
+25 SDATA 1,0,1,"666"
+30 SDATA 1,0,2,".6."
+40 SDATA 1,1,0,"6.6"
+50 SDATA 1,1,1,".6."
+60 SDATA 1,1,2,"6.6"
+70 SCREEN 4: CLS
+75 LET f=0
+80 FOR x=0 TO 240
+85 LET f=1-f
+90 MOVE 1,x,80,128,f
+95 PAUSE 2
+100 NEXT x
+110 UNPUT 1</pre>
+      <p><code>SDATA n,frame,row,a$</code> fills one row of one frame; each character is
+      a hex colour digit <code>0</code>&ndash;<code>F</code>, or <code>.</code> for
+      transparent. Layers deeper than the first are given with
+      <code>SDATA n,frame,row,a$,layer</code>.</p>
+      <p><code>PUT n,x,y,z,f</code> stamps a frame and remembers what was underneath.
+      <code>UNPUT n</code> puts the background back. <code>MOVE n,x,y,z,f</code> does
+      both &mdash; that is your animation loop.</p>
+      <p>Rather than typing it: <code>LOAD "SPRITE"</code> is the listing above,
+      <code>LOAD "LINE"</code> is the first example, and <code>LOAD "DEMO"</code>
+      flies a two-frame sprite on a Lissajous path through the display.
+      <code>RUN</code> any of them.</p>
+      <p>There is no <code>MOD</code> &mdash; Sinclair never had one. Write
+      <code>a-INT (a/b)*b</code>.</p>
+    </section>
+
+    <section>
+      <h3>5. Tape, saving and loading</h3>
+      <table>
+        <tr><td><code>SAVE "name"</code></td><td>program to virtual tape</td></tr>
+        <tr><td><code>SAVE "name" SCREEN$</code></td><td>the whole voxel world</td></tr>
+        <tr><td><code>LOAD "name"</code></td><td>load it back</td></tr>
+        <tr><td><code>CAT</code></td><td>list the tape</td></tr>
+        <tr><td><code>ERASE "name"</code></td><td>wipe a block</td></tr>
+      </table>
+      <p>The <b>TAPE</b> panel (<kbd>T</kbd>) exports the tape as a real
+      <code>.tap</code> file and imports <code>.tap</code>, <code>.tzx</code>,
+      <code>.sna</code> and <code>.z80</code>. Loading one of those starts the built-in
+      Z80 and runs it as a genuine 48K Spectrum on the terminal CRT. Turn on
+      <b>PROJECT TO 3D</b> and the emulated display is rebuilt as voxels, one block
+      deep, inside the world.</p>
+      <p>For full compatibility drop your own 16&nbsp;KB <code>48.rom</code> into the
+      tape panel. Without one, a compact substitute ROM runs most snapshots and
+      simple <code>.tap</code> loaders.</p>
+    </section>
+
+    <section>
+      <h3>6. Controls</h3>
+      <table>
+        <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>move</td></tr>
+        <tr><td><kbd>Space</kbd></td><td>jump / fly up</td></tr>
+        <tr><td><kbd>Shift</kbd></td><td>sprint / fly down</td></tr>
+        <tr><td><kbd>Ctrl</kbd></td><td>crouch</td></tr>
+        <tr><td><kbd>F</kbd></td><td>fly on/off</td></tr>
+        <tr><td>Left mouse</td><td>remove a voxel</td></tr>
+        <tr><td>Right mouse</td><td>place a voxel</td></tr>
+        <tr><td>Wheel / <kbd>1</kbd>&ndash;<kbd>8</kbd></td><td>colour</td></tr>
+        <tr><td><kbd>B</kbd></td><td>BRIGHT on/off</td></tr>
+        <tr><td><kbd>E</kbd></td><td>use the terminal you are facing</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>leave the terminal</td></tr>
+        <tr><td><kbd>T</kbd></td><td>tape panel &middot; <kbd>H</kbd> this manual</td></tr>
+      </table>
+      <p><b>Inside</b> the screen volume you move like Minecraft &mdash; blocky gravity,
+      auto-step, dig and build. <b>Outside</b> it you get ordinary first-person
+      movement: faster, longer stride, no voxels in your way.</p>
+    </section>
+
+    <section>
+      <h3>7. The keyboard</h3>
+      <p>The terminal carries a +2 keyboard with 1/8&nbsp;m keys. Click a key, or use
+      your own keyboard.</p>
+      <p>Hold <kbd>Shift</kbd> (CAPS SHIFT) or <kbd>Ctrl</kbd> (SYMBOL SHIFT) and every
+      key cap <b>re-letters itself in real time</b> to show what it will produce.
+      Hovering a key does the same for that one key and shows the result in the
+      toolbar before you commit to it.</p>
+      <p><b>TYPING: SPECTRUM</b> is authentic &mdash; one keypress gives you a whole
+      keyword, exactly as 1982 intended. <b>TYPING: AUTO</b> lets you type
+      <code>plot 20,20,200</code> as ordinary text and recognises the keywords for
+      you as you go. Switch with the toolbar button or <kbd>F2</kbd>.</p>
+    </section>
+
+    <section>
+      <h3>8. Memory</h3>
+      <p>This machine has no fixed RAM. It measures the computer it is running on and
+      takes a share of it; the gauge at the top left shows the budget and what is
+      left. <code>PRINT MEM</code> reports free bytes to BASIC, and
+      <code>CLEAR n</code> still lowers RAMTOP if you want a smaller machine.</p>
+    </section>
+  </div>
+  <p class="foot">Press <kbd>H</kbd> to close. &copy; 2026 &mdash; a Sinclair machine that never was.</p>
+ </div>
+</div>
+
+<!-- ============================== TAPE =================================== -->
+<div id="tape" class="modal hidden">
+ <div class="modal-inner narrow">
+  <button class="close" data-close="tape">&times;</button>
+  <div class="rainbow"><i></i><i></i><i></i><i></i></div>
+  <h2>VIRTUAL TAPE</h2>
+  <div id="tapelist"></div>
+  <div class="tapebtns">
+    <button id="tp-import">IMPORT FILE&hellip;</button>
+    <button id="tp-export">EXPORT .TAP</button>
+    <button id="tp-rom">LOAD 48.ROM&hellip;</button>
+    <button id="tp-wipe">BLANK TAPE</button>
+  </div>
+  <div class="tapebtns">
+    <button id="tp-project">PROJECT TO 3D: OFF</button>
+    <button id="tp-stop">STOP EMULATOR</button>
+  </div>
+  <p class="tiny" id="tp-status">Drop a .zx3d / .tap / .tzx / .sna / .z80 / .rom
+  file anywhere on the window to insert it.</p>
+  <input type="file" id="tp-file" accept=".zx3d,.tap,.tzx,.sna,.z80,.rom,.bin" hidden>
+  <input type="file" id="tp-romfile" accept=".rom,.bin" hidden>
+ </div>
+</div>
+
+<!-- =========================== GAME ASSETS =============================== -->
+<div id="assets" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="asset-title">
+ <div class="modal-inner asset-panel">
+  <button class="close" data-close="assets" aria-label="Close game assets">&times;</button>
+  <div class="rainbow"><i></i><i></i><i></i><i></i></div>
+  <h2 id="asset-title">SAVE 3D FOR A GAME</h2>
+  <p>Save the voxel display as scenery, or turn your build into a character you can move with BASIC.</p>
+  <form id="asset-form">
+   <div class="asset-fields">
+    <label>Asset name<input id="asset-name" maxlength="60" value="MY SCENE" required autocomplete="off"></label>
+    <label>Save as<select id="asset-kind"><option value="world">Scenery — entire 3D screen</option><option value="sprite">Character / sprite — crop to build</option></select></label>
+   </div>
+   <p id="asset-scene-note">Includes every voxel and the floor, at their original coordinates.</p>
+   <fieldset id="asset-sprite-options" class="hidden" disabled>
+    <legend>Character / sprite capture</legend>
+    <p>Empty space is transparent. The build is cropped to its occupied voxels and gets one animation frame.</p>
+    <div class="asset-fields">
+     <label>Capture area<select id="asset-region"><option value="all">All builds on the screen</option><option value="box">Only a coordinate box</option></select></label>
+     <label>BASIC sprite number<input id="asset-number" type="number" min="0" max="255" step="1" value="1" required></label>
+    </div>
+    <label class="asset-check"><input id="asset-floor" type="checkbox">Include floor voxels (y = 0)</label>
+    <fieldset id="asset-bounds" class="hidden" disabled>
+     <legend>Box in BASIC pixel coordinates</legend>
+     <div class="asset-coordinates">
+      <label>X<input id="asset-x" type="number" min="0" max="254" step="1" value="0" required></label>
+      <label>Y<input id="asset-y" type="number" min="0" max="174" step="1" value="1" required></label>
+      <label>Z<input id="asset-z" type="number" min="0" max="254" step="1" value="0" required></label>
+      <label>Width<input id="asset-w" type="number" min="1" max="255" step="1" value="32" required></label>
+      <label>Height<input id="asset-h" type="number" min="1" max="175" step="1" value="32" required></label>
+      <label>Depth<input id="asset-d" type="number" min="1" max="255" step="1" value="32" required></label>
+     </div>
+    </fieldset>
+   </fieldset>
+   <div class="tapebtns asset-actions">
+    <button type="submit" id="asset-download">SAVE + DOWNLOAD .ZX3D</button>
+    <button type="button" id="asset-import">IMPORT .ZX3D&hellip;</button>
+    <button type="button" id="asset-tape">VIEW SAVED ASSETS</button>
+   </div>
+  </form>
+  <input type="file" id="asset-file" accept=".zx3d" hidden>
+  <p id="asset-status" role="status" aria-live="polite">Saves to your virtual tape and downloads a reusable file. Colours, glass and glow are preserved.</p>
+  <h3>USE IN YOUR BASIC GAME</h3>
+  <pre id="asset-code">10 SCREEN 4
+20 LOAD "MY SCENE" SCREEN$</pre>
+  <p class="tiny">Import the .zx3d file here or drop it on the window before running your game. Importing adds it to the tape; your program and display stay as they are. These assets use this machine's 3D BASIC extensions.</p>
+ </div>
+</div>
+
+<div id="dropzone" class="hidden"><span>RELEASE TO IMPORT FILE</span></div>
+
+<script src="js/boot.js"></script>
+</body>
+</html>

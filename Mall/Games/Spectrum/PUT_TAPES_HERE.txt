@@ -1,0 +1,7 @@
+Drop ZX Spectrum tapes and snapshots here: .tap, .tzx, .z80 or .sna.
+
+They show up in the "Demos and tapes" menu at any NX Dev desk. Real Spectrum
+software also needs Sinclair's ROM, which does not ship with the plaza - see
+Apps/Spectrum/PUT_48ROM_HERE.txt.
+
+You can also just drag a file onto the page while you are sitting at a desk.

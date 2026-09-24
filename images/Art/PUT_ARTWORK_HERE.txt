@@ -1,0 +1,1 @@
+Drop paintings here — jpg, png, webp. Filenames become titles.

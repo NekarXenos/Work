@@ -1,0 +1,18 @@
+The ZX BASIC session at every NX Dev desk is written from scratch and needs
+nothing from this folder. It runs the moment you sit down.
+
+Running *real* Spectrum software - .tap, .tzx, .z80, .sna - means emulating a
+real Spectrum, and that needs Sinclair's 16K ROM. That ROM is still under
+copyright and is not ours to hand out, so it is not in here.
+
+If you own a copy, put it beside this file:
+
+    48.rom     the 48K ROM, 16384 bytes
+    128.rom    optional, the 128K pair, 32768 bytes
+
+Either will be picked up the next time you sit at a desk. You can also drag a
+.rom file onto the page while seated; it is kept in this browser's local
+storage so you only have to do it once.
+
+Without a ROM the terminals stay on the native BASIC session, which is the
+better half of the experience anyway.

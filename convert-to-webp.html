@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Folder → WebP + Thumbnails</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #0f1115; color: #e5e7eb; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card {
+    background: #171a21; border: 1px solid #262b36; border-radius: 16px;
+    padding: 32px; width: 100%; max-width: 560px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  h1 { font-size: 22px; margin-bottom: 6px; }
+  h1 span { color: #7c8cff; }
+  p.sub { color: #9ca3af; font-size: 13px; margin-bottom: 24px; line-height: 1.5; }
+  label { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+          color: #9ca3af; margin: 18px 0 8px; }
+  input[type=number], input[type=text] {
+    width: 100%; background: #0f1115; border: 1px solid #2c3340; color: #e5e7eb;
+    border-radius: 8px; padding: 10px 12px; font-size: 15px;
+  }
+  input:focus { outline: none; border-color: #7c8cff; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    background: #7c8cff; color: #0f1115; border: none; border-radius: 10px;
+    padding: 12px 20px; font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: background .15s, transform .1s; width: 100%; margin-top: 24px;
+  }
+  .btn:hover { background: #93a1ff; }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { background: #2c3340; color: #6b7280; cursor: not-allowed; }
+  .btn.ghost { background: #22262f; color: #e5e7eb; }
+  .btn.ghost:hover { background: #2c3340; }
+  .progress-wrap { margin-top: 24px; display: none; }
+  .bar { height: 8px; background: #22262f; border-radius: 99px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0%; background: linear-gradient(90deg,#7c8cff,#4de3c1);
+               transition: width .2s; }
+  .status { font-size: 13px; color: #9ca3af; margin-top: 10px; min-height: 18px;
+            font-family: ui-monospace, monospace; }
+  .log {
+    margin-top: 16px; max-height: 180px; overflow-y: auto; font-size: 12px;
+    font-family: ui-monospace, monospace; background: #0f1115; border: 1px solid #22262f;
+    border-radius: 8px; padding: 10px; display: none;
+  }
+  .log div { padding: 2px 0; color: #9ca3af; }
+  .log .err { color: #f87171; }
+  .log .ok  { color: #4de3c1; }
+  .note { font-size: 12px; color: #6b7280; margin-top: 14px; line-height: 1.5; }
+  .pill { display:inline-block; background:#22262f; border-radius:99px; padding:2px 10px;
+          font-size:12px; margin-left:6px; color:#9ca3af; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🖼️ Folder <span>→ WebP</span> + Thumbnails</h1>
+  <p class="sub">Pick a folder of images. Every image is converted to <b>.webp</b>, plus a
+    center-cropped thumbnail scaled to <b>fill</b> your chosen size, saved as
+    <code>name_thumb.webp</code>. Nothing is uploaded — all processing happens locally.</p>
+
+  <div class="row">
+    <div>
+      <label for="thumbW">Thumbnail width (px)</label>
+      <input type="number" id="thumbW" value="400" min="1" max="8000">
+    </div>
+    <div>
+      <label for="thumbH">Thumbnail height (px)</label>
+      <input type="number" id="thumbH" value="300" min="1" max="8000">
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label for="quality">WebP quality (1–100)</label>
+      <input type="number" id="quality" value="82" min="1" max="100">
+    </div>
+    <div>
+      <label for="subdir">Output subfolder</label>
+      <input type="text" id="subdir" value="webp">
+    </div>
+  </div>
+
+  <button class="btn" id="startBtn">Select folder &amp; convert</button>
+
+  <div class="progress-wrap" id="progressWrap">
+    <div class="bar"><div id="barFill"></div></div>
+    <div class="status" id="status"></div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <p class="note" id="note">Requires a Chromium browser (Chrome / Edge) for folder picking.
+    Subfolders of the source folder are scanned recursively.</p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "avif", "svg"];
+  const startBtn   = document.getElementById("startBtn");
+  const statusEl   = document.getElementById("status");
+  const barFill    = document.getElementById("barFill");
+  const logEl      = document.getElementById("log");
+  const progressWrap = document.getElementById("progressWrap");
+
+  startBtn.addEventListener("click", run);
+
+  async function run() {
+    if (!("showDirectoryPicker" in window)) {
+      alert("This browser doesn't support folder picking.\nPlease use Chrome or Edge.");
+      return;
+    }
+
+    const thumbW = Math.max(1, parseInt(document.getElementById("thumbW").value, 10) || 0);
+    const thumbH = Math.max(1, parseInt(document.getElementById("thumbH").value, 10) || 0);
+    const quality = Math.min(1, Math.max(0.01, (parseInt(document.getElementById("quality").value, 10) || 82) / 100));
+    const subdir = (document.getElementById("subdir").value || "webp").replace(/[\\/:*?"<>|]/g, "_");
+
+    if (!thumbW || !thumbH) { alert("Please enter a valid thumbnail width and height."); return; }
+
+    let srcDir;
+    try {
+      srcDir = await window.showDirectoryPicker({ id: "webp-src" });
+    } catch (e) { return; } // user cancelled
+
+    let outDir;
+    try {
+      outDir = await window.showDirectoryPicker({ id: "webp-out", mode: "readwrite" });
+    } catch (e) { return; }
+
+    startBtn.disabled = true;
+    progressWrap.style.display = "block";
+    logEl.style.display = "block";
+    logEl.innerHTML = "";
+    setProgress(0, "Scanning folder…");
+
+    // --- Collect all image files recursively ---
+    const files = [];
+    await walk(srcDir, "", files);
+
+    if (!files.length) {
+      setProgress(0, "No images found.");
+      startBtn.disabled = false;
+      return;
+    }
+
+    // --- Prepare output root ---
+    let root = outDir;
+    if (subdir) {
+      root = await outDir.getDirectoryHandle(subdir, { create: true });
+    }
+
+    let done = 0, errors = 0;
+    for (const { file, relPath } of files) {
+      const label = relPath + file.name;
+      try {
+        const baseName = file.name.replace(/\.[^.]+$/, "");
+        const relFolder = relPath.slice(0, relPath.lastIndexOf("/") + 1);
+        const target = await ensureDir(root, relFolder);
+
+        // Original → full-size webp
+        const fullBlob = await imageToWebp(file, null, quality);
+        await writeFile(target, baseName + ".webp", fullBlob);
+
+        // Thumbnail → fill (cover) thumbW×thumbH, center-cropped
+        const thumbBlob = await imageToWebp(file, { w: thumbW, h: thumbH }, quality);
+        await writeFile(target, baseName + "_thumb.webp", thumbBlob);
+
+        log(`✔ ${label} → ${baseName}.webp + ${baseName}_thumb.webp`, "ok");
+      } catch (err) {
+        errors++;
+        log(`✘ ${label} — ${err.message || err}`, "err");
+      }
+      done++;
+      setProgress(done / files.length, `${done}/${files.length} — ${label}`);
+    }
+
+    setProgress(1, `Finished: ${done - errors} converted, ${errors} failed.`);
+    startBtn.disabled = false;
+  }
+
+  async function walk(dirHandle, prefix, out) {
+    for await (const entry of dirHandle.values()) {
+      if (entry.kind === "file") {
+        const ext = entry.name.split(".").pop().toLowerCase();
+        if (IMAGE_EXTS.includes(ext)) {
+          const file = await entry.getFile();
+          out.push({ file, relPath: prefix });
+        }
+      } else if (entry.kind === "directory") {
+        await walk(entry, prefix + entry.name + "/", out);
+      }
+    }
+  }
+
+  async function ensureDir(root, relFolder) {
+    let handle = root;
+    if (!relFolder) return handle;
+    for (const part of relFolder.split("/").filter(Boolean)) {
+      handle = await handle.getDirectoryHandle(part, { create: true });
+    }
+    return handle;
+  }
+
+  async function writeFile(dirHandle, name, blob) {
+    const fh = await dirHandle.getFileHandle(name, { create: true });
+    const w = await fh.createWritable();
+    await w.write(blob);
+    await w.close();
+  }
+
+  /**
+   * Decode an image file and encode it as WebP.
+   * thumb = null        → full size, no crop
+   * thumb = {w,h}       → scale to FILL w×h (cover), crop overflow from center
+   */
+  function imageToWebp(file, thumb, quality) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+          let dw = sw, dh = sh;
+
+          if (thumb) {
+            // Scale factor so the image FILLS the box, then crop the excess
+            const scale = Math.max(thumb.w / sw, thumb.h / sh);
+            dw = sw * scale;
+            dh = sh * scale;
+            // Center-crop: source rect in original image space
+            sw = thumb.w / scale;
+            sh = thumb.h / scale;
+            sx = (img.naturalWidth  - sw) / 2;
+            sy = (img.naturalHeight - sh) / 2;
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width  = thumb ? thumb.w : Math.round(dw);
+          canvas.height = thumb ? thumb.h : Math.round(dh);
+          const ctx = canvas.getContext("2d");
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+
+          canvas.toBlob(blob => {
+            URL.revokeObjectURL(url);
+            if (blob) resolve(blob);
+            else reject(new Error("WebP encoding failed"));
+          }, "image/webp", quality);
+        } catch (e) {
+          URL.revokeObjectURL(url);
+          reject(e);
+        }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("could not decode image")); };
+      img.src = url;
+    });
+  }
+
+  function setProgress(frac, text) {
+    barFill.style.width = (frac * 100).toFixed(1) + "%";
+    statusEl.textContent = text;
+  }
+  function log(msg, cls) {
+    const div = document.createElement("div");
+    if (cls) div.className = cls;
+    div.textContent = msg;
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+Depending on whether you prefer a quick command-line tool, a lightweight web app, or an automated script, here are the three most efficient ways to batch convert and resize an entire folder into WebP thumbnails.
+
+---
+
+### Option 1: Command Line via `cwebp` (Google’s Official Tool)
+
+If you have **Google WebP utilities** installed, open your terminal/command prompt in the folder containing your source images and run a one-line loop.
+
+* **macOS / Linux:**
+```bash
+mkdir -p thumbs && for f in *.{jpg,jpeg,png}; do cwebp -q 80 -resize 400 0 "$f" -o "thumbs/${f%.*}-thumb.webp"; done
+
+```
+
+
+* **Windows (PowerShell):**
+```powershell
+New-Item -ItemType Directory -Force -Path .\thumbs; Get-ChildItem -Include *.jpg,*.jpeg,*.png -Recurse | ForEach-Object { cwebp -q 80 -resize 400 0 $_.FullName -o ".\thumbs\$($_.BaseName)-thumb.webp" }
+
+```
+
+
+* **What it does:** Resizes images to **400px wide** (the `0` auto-calculates proportional height), sets quality to **80%**, and saves them as `.webp` in a `thumbs/` subfolder.
+
+---
+
+### Option 2: ImageMagick (Cross-Platform CLI)
+
+If you have **ImageMagick** installed, its `magick mogrify` command is built specifically for batch operations across folders.
+
+```bash
+mkdir -p thumbs && magick mogrify -path thumbs -format webp -thumbnail 400x -quality 80 *.{jpg,jpeg,png}
+
+```
+
+* `-thumbnail 400x`: Scales the width to 400px while maintaining original aspect ratio.
+* `-path thumbs`: Outputs converted files to the designated folder while leaving your source files intact.
+
+---
+
+### Option 3: Node.js / `sharp` (For Web Build Pipelines)
+
+If you work with JavaScript or Node-based workflows, the `sharp` library is one of the fastest image processors available.
+
+1. Install Sharp:
+```bash
+npm install sharp
+
+```
+
+
+2. Create `batch-thumb.js`:
+```javascript
+const fs = require('fs');
+const path = require('path');
+const sharp = require('sharp');
+
+const inputDir = './images';
+const outputDir = './images/thumbs';
+
+if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+
+fs.readdirSync(inputDir).forEach(file => {
+  const ext = path.extname(file).toLowerCase();
+  if (['.jpg', '.jpeg', '.png'].includes(ext)) {
+    const filename = path.parse(file).name;
+    sharp(path.join(inputDir, file))
+      .resize({ width: 400 }) // Auto height
+      .webp({ quality: 80 })
+      .toFile(path.join(outputDir, `${filename}-thumb.webp`))
+      .then(() => console.log(`Processed: ${file}`))
+      .catch(err => console.error(`Error with ${file}:`, err));
+  }
+});
+
+```
+
+
+3. Run: `node batch-thumb.js`
+
+---
+
+### Option 4: Squoosh CLI or GUI (No-Code Options)
+
+* **GUI Tool:** If you prefer a drag-and-drop web app, use **[Squoosh.app](https://squoosh.app/)** (handles batch operations offline in browser) or **XnConvert** (free desktop batch converter).
+* **Squoosh CLI:**
+```bash
+npx @squoosh/cli --webp '{"quality":80}' --resize '{"width":400}' -d ./thumbs *.png *.jpg
+
+```

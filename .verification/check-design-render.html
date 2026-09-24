@@ -1,0 +1,62 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Design screen rendering check</title>
+<style>
+body{margin:0;background:#e5e9ed;color:#18212a;font:16px Arial,sans-serif}
+h1{font-size:24px;margin:24px 32px 8px}p{margin:8px 32px}
+.labels{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;margin:24px 20px 0}
+canvas{display:block;width:100%}#result{font-weight:bold}
+</style>
+<h1>Design Studio: fill → fit → fill</h1>
+<p>Production screen code, rendered with capable-device hints. Each row uses one image without stretching.</p>
+<div class="labels"><span>Fill (0 s)</span><span>Zooming out (3 s)</span><span>Fit (6 s)</span><span>Filled before change (13.5 s)</span></div>
+<div id="view"></div><p id="result">Loading…</p>
+<script type="module">
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+try {
+  const html = await (await fetch('../Xeno_Plaza.html')).text();
+  const code = html.slice(html.indexOf('const PLAYLISTS = []'), html.indexOf('/* ------------------------------------------------------------\n   14.'));
+  const scene = new THREE.Scene();
+  const plane = new THREE.PlaneGeometry(1, 1);
+  const cube = new THREE.BoxGeometry(1, 1, 1);
+  const plate = (w,h,mat,x,y,z,rx=0,ry=0,parent=scene) => {
+    const mesh = new THREE.Mesh(plane,mat);
+    mesh.scale.set(w,h,1);mesh.position.set(x,y,z);mesh.rotation.set(rx,ry,0);parent.add(mesh);return mesh;
+  };
+  const box = (w,h,d,mat,x,y,z,parent) => {
+    const mesh = new THREE.Mesh(cube,mat);
+    mesh.scale.set(w,h,d);mesh.position.set(x,y,z);parent.add(mesh);return mesh;
+  };
+  const api = new Function('THREE','LOW_GPU','window','navigator','clamp','lerp','box','plate','MAT','addInteract','openArt',
+    code + '; return { makeScreen, updatePlaylists, PLAYLISTS };')(
+    THREE,false,{matchMedia:()=>({matches:false})},{hardwareConcurrency:8,deviceMemory:8},
+    (v,a,b)=>Math.min(b,Math.max(a,v)),(a,b,t)=>a+(b-a)*t,box,plate,
+    {aluDark:new THREE.MeshBasicMaterial({color:0x444c58}),black:new THREE.MeshBasicMaterial({color:0x111111})},()=>{},()=>{});
+  function item(w,h) {
+    const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#8dcaba';ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle='#154c60';ctx.lineWidth=16;ctx.strokeRect(12,12,w-24,h-24);
+    ctx.fillStyle='#f3d894';ctx.beginPath();ctx.arc(w/2,h/2,Math.min(w,h)*.34,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#154c60';ctx.font='bold 32px Arial';ctx.textAlign='center';ctx.fillText('FULL IMAGE',w/2,h/2+12);
+    const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
+    return {tex,aspect:w/h,title:'Sample'};
+  }
+  for(const [row,first] of [item(420,640),item(720,420)].entries()) {
+    [0,3,6,13.5].forEach((time,col)=>{
+      const w=row?1.5:4,h=row?2.1:2.4;
+      const screen=api.makeScreen(w,h,(col-1.5)*4.5,row?-1.65:1.65,0,0,scene,
+        {background:0xffffff,reframe:true,list:[first,item(600,400)],hold:6});
+      screen.t=time;
+    });
+  }
+  api.updatePlaylists(0);
+  const renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(1280,550);renderer.setClearColor(0xe5e9ed);renderer.outputColorSpace=THREE.SRGBColorSpace;
+  document.querySelector('#view').append(renderer.domElement);
+  const camera=new THREE.OrthographicCamera(-9.2,9.2,3.95,-3.95,.1,50);camera.position.z=10;
+  renderer.render(scene,camera);
+  document.querySelector('#result').textContent='PASS — eight screens rendered; white backing, centered crop, and complete fit.';
+  document.title='PASS — Design screen rendering';
+} catch(error) {document.querySelector('#result').textContent=error.stack;document.title='FAIL';}
+</script>

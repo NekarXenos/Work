@@ -1,0 +1,179 @@
+/* ==========================================================================
+   ZX SPECTRUM 3D  --  interface chrome
+   The 3D world does the real work; everything here is the bezel around it.
+   ========================================================================== */
+
+:root{
+  --zx-black:#000000; --zx-blue:#0000d7; --zx-red:#d70000; --zx-magenta:#d700d7;
+  --zx-green:#00d700; --zx-cyan:#00d7d7; --zx-yellow:#d7d700; --zx-white:#d7d7d7;
+  --zx-bblue:#0000ff; --zx-bred:#ff0000; --zx-bmagenta:#ff00ff; --zx-bgreen:#00ff00;
+  --zx-bcyan:#00ffff; --zx-byellow:#ffff00; --zx-bwhite:#ffffff;
+  --case:#16161a; --case2:#232329; --edge:#3a3a44;
+  --mono:"Consolas","DejaVu Sans Mono","Courier New",monospace;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#000;color:#d7d7d7;
+  font-family:var(--mono);font-size:14px;-webkit-font-smoothing:none}
+canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+.hidden{display:none !important}
+kbd{background:var(--case2);border:1px solid var(--edge);border-bottom-width:2px;
+  border-radius:3px;padding:0 4px;font-family:var(--mono);font-size:11px;color:#fff}
+code{color:var(--zx-byellow)}
+b{color:#fff}
+
+/* ---- the Sinclair flash ------------------------------------------------- */
+.rainbow{display:flex;height:6px;width:120px;margin:0 0 10px}
+.rainbow i{flex:1}
+.rainbow i:nth-child(1){background:var(--zx-bred)}
+.rainbow i:nth-child(2){background:var(--zx-byellow)}
+.rainbow i:nth-child(3){background:var(--zx-bgreen)}
+.rainbow i:nth-child(4){background:var(--zx-bcyan)}
+
+/* ---- boot --------------------------------------------------------------- */
+#loading,#start{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;background:#07070a;z-index:60;text-align:center}
+#loading h1,#start h1{font-size:26px;letter-spacing:6px;margin:0 0 6px;color:#fff}
+#loading p{color:#8a8a96;margin:4px}
+.tiny{font-size:11px;color:#6a6a76}
+#loadbar{width:280px;height:6px;background:#1a1a22;margin-top:12px;overflow:hidden}
+#loadbar span{display:block;height:100%;width:0;background:linear-gradient(90deg,
+  var(--zx-bred),var(--zx-byellow),var(--zx-bgreen),var(--zx-bcyan));transition:width .25s}
+#start .panel{max-width:620px;padding:28px 34px;background:var(--case);
+  border:1px solid var(--edge);text-align:left;line-height:1.6}
+#start .sub{color:var(--zx-bcyan);margin-top:-2px}
+#start p{color:#a8a8b4}
+#startbtn{display:block;width:100%;margin:18px 0 10px;padding:14px;font-family:var(--mono);
+  font-size:15px;letter-spacing:3px;background:var(--zx-bred);color:#fff;border:0;
+  cursor:pointer;transition:background .15s}
+#startbtn:hover{background:var(--zx-byellow);color:#000}
+
+/* ---- HUD ---------------------------------------------------------------- */
+#hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+#crosshair{position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;
+  opacity:.85}
+#crosshair::before,#crosshair::after{content:"";position:absolute;background:#fff;
+  box-shadow:0 0 2px #000}
+#crosshair::before{left:8px;top:0;width:2px;height:18px}
+#crosshair::after{left:0;top:8px;width:18px;height:2px}
+
+#stats{position:absolute;left:12px;top:12px;padding:8px 10px;background:rgba(8,8,12,.72);
+  border-left:3px solid var(--zx-bcyan);font-size:12px;line-height:1.6;min-width:190px}
+#stats b{color:var(--zx-byellow)}
+#st-fly{color:var(--zx-bgreen)}
+#st-membar{height:4px;background:#1a1a22;margin-top:5px}
+#st-membar span{display:block;height:100%;width:0;background:var(--zx-bgreen)}
+#st-membar.warn span{background:var(--zx-byellow)}
+#st-membar.full span{background:var(--zx-bred)}
+
+#hintbar{position:absolute;left:50%;bottom:110px;transform:translateX(-50%);
+  padding:8px 16px;background:rgba(8,8,12,.8);border:1px solid var(--edge);font-size:13px}
+#hintbar b{color:var(--zx-byellow)}
+
+#palette{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+  pointer-events:auto;text-align:center}
+#swatches{display:flex;gap:3px;padding:5px;background:rgba(8,8,12,.72)}
+#swatches div{width:26px;height:26px;border:2px solid transparent;cursor:pointer}
+#swatches div.sel{border-color:#fff;outline:1px solid #000}
+#swatches div span{display:block;font-size:9px;color:#888;text-align:center;margin-top:26px}
+#matrow{display:flex;gap:3px;margin-top:4px;justify-content:center}
+#matrow button{font-family:var(--mono);font-size:10px;padding:3px 9px;background:rgba(8,8,12,.8);
+  color:#8a8a96;border:1px solid var(--edge);cursor:pointer}
+#matrow button.on{background:var(--zx-bcyan);color:#000;border-color:var(--zx-bcyan)}
+
+/* at a terminal there is nothing to aim at and nothing to place */
+#hud.seated #crosshair,#hud.seated #palette,#hud.seated #hintbar{display:none}
+#hud.seated #stats{left:auto;right:12px}
+
+#toast{position:absolute;left:50%;top:70px;transform:translateX(-50%);padding:7px 14px;
+  background:rgba(8,8,12,.9);border:1px solid var(--zx-byellow);color:var(--zx-byellow);
+  font-size:12px;opacity:0;transition:opacity .25s;white-space:pre}
+#toast.on{opacity:1}
+
+/* ---- terminal toolbar ---------------------------------------------------
+   Sits at the top: the 3D keyboard fills the lower half of the seated view
+   and the bottom row of keys has to stay clickable. */
+#termbar{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:20;
+  display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(8,8,12,.88);
+  border:1px solid var(--edge);font-size:11px;flex-wrap:wrap;justify-content:center;
+  max-width:96vw}
+#termbar button{font-family:var(--mono);font-size:11px;padding:5px 10px;background:var(--case2);
+  color:#d7d7d7;border:1px solid var(--edge);cursor:pointer}
+#termbar button:hover{background:var(--zx-bcyan);color:#000}
+#tb-exit{border-color:var(--zx-bred);color:var(--zx-bred)}
+.tb-title{color:#6a6a76}
+.tb-title b,.tb-mode b{color:var(--zx-byellow)}
+.tb-keys b{color:#44444e;padding:2px 5px;border:1px solid #2a2a32;margin-right:3px}
+.tb-keys b.on{color:#000;background:var(--zx-byellow);border-color:var(--zx-byellow)}
+.tb-preview{color:#6a6a76}
+.tb-preview b{color:var(--zx-bgreen);min-width:70px;display:inline-block}
+
+/* ---- modals ------------------------------------------------------------- */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:40;overflow:auto;
+  padding:26px 16px;display:flex;justify-content:center;align-items:flex-start}
+.modal-inner{position:relative;max-width:1180px;width:100%;padding:24px 28px 18px;
+  background:var(--case);border:1px solid var(--edge);line-height:1.6}
+.modal-inner.narrow{max-width:560px}
+.modal h2{margin:0 0 14px;letter-spacing:4px;font-size:19px;color:#fff}
+.modal h3{margin:0 0 6px;font-size:13px;letter-spacing:2px;color:var(--zx-bcyan)}
+.modal p{color:#a0a0ac;margin:6px 0}
+.modal .close{position:absolute;right:10px;top:8px;background:none;border:0;color:#6a6a76;
+  font-size:24px;cursor:pointer;line-height:1}
+.modal .close:hover{color:var(--zx-bred)}
+.cols{column-count:2;column-gap:34px}
+.cols section{break-inside:avoid;margin-bottom:20px;display:inline-block;width:100%}
+.modal pre{background:#000;border-left:3px solid var(--zx-bgreen);padding:9px 12px;
+  color:var(--zx-bgreen);font-size:12px;overflow-x:auto;margin:8px 0}
+.modal table{width:100%;border-collapse:collapse;font-size:12px}
+.modal td{padding:2px 6px 2px 0;vertical-align:top;color:#9a9aa6}
+.modal td:first-child{white-space:nowrap;width:44%}
+.foot{text-align:center;color:#5a5a66;font-size:11px;border-top:1px solid #24242c;
+  padding-top:10px;margin-top:6px}
+
+/* ---- tape --------------------------------------------------------------- */
+#tapelist{background:#000;border:1px solid #24242c;min-height:150px;max-height:280px;
+  overflow:auto;padding:6px;font-size:12px;margin-bottom:10px}
+#tapelist .blk{display:flex;justify-content:space-between;gap:8px;padding:3px 6px;cursor:pointer}
+#tapelist .blk:hover{background:#16161c}
+#tapelist .blk b{color:var(--zx-byellow);font-weight:normal}
+#tapelist .blk i{color:#5a5a66;font-style:normal;font-size:11px}
+#tapelist .empty{color:#4a4a56;padding:8px}
+.tapebtns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px}
+.tapebtns button{flex:1;min-width:120px;font-family:var(--mono);font-size:11px;padding:8px;
+  background:var(--case2);color:#d7d7d7;border:1px solid var(--edge);cursor:pointer}
+.tapebtns button:hover{background:var(--zx-bcyan);color:#000}
+#tp-project.on{background:var(--zx-bgreen);color:#000;border-color:var(--zx-bgreen)}
+
+/* ---- reusable 3D game assets -------------------------------------------- */
+#hud-assets{position:absolute;right:12px;bottom:18px;pointer-events:auto;padding:10px 12px;
+  background:var(--case);color:var(--zx-bcyan);border:1px solid var(--zx-bcyan);
+  font-family:var(--mono);cursor:pointer}
+#hud.seated #hud-assets{display:none}
+.asset-panel{max-width:730px}
+.asset-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+.asset-panel label{display:flex;flex-direction:column;gap:5px;color:#d7d7d7;font-size:12px}
+.asset-panel input,.asset-panel select{width:100%;padding:9px;background:#09090e;color:#fff;
+  border:1px solid #626271;font:13px var(--mono);min-width:0}
+.asset-panel input:focus,.asset-panel select:focus{outline:2px solid var(--zx-bcyan);outline-offset:2px}
+.asset-panel fieldset{border:1px solid var(--edge);margin:12px 0;padding:10px 14px}
+.asset-panel legend{color:var(--zx-bcyan);font-size:12px}
+.asset-panel .asset-check{flex-direction:row;align-items:center;gap:8px}
+.asset-check input{width:16px;height:16px;accent-color:var(--zx-bcyan)}
+.asset-coordinates{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.asset-actions{margin-top:18px}
+#asset-download{border-color:var(--zx-bcyan);color:var(--zx-bcyan)}
+#asset-download:hover{color:#000}
+.asset-panel .tiny{color:#9a9aa6}
+#asset-status{overflow-wrap:anywhere}
+#asset-status.error{color:#ff8888}
+.blk .asset-export{background:var(--case2);color:var(--zx-bcyan);border:1px solid var(--edge);
+  font:10px var(--mono);cursor:pointer}
+@media(max-width:900px){#hud-assets{bottom:112px;font-size:11px}}
+@media(max-width:600px){.asset-fields{grid-template-columns:1fr}.asset-panel{padding:22px 16px}
+  .asset-panel h2{font-size:16px;letter-spacing:2px}}
+
+#dropzone{position:fixed;inset:0;z-index:70;background:rgba(0,0,60,.75);
+  border:5px dashed var(--zx-byellow);display:flex;align-items:center;justify-content:center}
+#dropzone span{font-size:20px;letter-spacing:5px;color:var(--zx-byellow)}
+
+@media (max-width:900px){ .cols{column-count:1} }

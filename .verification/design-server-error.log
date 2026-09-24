@@ -1,0 +1,5 @@
+127.0.0.1 - - [22/Sep/2026 08:26:00] "HEAD /Xeno_Plaza.html HTTP/1.1" 200 -
+127.0.0.1 - - [22/Sep/2026 08:27:31] "GET /.verification/check-design-render.html HTTP/1.1" 200 -
+127.0.0.1 - - [22/Sep/2026 08:27:31] "GET /Xeno_Plaza.html HTTP/1.1" 200 -
+127.0.0.1 - - [22/Sep/2026 08:27:31] code 404, message File not found
+127.0.0.1 - - [22/Sep/2026 08:27:31] "GET /favicon.ico HTTP/1.1" 404 -

@@ -1,0 +1,510 @@
+@font-face {
+  font-family: "Gathenia";
+  src: url("images/Gathenia.otf") format("opentype");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Brushy";
+  src: url("images/Brushy Strokes.ttf") format("truetype");
+  font-display: swap;
+}
+
+:root {
+  --ink: #003488;
+  --paper: #f4f0e8;
+  --acid: #d7ec45;
+  --line: rgba(20, 32, 32, 0.35);
+  /* Studio_Medium_V2.png intrinsic size; all scene elements share this grid. */
+  --plate-w: 1920;
+  --plate-h: 1072;
+  --stage-h: 100svh;
+  --screen-grey: #231f20;
+}
+
+* { box-sizing: border-box; }
+
+html, body { min-height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: "Trebuchet MS", sans-serif;
+  overflow: hidden;
+}
+
+button { font: inherit; }
+
+.gallery-shell {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  width: 100vw;
+  height: var(--stage-h);
+  overflow: hidden;
+  isolation: isolate;
+  background: #dadbd4;
+}
+
+/* Fit the complete photograph so the side labels and drawers stay visible.
+   Container units keep the typography in proportion to the photographed scene. */
+.studio {
+  position: absolute;
+  container-type: inline-size;
+  z-index: 0;
+  top: 50%;
+  left: 50%;
+  width: min(100vw, calc(var(--stage-h) * var(--plate-w) / var(--plate-h)));
+  height: min(calc(100vw * var(--plate-h) / var(--plate-w)), var(--stage-h));
+  transform: translate(-50%, -50%);
+  background: url("Studio_Medium_V2.png") center center / 100% 100% no-repeat;
+}
+
+.studio::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: "";
+  background: linear-gradient(90deg, rgba(12, 25, 25, 0.18), transparent 30%, transparent 70%, rgba(12, 25, 25, 0.2));
+  pointer-events: none;
+}
+
+/* Painted backing plate for one run of text - a run being a whole field,
+   <br> breaks included, not a single line. The stroke sits 20% proud of the
+   text on three sides and 40% proud on the right, where the brush fades out
+   into speckle. z-index -1 keeps it under the glyphs; `isolation` pins that
+   negative layer to this element so it can never sink behind an ancestor. */
+.brush {
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+  white-space: nowrap;
+}
+
+/* The source PNGs spend their right-hand ~40% on speckle that is too sparse to
+   sit text on, so the image is blown up to 160% and left-anchored: the box keeps
+   the exact 20%/20%/20%/40% geometry, but only the stroke's solid core plus the
+   first of its fray lands inside it, and the sparse tail is clipped away. */
+.brush::before {
+  position: absolute;
+  z-index: -1;
+  top: -20%;
+  left: -20%;
+  width: 160%;
+  height: 140%;
+  content: "";
+  background-image: url("images/long stroke.png");
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 160% 100%;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.masthead {
+  position: absolute;
+  z-index: 4;
+  top: 5.5%;
+  left: 15%;
+  width: 70%;
+  text-align: center;
+  color: var(--ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+  pointer-events: none;
+}
+
+.eyebrow, .instruction, .footer-note, .slot-label {
+  font-size: clamp(11px, 0.9vw, 15px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  margin: 0 0 0.7cqw;
+  font-size: 0.8cqw;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 0;
+  font-family: "Gathenia", Georgia, serif;
+  font-size: 5.4cqw;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.instruction { margin: 1cqw 0 0; font-size: 0.7cqw; line-height: 1.45; }
+
+.instruction-touch { display: none; }
+
+@media (hover: none), (pointer: coarse) {
+  .instruction-hover { display: none; }
+  .instruction-touch { display: inline-block; }
+}
+
+/* Labels occupy the wall immediately to the left of their row. */
+.section-heading {
+  position: absolute;
+  z-index: 3;
+  left: 3.4%;
+  width: 8.4%;
+  margin: 0;
+  color: var(--ink);
+  font-family: "Gathenia", Georgia, serif;
+  font-weight: 400;
+  /* Roomy enough that the stroke clears Gathenia's ascenders and descenders. */
+  line-height: 1.2;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.section-heading--art {
+  top: 36.7%;
+  font-size: 2.6cqw;
+}
+
+.section-heading--design {
+  top: 61.3%;
+  font-size: 1.6cqw;
+}
+
+.hotspot-layer { position: absolute; z-index: 2; inset: 0; }
+
+.hotspot {
+  position: absolute;
+  display: block;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: transparent;
+  cursor: zoom-in;
+  transition: filter 220ms ease;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hotspot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform 220ms ease;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.hotspot:hover, .hotspot:focus-visible { z-index: 5; filter: saturate(1.12); }
+.hotspot:hover img, .hotspot:focus-visible img { transform: scale(1.04); }
+.hotspot:focus-visible { outline: 2px solid var(--acid); outline-offset: 5px; }
+
+/* Move the gallery tops down 113 native pixels (171 -> 284).
+   Trim 3 px from the height to keep the lower edge inside the V2 canvas. */
+.canvas-slot {
+  top: 26.492537%;
+  width: 11.5625%;
+  height: 20.429104%;
+  box-shadow: 0 9px 16px rgba(21, 26, 23, 0.18);
+}
+
+.canvas-slot img {
+  object-fit: cover;
+  background: #f9f8f3;
+}
+
+.canvas-slot:nth-child(1) { left: 14.9479%; }
+.canvas-slot:nth-child(2) { left: 29.6354%; }
+.canvas-slot:nth-child(3) { left: 44.3229%; }
+.canvas-slot:nth-child(4) { left: 59.0104%; }
+.canvas-slot:nth-child(5) { left: 73.7500%; }
+
+/* Monitor tops also move down 113 px; keep the images inside the glass. */
+.monitor-slot {
+  width: 11.1458%;
+  height: 11.007463%;
+}
+
+.monitor-slot img {
+  object-fit: contain;
+  background: var(--screen-grey);
+}
+
+.monitor-slot::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.02) 45%, rgba(0, 0, 0, 0.06));
+  box-shadow: inset 0 0 9px rgba(8, 12, 14, 0.25);
+  pointer-events: none;
+}
+
+.monitor-slot:nth-child(6) { top: 55.876866%; left: 13.5938%; }
+.monitor-slot:nth-child(7) { top: 55.876866%; left: 28.9583%; }
+.monitor-slot:nth-child(8) { top: 55.876866%; left: 44.5313%; }
+.monitor-slot:nth-child(9) { top: 55.783582%; left: 60.1042%; }
+.monitor-slot:nth-child(10) { top: 55.690299%; left: 75.7813%; }
+
+.slot-label {
+  position: absolute;
+  right: 7px;
+  bottom: 6px;
+  padding: 3px 5px;
+  color: var(--paper);
+  background: rgba(20, 32, 32, 0.8);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.hotspot:hover .slot-label, .hotspot:focus-visible .slot-label { opacity: 1; }
+
+.footer-note {
+  position: absolute;
+  z-index: 4;
+  right: 4.2%;
+  bottom: 3.3%;
+  left: 4.2%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.drawer-links {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+}
+
+.drawer-link {
+  position: absolute;
+  top: 78.9%;
+  width: 13.8%;
+  height: 5.3%;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  font-size: 0.82cqw;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  pointer-events: auto;
+}
+
+.drawer-link--email { left: 35.94%; }
+.drawer-link--experiments { left: 50.73%; }
+.email-short, .experiments-short { display: none; }
+
+.drawer-link:hover, .drawer-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.drawer-link:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+.drawer-link .brush::before {
+  left: -10%;
+  width: 120%;
+  background-image: url("images/Thick brush Cyan Bright.png");
+  transition: opacity 180ms ease;
+}
+
+.drawer-link:hover .brush::before, .drawer-link:focus-visible .brush::before {
+  background-image: url("images/long stroke Cyan Deep.png");
+  opacity: 1;
+}
+
+.lightbox {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 5vh 6vw;
+  background: rgba(10, 19, 18, 0.95);
+  animation: appear 180ms ease-out;
+  touch-action: pinch-zoom;
+}
+
+.lightbox[hidden] { display: none; }
+
+.lightbox-figure {
+  display: grid;
+  gap: 14px;
+  width: min(92vw, 1400px);
+  height: min(88vh, 900px);
+  min-height: 0;
+  margin: 0;
+  place-items: center;
+}
+
+.lightbox-figure img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 92vw;
+  max-height: calc(88vh - 48px);
+  object-fit: contain;
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.4);
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.lightbox-figure figcaption {
+  color: var(--acid);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.close-button {
+  position: absolute;
+  top: 2.8vh;
+  right: 3vw;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(215, 236, 69, 0.7);
+  border-radius: 50%;
+  color: var(--acid);
+  background: transparent;
+  font-size: 35px;
+  font-weight: 200;
+  line-height: 35px;
+  cursor: pointer;
+  transition: color 180ms ease, background 180ms ease, transform 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lightbox-nav {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  width: 0;
+  height: 0;
+  padding: 0;
+  border-top: 16px solid transparent;
+  border-bottom: 16px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transform: translateY(-50%);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lightbox-nav--previous {
+  left: 3vw;
+  border-right: 22px solid var(--acid);
+}
+
+.lightbox-nav--next {
+  right: 3vw;
+  border-left: 22px solid var(--acid);
+}
+
+.lightbox-nav:hover, .lightbox-nav:focus-visible {
+  filter: brightness(1.35);
+  outline: none;
+}
+
+.close-button:hover, .close-button:focus-visible {
+  color: var(--ink);
+  background: var(--acid);
+  transform: rotate(90deg);
+}
+
+@keyframes appear { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 700px) {
+  .slot-label { display: none; }
+  .footer-note {
+    bottom: 4%;
+    flex-direction: column;
+    align-items: flex-start;
+    row-gap: 10px;
+  }
+}
+
+/* Studio_Portrait.png is 1024 x 1536. Fit the complete photograph so even
+   tall phones keep the outer screens visible. Hotspots share its exact grid.
+   Surface bounds were detected with: node tools/detect-studio-surfaces.js */
+@media (orientation: portrait) {
+  .stage { background: #e2e2e0; }
+
+  .studio {
+    --plate-w: 1024;
+    --plate-h: 1536;
+    width: min(100vw, calc(var(--stage-h) * var(--plate-w) / var(--plate-h)));
+    height: min(150vw, var(--stage-h));
+    min-width: 0;
+    min-height: 0;
+    background-image: url("Studio_Portrait.png");
+  }
+
+  .hotspot[data-slot="canvas-4"],
+  .hotspot[data-slot="canvas-5"],
+  .hotspot[data-slot="monitor-4"],
+  .hotspot[data-slot="monitor-5"] { display: none; }
+
+  .canvas-slot[data-slot="canvas-1"] {
+    left: 13.964844%; top: 21.940104%; width: 19.921875%; height: 13.476563%;
+  }
+  .canvas-slot[data-slot="canvas-2"] {
+    left: 39.843750%; top: 21.875000%; width: 20.214844%; height: 13.541667%;
+  }
+  .canvas-slot[data-slot="canvas-3"] {
+    left: 66.210938%; top: 21.875000%; width: 20.214844%; height: 13.541667%;
+  }
+  .monitor-slot[data-slot="monitor-1"] {
+    left: 12.109375%; top: 40.625000%; width: 21.093750%; height: 7.877604%;
+  }
+  .monitor-slot[data-slot="monitor-2"] {
+    left: 39.453125%; top: 40.625000%; width: 21.191406%; height: 7.877604%;
+  }
+  .monitor-slot[data-slot="monitor-3"] {
+    left: 66.894531%; top: 40.559896%; width: 21.386719%; height: 7.942708%;
+  }
+
+  /* The portrait photo has narrower side walls: labels sit above its rows. */
+  .section-heading { left: 0; width: 100%; transform: none; }
+  .section-heading--art { top: 17.8%; font-size: 3.5cqw; }
+  .section-heading--design { top: 37%; font-size: 3cqw; }
+  .section-heading--design br { display: none; }
+
+  /* Keep the introduction above the works, including on short phones. */
+  .masthead {
+    top: 3.5%;
+    left: 5%;
+    width: 90%;
+    color: var(--ink);
+  }
+
+  .masthead .eyebrow { margin-bottom: 1.4cqw; }
+  .masthead h1 { font-size: 8cqw; }
+  .masthead .instruction { margin-top: 2cqw; letter-spacing: 0.05em; }
+  .masthead .eyebrow, .masthead .instruction { font-size: clamp(8px, 1.7cqw, 14px); }
+
+  .drawer-link { top: 55.6%; height: 4.2%; font-size: clamp(8px, 1.7cqw, 14px); }
+  .drawer-link--email { left: 6.5%; width: 13.2%; }
+  .drawer-link--experiments { left: 80.6%; width: 14.2%; }
+  .email-full, .experiments-full { display: none; }
+  .email-short, .experiments-short { display: inline; }
+  .footer-note { color: var(--ink); }
+}

@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Pac-Ball 3D</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #050510; overflow: hidden; font-family: sans-serif; touch-action: none; }
+  #overlay, #gameover, #level-transition { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(5,5,16,0.92); z-index: 10; padding: 20px; }
+  #gameover, #level-transition { display: none; }
+  h1 { color: #ffea00; font-size: 2.5rem; letter-spacing: 0.15em; margin-bottom: 1rem; text-align: center; }
+  #level-msg { color: #39ff14; font-size: 3rem; font-weight: bold; letter-spacing: 0.15em; text-shadow: 0 0 20px #39ff14; text-align: center; }
+  p { color: #aaa; margin-bottom: 1.5rem; text-align: center; max-width: 340px; line-height: 1.5; }
+  button { background: #ffea00; color: #050510; border: none; padding: 0.75rem 2.5rem; font-size: 1.1rem; font-weight: bold; border-radius: 6px; cursor: pointer; letter-spacing: 0.1em; }
+  #score { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); color: #ffea00; font-size: 1.1rem; font-weight: bold; letter-spacing: 0.1em; z-index: 5; pointer-events: none; }
+  #level-hud { position: fixed; top: 12px; left: 12px; color: #39ff14; font-size: 1.1rem; font-weight: bold; letter-spacing: 0.1em; z-index: 5; pointer-events: none; }
+  #warp-flash { position: fixed; inset: 0; background: rgba(0,200,255,0.18); pointer-events: none; opacity: 0; z-index: 4; transition: opacity 0.15s; }
+  
+  /* Red Semi-Transparent Indicator Styles */
+  #drag-indicator { 
+    position: fixed; 
+    width: 60px; 
+    height: 60px; 
+    border: 2px solid rgba(255, 0, 0, 0.3); 
+    border-radius: 50%; 
+    pointer-events: none; 
+    display: none; 
+    transform: translate(-50%, -50%); 
+    z-index: 21; 
+  }
+  #drag-knob { 
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    width: 24px; 
+    height: 24px; 
+    background: rgba(255, 0, 0, 0.6); 
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+    border-radius: 50%; 
+    transform: translate(-50%, -50%); 
+  }
+  #trail-canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 20;
+  }
+</style>
+</head>
+<body>
+<div id="overlay">
+  <h1>PAC-BALL</h1>
+  <p>Click and drag anywhere to tilt the maze.</p>
+  <p>Swipe to kick the ball.</p>
+  <p>Eat all dots and avoid the ghost!</p>
+  <p>Use the warp tunnels on the sides.</p>
+  <button id="start-btn">PLAY</button>
+</div>
+<div id="gameover">
+  <h1 id="go-title">GAME OVER</h1>
+  <p id="go-msg">You were caught!</p>
+  <button id="restart-btn">PLAY AGAIN</button>
+</div>
+<div id="level-transition">
+  <h2 id="level-msg">LEVEL 2</h2>
+</div>
+<div id="score">SCORE: 0</div>
+<div id="level-hud">LEVEL: 1</div>
+<div id="warp-flash"></div>
+
+<!-- Touch Feedback Elements -->
+<canvas id="trail-canvas"></canvas>
+<div id="drag-indicator"><div id="drag-knob"></div></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+
+// --- TRAIL CANVAS LOGIC ---
+const trailCanvas = document.getElementById('trail-canvas');
+const trailCtx = trailCanvas.getContext('2d');
+let points = [];
+
+function resizeTrailCanvas() {
+    trailCanvas.width = window.innerWidth;
+    trailCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeTrailCanvas);
+resizeTrailCanvas();
+
+function updateTrail() {
+    trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+    if (points.length < 2) return;
+
+    trailCtx.beginPath();
+    trailCtx.moveTo(points[0].x, points[0].y);
+    
+    for (let i = 1; i < points.length; i++) {
+        // Fade based on age
+        const opacity = (i / points.length) * 0.4;
+        trailCtx.strokeStyle = `rgba(255, 0, 0, ${opacity})`;
+        trailCtx.lineWidth = (i / points.length) * 12;
+        trailCtx.lineTo(points[i].x, points[i].y);
+        trailCtx.stroke();
+        trailCtx.beginPath();
+        trailCtx.moveTo(points[i].x, points[i].y);
+    }
+    
+    // Remove oldest points
+    if (points.length > 20) points.shift();
+    // Decay points if not dragging
+    if (!isDragging && points.length > 0) points.shift();
+}
+
+// --- AUDIO ENGINE ---
+let audioCtx, ghostOsc, ghostGain, gobbleOsc, gobbleGain;
+let audioStarted = false;
+let ghostAudioTimer = 0; 
+
+const aHarmonicMinorIntervals = [0, 2, 3, 5, 7, 8, 11];
+const aHarmonicMinorFreqs = [];
+for (let octave = -2; octave <= 2; octave++) {
+  for (let i = 0; i < aHarmonicMinorIntervals.length; i++) {
+    const n = (octave * 12) + aHarmonicMinorIntervals[i];
+    aHarmonicMinorFreqs.push(440 * Math.pow(2, n / 12));
+  }
+}
+
+function snapToScale(freq) {
+  let closest = aHarmonicMinorFreqs[0];
+  let minDiff = Math.abs(freq - closest);
+  for (let i = 1; i < aHarmonicMinorFreqs.length; i++) {
+    const diff = Math.abs(freq - aHarmonicMinorFreqs[i]);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = aHarmonicMinorFreqs[i];
+    }
+  }
+  return closest;
+}
+
+function initAudio() {
+  if (audioStarted) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return;
+  }
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  
+  ghostOsc = audioCtx.createOscillator();
+  ghostOsc.type = 'sawtooth';
+  ghostGain = audioCtx.createGain();
+  ghostGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  const ghostFilter = audioCtx.createBiquadFilter();
+  ghostFilter.type = 'lowpass';
+  ghostFilter.frequency.setValueAtTime(600, audioCtx.currentTime);
+  ghostOsc.connect(ghostFilter);
+  ghostFilter.connect(ghostGain);
+  ghostGain.connect(audioCtx.destination);
+  ghostOsc.start();
+
+  gobbleOsc = audioCtx.createOscillator();
+  gobbleOsc.type = 'triangle';
+  gobbleGain = audioCtx.createGain();
+  gobbleGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  gobbleOsc.connect(gobbleGain);
+  gobbleGain.connect(audioCtx.destination);
+  gobbleOsc.start();
+
+  audioStarted = true;
+}
+
+function playGobbleSound(x, z, velocity) {
+  if (!audioStarted) return;
+  const now = audioCtx.currentTime;
+  const duration = 0.1;
+  const rawFreqX = 200 + ((x + currW/2) / currW) * 600;
+  const rawFreqZ = 200 + ((z + currH/2) / currH) * 600;
+  const freqX = snapToScale(rawFreqX);
+  const freqZ = snapToScale(rawFreqZ);
+  const vol = Math.min(0.4, velocity / 32);
+
+  gobbleOsc.frequency.cancelScheduledValues(now);
+  gobbleOsc.frequency.setValueAtTime(freqX, now);
+  gobbleOsc.frequency.exponentialRampToValueAtTime(freqZ, now + duration);
+
+  gobbleGain.gain.cancelScheduledValues(now);
+  gobbleGain.gain.setValueAtTime(vol, now);
+  gobbleGain.gain.linearRampToValueAtTime(0, now + duration);
+}
+
+// --- LEVEL DIMENSIONS ---
+const isPortrait = window.innerHeight > window.innerWidth;
+const BASE_WIDTH  = isPortrait ? 13 : 19;
+const BASE_HEIGHT = isPortrait ? 19 : 13;
+let currW = BASE_WIDTH;
+let currH = BASE_HEIGHT;
+let level = 1;
+
+const EMPTY = 0, WALL = 1, OBSTACLE = 2, EMPTY_NO_DOT = 3, GHOST_DOOR = 4;
+const GROUP_WALL = 1, GROUP_PLAYER = 2, GROUP_GHOST = 4, GROUP_DOOR = 8;
+
+let warpRow, WARP_LEFT_X, WARP_RIGHT_X, warpLeftPX, warpRightPX, warpPZ, warpXLimit;
+let spawnPos, ghostSpawnPos;
+let score=0, totalDots=0, dotsEaten=0, isPlaying=false, isHunterMode=false, hunterTimer=0;
+let warpCooldownPlayer=0, warpCooldownGhost=0; 
+
+const activeDots=[], activeCherries=[];
+let levelObjects = []; 
+let dotsMesh, portalLeft, portalRight, warpLightL, warpLightR;
+
+// --- SHARED GEOMETRIES & MATERIALS ---
+const wallGeo = new THREE.BoxGeometry(1,1,1);
+const wallMat = new THREE.MeshStandardMaterial({ color:0x1919A6, emissive:0x050540 });
+const obsMat  = new THREE.MeshStandardMaterial({ color:0x3333FF, emissive:0x111150 });
+const doorMat = new THREE.MeshStandardMaterial({ color:0xff00bb, transparent:true, opacity:0.4 });
+const dotGeo = new THREE.SphereGeometry(0.12,8,8);
+const dotMat = new THREE.MeshStandardMaterial({color:0xffeebb});
+const cherryGeo = new THREE.SphereGeometry(0.15);
+const cherryMat = new THREE.MeshStandardMaterial({color:0xff0055});
+const portalGeo = new THREE.TorusGeometry(0.45, 0.08, 12, 32);
+const portalMat = new THREE.MeshStandardMaterial({ color:0x00ccff, emissive:0x005588 });
+const dummy = new THREE.Object3D();
+const boxShape = new CANNON.Box(new CANNON.Vec3(0.5,0.5,0.5));
+const hiddenMatrix = new THREE.Matrix4().makeTranslation(0,-100,0);
+
+// --- SCENE SETUP ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050510);
+scene.fog = new THREE.Fog(0x050510, 20, 100);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+function updateCameraFit() {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  const padW = currW + 2;
+  const padH = currH + 2;
+  const fovRad = (camera.fov * Math.PI) / 180;
+  const distH = padH / (2 * Math.tan(fovRad / 2));
+  const distW = (padW / camera.aspect) / (2 * Math.tan(fovRad / 2));
+  const finalDist = Math.max(distH, distW);
+  camera.position.set(0, finalDist, finalDist * 0.35);
+  camera.lookAt(0,0,0);
+}
+window.addEventListener('resize', updateCameraFit);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+dirLight.castShadow = true;
+scene.add(dirLight);
+
+const mazeGroup = new THREE.Group();
+scene.add(mazeGroup);
+
+// --- PHYSICS ENGINE ---
+const world = new CANNON.World();
+world.gravity.set(0,-40,0);
+world.allowSleep = false;
+world.solver.iterations = 40;
+
+const phyMat = new CANNON.Material('std');
+world.addContactMaterial(new CANNON.ContactMaterial(phyMat, phyMat, { friction:0.0, restitution:0.0 }));
+
+const floorBody = new CANNON.Body({ mass:0, material:phyMat, collisionFilterGroup:GROUP_WALL, collisionFilterMask:GROUP_PLAYER|GROUP_GHOST });
+floorBody.addShape(new CANNON.Plane());
+floorBody.quaternion.setFromEuler(-Math.PI/2,0,0);
+world.addBody(floorBody);
+
+// --- PLAYER ---
+const ballRadius = 0.35;
+const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(ballRadius,32,32), new THREE.MeshStandardMaterial({color:0xffea00}));
+ballMesh.castShadow = true; 
+ballMesh.add(new THREE.PointLight(0x887500, 0.8, 6));
+
+const morphShell = new THREE.Mesh(
+  new THREE.SphereGeometry(ballRadius + 0.03, 8, 8),
+  new THREE.MeshBasicMaterial({ color: 0xff8800, wireframe: true, transparent: true, opacity: 0 })
+);
+ballMesh.add(morphShell);
+mazeGroup.add(ballMesh);
+
+const ballBody = new CANNON.Body({ mass:1, material:phyMat, linearDamping:0.35, collisionFilterGroup:GROUP_PLAYER, collisionFilterMask:GROUP_WALL|GROUP_GHOST|GROUP_DOOR });
+ballBody.addShape(new CANNON.Sphere(ballRadius));
+world.addBody(ballBody);
+
+// --- GHOST ---
+const ghostGroup = new THREE.Group();
+const ghostMat = new THREE.MeshStandardMaterial({color:0xeeff14, emissive:0xeeff00});
+const ghostMainBody = new THREE.Mesh(new THREE.SphereGeometry(0.35), ghostMat);
+ghostGroup.add(ghostMainBody);
+const ghostLight = new THREE.PointLight(0x39ff14, 1.2, 5);
+ghostGroup.add(ghostLight); 
+
+const eyeGeo = new THREE.SphereGeometry(0.08, 8, 8);
+const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+eyeL.position.set(-0.15, 0.05, 0.25);
+eyeR.position.set(0.15, 0.05, 0.25);
+ghostGroup.add(eyeL, eyeR);
+
+mazeGroup.add(ghostGroup);
+
+const ghostRadius = 0.35;
+const ghostBody = new CANNON.Body({ mass:1, material:phyMat, linearDamping:0.6, collisionFilterGroup:GROUP_GHOST, collisionFilterMask:GROUP_WALL|GROUP_PLAYER });
+ghostBody.addShape(new CANNON.Sphere(ghostRadius));
+world.addBody(ghostBody);
+
+
+// --- DYNAMIC LEVEL GENERATION ---
+function clearLevel() {
+  levelObjects.forEach(obj => {
+    if (obj.isMesh || obj.isGroup || obj.isLight) {
+      mazeGroup.remove(obj);
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material && obj.material !== wallMat && obj.material !== obsMat && obj.material !== doorMat && obj.material !== dotMat && obj.material !== cherryMat && obj.material !== portalMat) {
+          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+          else obj.material.dispose();
+      }
+    } else if (obj instanceof CANNON.Body) {
+      world.removeBody(obj);
+    }
+  });
+  levelObjects = [];
+  activeDots.length = 0;
+  activeCherries.length = 0;
+}
+
+function buildLevel() {
+  spawnPos = null;
+  ghostSpawnPos = null;
+  
+  dirLight.position.set(currW/2, 30, currH/2);
+  
+  const cx = Math.floor(currW/2), cy = Math.floor(currH/2);
+  warpRow = cy; 
+  WARP_LEFT_X  = 0;
+  WARP_RIGHT_X = currW - 1;
+  warpPZ      = warpRow - currH/2 + 0.5;
+  warpLeftPX  = WARP_LEFT_X  - currW/2 + 0.5;
+  warpRightPX = WARP_RIGHT_X - currW/2 + 0.5;
+  warpXLimit  = (currW/2) - 0.2;
+
+  const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(currW, currH), new THREE.MeshStandardMaterial({color:0x111111}));
+  floorMesh.rotation.x = -Math.PI/2; floorMesh.receiveShadow = true;
+  mazeGroup.add(floorMesh);
+  levelObjects.push(floorMesh);
+
+  const grid = [];
+  for (let y = 0; y < currH; y++) {
+    let row = [];
+    for (let x = 0; x < currW; x++) {
+      let dx = Math.min(x, currW-1-x), dy = Math.min(y, currH-1-y);
+      row.push((Math.min(dx,dy) % 2 === 0) ? WALL : EMPTY);
+    }
+    grid.push(row);
+  }
+
+  for(let x=0; x < currW; x++) {
+    if (grid[warpRow][x] === WALL || grid[warpRow][x] === OBSTACLE) {
+       if (x < cx - 2 || x > cx + 2) grid[warpRow][x] = EMPTY;
+    }
+  }
+
+  const addObstacles = (startX, startY, dX, dY, len, cutDX, cutDY) => {
+    let lastS = -10;
+    for (let chunk = 0; chunk < len; chunk += 5) {
+      let possible = [];
+      for (let s = chunk; s < chunk+5 && s < len; s++)
+        if (s%2===0 && s>=2 && s<=len-3 && (s-lastS)>=4) {
+          const ox = startX+s*dX, oy = startY+s*dY;
+          if (oy !== warpRow) possible.push(s);
+        }
+      if (possible.length > 0) {
+        let s = possible[Math.floor(Math.random()*possible.length)]; lastS = s;
+        let ox = startX+s*dX, oy = startY+s*dY;
+        grid[oy][ox] = OBSTACLE;
+        grid[oy-dY+cutDY][ox-dX+cutDX] = EMPTY;
+        grid[oy+dY+cutDY][ox+dX+cutDX] = EMPTY;
+      }
+    }
+  };
+
+  const maxD = Math.floor(Math.min(currW,currH)/2);
+  for (let d = 1; d < maxD-2; d += 2) {
+    addObstacles(d+1, d,          1,  0, currW-2*d-2,  0,  1);
+    addObstacles(currW-1-d, d+1,  0,  1, currH-2*d-2,-1,  0);
+    addObstacles(currW-2-d, currH-1-d,-1,0,currW-2*d-2, 0, -1);
+    addObstacles(d, currH-2-d,   0, -1, currH-2*d-2,  1,  0);
+  }
+
+  for (let y = cy-2; y <= cy+2; y++)
+    for (let x = cx-2; x <= cx+2; x++)
+      grid[y][x] = (y===cy-2||y===cy+2||x===cx-2||x===cx+2) ? WALL : EMPTY_NO_DOT;
+
+  for (let y = cy-3; y <= cy+3; y++) {
+    for (let x = cx-3; x <= cx+3; x++) {
+      if (y >= 0 && y < currH && x >= 0 && x < currW) {
+        const isGhostHouseInterior = (y >= cy-2 && y <= cy+2 && x >= cx-2 && x <= cx+2);
+        if (!isGhostHouseInterior && (grid[y][x] === WALL || grid[y][x] === OBSTACLE)) {
+            grid[y][x] = EMPTY;
+        }
+      }
+    }
+  }
+
+  grid[cy-2][cx] = GHOST_DOOR;
+  grid[cy-3][cx] = EMPTY;
+
+  let connected = false, iter = 0;
+  while (!connected && iter < 100) {
+    iter++;
+    let visited = Array(currH).fill().map(()=>Array(currW).fill(false));
+    let q = [[1,1]]; visited[1][1] = true;
+    while (q.length) {
+      let [qx,qy] = q.shift();
+      [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dy])=>{
+        let nx=qx+dx, ny=qy+dy;
+        if (nx>0&&nx<currW-1&&ny>0&&ny<currH-1&&!visited[ny][nx]&&
+            (grid[ny][nx]===EMPTY||grid[ny][nx]===EMPTY_NO_DOT||grid[ny][nx]===GHOST_DOOR)) {
+          visited[ny][nx]=true; q.push([nx,ny]);
+        }
+      });
+    }
+    let unvisited = null;
+    for (let y=1;y<currH-1;y++) { for (let x=1;x<currW-1;x++) { if(grid[y][x]===EMPTY&&!visited[y][x]){unvisited={x,y};break;} } if(unvisited)break; }
+    if (!unvisited) { connected=true; break; }
+    let nearest=null, minD=Infinity;
+    for (let y=1;y<currH-1;y++) for (let x=1;x<currW-1;x++)
+      if (visited[y][x]&&grid[y][x]!==WALL&&grid[y][x]!==OBSTACLE) {
+        let d=Math.abs(x-unvisited.x)+Math.abs(y-unvisited.y);
+        if(d<minD){minD=d;nearest={x,y};}
+      }
+    if (nearest) {
+      let px=unvisited.x, py=unvisited.y;
+      while (px!==nearest.x||py!==nearest.y) {
+        if (Math.abs(nearest.x-px)>Math.abs(nearest.y-py)) px+=(px<nearest.x?1:-1);
+        else py+=(py<nearest.y?1:-1);
+        if (!(py>=cy-2&&py<=cy+2&&px>=cx-2&&px<=cx+2))
+          if (grid[py][px]===WALL||grid[py][px]===OBSTACLE) grid[py][px]=EMPTY;
+      }
+    } else grid[unvisited.y][unvisited.x]=WALL;
+  }
+
+  let wc=0, oc=0, dc=0;
+  for (let y=0;y<currH;y++) for (let x=0;x<currW;x++) {
+    if (grid[y][x]===WALL) wc++;
+    else if (grid[y][x]===OBSTACLE) oc++;
+    else if (grid[y][x]===EMPTY) dc++;
+  }
+
+  const wallsMesh = new THREE.InstancedMesh(wallGeo, wallMat, wc);
+  const obsMesh   = new THREE.InstancedMesh(wallGeo, obsMat,  oc);
+  dotsMesh = new THREE.InstancedMesh(dotGeo, dotMat, dc);
+
+  let wi=0, oi=0, di=0;
+  for (let y=0;y<currH;y++) {
+    for (let x=0;x<currW;x++) {
+      let px = x-currW/2+0.5, py=0.5, pz = y-currH/2+0.5;
+      dummy.position.set(px,py,pz); dummy.updateMatrix();
+      const isWarpGate = (y===warpRow && (x===WARP_LEFT_X || x===WARP_RIGHT_X));
+
+      if (grid[y][x]===GHOST_DOOR) {
+        const dBody = new CANNON.Body({ mass:0, material:phyMat, collisionFilterGroup:GROUP_DOOR, collisionFilterMask:GROUP_PLAYER });
+        dBody.addShape(boxShape); dBody.position.set(px,py,pz); world.addBody(dBody);
+        const dMesh = new THREE.Mesh(wallGeo, doorMat); dMesh.position.set(px,py,pz); mazeGroup.add(dMesh);
+        levelObjects.push(dBody, dMesh);
+      } else if (grid[y][x]===WALL || grid[y][x]===OBSTACLE) {
+        if (!isWarpGate) {
+          const wBody = new CANNON.Body({ mass:0, material:phyMat, collisionFilterGroup:GROUP_WALL, collisionFilterMask:GROUP_PLAYER|GROUP_GHOST });
+          wBody.addShape(boxShape); wBody.position.set(px,py,pz); world.addBody(wBody);
+          levelObjects.push(wBody);
+          if (grid[y][x]===WALL) wallsMesh.setMatrixAt(wi++, dummy.matrix);
+          else obsMesh.setMatrixAt(oi++, dummy.matrix);
+        }
+      } else {
+        if (!spawnPos && x===1 && y===1) spawnPos={x:px,y:py,z:pz};
+        if (grid[y][x]===EMPTY_NO_DOT && x===cx && y===cy) ghostSpawnPos={x:px,y:py,z:pz};
+        if (grid[y][x]===EMPTY) {
+          const isCherry = (x===1&&y===currH-2)||(x===currW-2&&y===1)||(x===currW-2&&y===currH-2);
+          if (isCherry) {
+            const cg = new THREE.Group();
+            const c1 = new THREE.Mesh(cherryGeo, cherryMat);
+            c1.position.set(-0.1,0.15,0); cg.add(c1);
+            cg.position.set(px,0,pz); mazeGroup.add(cg);
+            activeCherries.push({group:cg, x:px, z:pz, eaten:false});
+            levelObjects.push(cg);
+          } else {
+            dummy.position.set(px,0.2,pz); dummy.updateMatrix();
+            dotsMesh.setMatrixAt(di, dummy.matrix);
+            activeDots.push({index:di++, x:px, z:pz, eaten:false});
+          }
+        }
+      }
+    }
+  }
+
+  mazeGroup.add(wallsMesh); mazeGroup.add(obsMesh); mazeGroup.add(dotsMesh);
+  levelObjects.push(wallsMesh, obsMesh, dotsMesh);
+  totalDots = di;
+
+  portalLeft = new THREE.Mesh(portalGeo, portalMat);
+  portalLeft.rotation.y = Math.PI/2; 
+  portalLeft.position.set(warpLeftPX - 0.1, 0.5, warpPZ);
+  mazeGroup.add(portalLeft);
+  
+  portalRight = new THREE.Mesh(portalGeo, portalMat);
+  portalRight.rotation.y = Math.PI/2;
+  portalRight.position.set(warpRightPX + 0.1, 0.5, warpPZ);
+  mazeGroup.add(portalRight);
+
+  warpLightL = new THREE.PointLight(0x00ccff, 2, 6);
+  warpLightL.position.set(warpLeftPX, 0.5, warpPZ);
+  mazeGroup.add(warpLightL);
+  
+  warpLightR = new THREE.PointLight(0x00ccff, 2, 6);
+  warpLightR.position.set(warpRightPX, 0.5, warpPZ);
+  mazeGroup.add(warpLightR);
+
+  levelObjects.push(portalLeft, portalRight, warpLightL, warpLightR);
+
+  updateCameraFit();
+}
+
+// --- INTERACTION ---
+let targetTiltX=0, targetTiltZ=0;
+const MAX_TILT = 0.3;
+const MAX_DRAG_DIST = 100;
+let isDragging = false;
+let startX = 0, startY = 0;
+let lastDragX = 0, lastDragY = 0;
+const dragIndicator = document.getElementById('drag-indicator');
+const dragKnob = document.getElementById('drag-knob');
+
+function handleStart(e) {
+  if (!isPlaying) return;
+  initAudio();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  
+  isDragging = true; 
+  startX = clientX; 
+  startY = clientY;
+  lastDragX = clientX;
+  lastDragY = clientY;
+  
+  dragIndicator.style.display = 'block';
+  dragIndicator.style.left = startX + 'px'; 
+  dragIndicator.style.top = startY + 'px';
+  
+  points = [{x: clientX, y: clientY}]; // Reset trail
+  updateDrag(clientX, clientY);
+}
+
+function handleMove(e) {
+  if (!isDragging || !isPlaying) return;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  
+  let dxNorm = (clientX - lastDragX) / window.innerWidth;
+  let dyNorm = (clientY - lastDragY) / window.innerHeight;
+  let vxAdd = dxNorm * 60;
+  let vzAdd = dyNorm * 60;
+  vxAdd = Math.max(-25, Math.min(25, vxAdd));
+  vzAdd = Math.max(-25, Math.min(25, vzAdd));
+  ballBody.velocity.x += vxAdd; 
+  ballBody.velocity.z += vzAdd;
+  lastDragX = clientX;
+  lastDragY = clientY;
+  
+  // Update trail points
+  points.push({x: clientX, y: clientY});
+  
+  updateDrag(clientX, clientY);
+}
+
+function handleEnd() {
+  isDragging = false; targetTiltX = 0; targetTiltZ = 0;
+  dragIndicator.style.display = 'none';
+}
+
+function updateDrag(clientX, clientY) {
+  let dx = clientX - startX, dy = clientY - startY;
+  let dist = Math.sqrt(dx*dx + dy*dy);
+  if (dist > MAX_DRAG_DIST) { dx = (dx/dist) * MAX_DRAG_DIST; dy = (dy/dist) * MAX_DRAG_DIST; dist = MAX_DRAG_DIST; }
+  dragKnob.style.left = `calc(50% + ${dx}px)`;
+  dragKnob.style.top = `calc(50% + ${dy}px)`;
+  targetTiltZ = -(dx / MAX_DRAG_DIST) * MAX_TILT;
+  targetTiltX = (dy / MAX_DRAG_DIST) * MAX_TILT;
+}
+
+window.addEventListener('mousedown', handleStart);
+window.addEventListener('mousemove', handleMove);
+window.addEventListener('mouseup', handleEnd);
+window.addEventListener('touchstart', handleStart, { passive: false });
+window.addEventListener('touchmove', handleMove, { passive: false });
+window.addEventListener('touchend', handleEnd);
+
+const warpFlash = document.getElementById('warp-flash');
+let flashTimer = 0;
+function triggerWarpFlash() { warpFlash.style.opacity='1'; flashTimer=0.25; }
+
+function resetGhostVisuals() {
+    ghostMat.color.setHex(0x39ff14);
+    ghostMat.emissive.setHex(0x115500);
+    ghostLight.color.setHex(0x39ff14);
+    eyeMat.color.setHex(0x000000);
+}
+
+function startGame(fullReset = true) {
+  if (fullReset) {
+      score = 0;
+      level = 1;
+      currW = BASE_WIDTH;
+      currH = BASE_HEIGHT;
+  }
+  
+  dotsEaten = 0; isHunterMode = false; hunterTimer = 0; 
+  warpCooldownPlayer = 0; warpCooldownGhost = 0; 
+  isPlaying = true; targetTiltX = 0; targetTiltZ = 0;
+  
+  document.getElementById('score').innerText = `SCORE: ${score}`;
+  document.getElementById('level-hud').innerText = `LEVEL: ${level}`;
+  document.getElementById('gameover').style.display = 'none';
+  document.getElementById('level-transition').style.display = 'none';
+  
+  clearLevel();
+  buildLevel();
+  
+  ballBody.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
+  ballBody.velocity.set(0,0,0); ballBody.angularVelocity.set(0,0,0);
+  ghostBody.position.set(ghostSpawnPos.x, ghostSpawnPos.y, ghostSpawnPos.z);
+  ghostBody.velocity.set(0,0,0); ghostBody.angularVelocity.set(0,0,0);
+  
+  resetGhostVisuals();
+  morphShell.material.opacity = 0;
+  
+  initAudio();
+}
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  document.getElementById('overlay').style.display='none';
+  startGame(true);
+});
+document.getElementById('restart-btn').addEventListener('click', () => startGame(true));
+
+const clock = new THREE.Clock();
+const WARP_EXIT_SPEED = 5.5;
+
+function handleBodyWarp(body, isPlayer) {
+  const cooldown = isPlayer ? warpCooldownPlayer : warpCooldownGhost;
+  if (cooldown > 0) return;
+  const bx = body.position.x, bz = body.position.z;
+  if (Math.abs(bz - warpPZ) > 0.8) return;
+  
+  if (bx < -warpXLimit) {
+    body.position.x = warpXLimit - 0.2;
+    body.velocity.x = -WARP_EXIT_SPEED;
+    if (isPlayer) { warpCooldownPlayer = 0.5; triggerWarpFlash(); } else warpCooldownGhost = 0.5;
+  } else if (bx > warpXLimit) {
+    body.position.x = -warpXLimit + 0.2;
+    body.velocity.x = WARP_EXIT_SPEED;
+    if (isPlayer) { warpCooldownPlayer = 0.5; triggerWarpFlash(); } else warpCooldownGhost = 0.5;
+  }
+}
+
+function applyHardBoundaries(body) {
+    const xLimit = currW / 2 - 0.5;
+    const zLimit = currH / 2 - 0.5;
+    const isWarpZone = Math.abs(body.position.z - warpPZ) < 0.8;
+    if (!isWarpZone) {
+        if (body.position.x > xLimit) body.position.x = xLimit;
+        if (body.position.x < -xLimit) body.position.x = -xLimit;
+    }
+    if (body.position.z > zLimit) body.position.z = zLimit;
+    if (body.position.z < -zLimit) body.position.z = -zLimit;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  
+  // Always update visual trail feedback regardless of play state
+  updateTrail();
+  
+  if (!isPlaying) { 
+    if (audioStarted) ghostGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+    renderer.render(scene, camera); 
+    return; 
+  }
+  const dt = Math.min(clock.getDelta(), 0.1);
+
+  if (warpCooldownPlayer > 0) warpCooldownPlayer -= dt;
+  if (warpCooldownGhost > 0) warpCooldownGhost -= dt;
+  if (flashTimer > 0) { flashTimer -= dt; if (flashTimer <= 0) warpFlash.style.opacity='0'; }
+
+  if (audioStarted) {
+    const bpos = ballBody.position;
+    const gpos = ghostBody.position;
+    const distToGhost = Math.hypot(bpos.x - gpos.x, bpos.z - gpos.z);
+    
+    // Control the slide duration
+    const cycleDuration = isHunterMode ? 0.32 : 0.5;
+    
+    ghostAudioTimer += dt;
+    if (ghostAudioTimer >= cycleDuration) {
+        ghostAudioTimer = ghostAudioTimer % cycleDuration;
+    }
+
+    // Normalized time t (0 to 1) inside the cycle
+    const t = ghostAudioTimer / cycleDuration;
+    // PingPong goes 0 -> 1 -> 0 perfectly across the cycle
+    const pingPong = t < 0.5 ? (t * 2) : (2 - (t * 2));
+
+    // Get the base scale notes snapped to the ghost's X and Z(Y) positions
+    const freqX = snapToScale(180 + ((gpos.x + currW/2) / currW) * 600);
+    const freqZ = snapToScale(180 + ((gpos.z + currH/2) / currH) * 600);
+    
+    // Smoothly slide between those locked notes
+    const targetFreq = freqX + (freqZ - freqX) * pingPong;
+
+    ghostOsc.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.02);
+
+    let volume = Math.max(0, 0.5 - (distToGhost / 15));
+    if (isHunterMode) volume *= 0.7;
+    ghostGain.gain.setTargetAtTime(volume, audioCtx.currentTime, 0.05);
+  }
+
+  if (portalLeft && portalRight) {
+      const pulse = 0.85 + 0.15*Math.sin(Date.now()*0.004);
+      portalLeft.scale.setScalar(pulse); portalRight.scale.setScalar(pulse);
+      warpLightL.intensity = 1.2 + 0.8*Math.sin(Date.now()*0.004);
+      warpLightR.intensity = 1.2 + 0.8*Math.sin(Date.now()*0.004+1);
+  }
+
+  mazeGroup.rotation.x += (targetTiltX - mazeGroup.rotation.x)*8*dt;
+  mazeGroup.rotation.z += (targetTiltZ - mazeGroup.rotation.z)*8*dt;
+  world.gravity.set(-Math.sin(mazeGroup.rotation.z)*60, -40, Math.sin(mazeGroup.rotation.x)*60);
+
+  if (isHunterMode) {
+    hunterTimer -= dt;
+    if (hunterTimer <= 0) { 
+        isHunterMode = false; 
+        resetGhostVisuals();
+        morphShell.material.opacity = 0;
+    } else {
+        if (hunterTimer < 2 && Math.floor(hunterTimer*10)%2===0) {
+            ghostMat.color.setHex(0xffffff);
+            ghostLight.color.setHex(0xffffff);
+            eyeMat.color.setHex(0x000000);
+        } else {
+            ghostMat.color.setHex(0x0033ff);
+            ghostLight.color.setHex(0x0033ff);
+            eyeMat.color.setHex(0xffffff);
+        }
+        morphShell.material.opacity = 0.8;
+        morphShell.rotation.x += 20 * dt;
+        morphShell.rotation.z += 15 * dt;
+
+        let gx = -Math.sin(mazeGroup.rotation.z);
+        let gz = Math.sin(mazeGroup.rotation.x);
+        let maxSpeed = 12; 
+        let domVx = 0, domVz = 0;
+        if (Math.abs(gx) > 0.05 || Math.abs(gz) > 0.05) {
+            if (Math.abs(gx) > Math.abs(gz)) domVx = Math.sign(gx) * maxSpeed;
+            else domVz = Math.sign(gz) * maxSpeed;
+        }
+        
+        let lerpFactor = Math.min(15 * dt, 1.0);
+        ballBody.velocity.x += (domVx - ballBody.velocity.x) * lerpFactor;
+        ballBody.velocity.z += (domVz - ballBody.velocity.z) * lerpFactor;
+        ballBody.applyForce(new CANNON.Vec3(-world.gravity.x * ballBody.mass, 0, -world.gravity.z * ballBody.mass), ballBody.position);
+        ballBody.angularVelocity.set(ballBody.velocity.z * 4, 0, -ballBody.velocity.x * 4);
+    }
+  }
+
+  const bpos = ballBody.position, gpos = ghostBody.position;
+  let gdx = bpos.x-gpos.x, gdz = bpos.z-gpos.z;
+  if (Math.abs(gpos.x) < 1.8 && gpos.z > -2.2 && gpos.z < 1.8 && !isHunterMode) { gdx = 0-gpos.x; gdz = -3.0-gpos.z; }
+  let gdist = Math.sqrt(gdx*gdx+gdz*gdz);
+  if (gdist > 0.05) {
+    let strength = isHunterMode ? 18 : 12;
+    if (isHunterMode) { gdx=-gdx; gdz=-gdz; }
+    ghostBody.applyForce(new CANNON.Vec3((gdx/gdist)*strength, 0, (gdz/gdist)*strength), gpos);
+    const targetRotation = Math.atan2(ghostBody.velocity.x, ghostBody.velocity.z);
+    ghostGroup.rotation.y += (targetRotation - ghostGroup.rotation.y) * dt * 5;
+    const eyeShiftX = Math.sign(ghostBody.velocity.x) * 0.03;
+    eyeL.position.x = -0.15 + eyeShiftX;
+    eyeR.position.x = 0.15 + eyeShiftX;
+  }
+  
+  const spd = ghostBody.velocity.length();
+  if (spd > 6) ghostBody.velocity.scale(6/spd, ghostBody.velocity);
+
+  const MAX_PLAYER_SPEED = 16;
+  const speedXZ = Math.sqrt(ballBody.velocity.x**2 + ballBody.velocity.z**2);
+  if (speedXZ > MAX_PLAYER_SPEED) {
+      const factor = MAX_PLAYER_SPEED / speedXZ;
+      ballBody.velocity.x *= factor;
+      ballBody.velocity.z *= factor;
+  }
+
+  world.step(1/60, dt, 10);
+  applyHardBoundaries(ballBody);
+  applyHardBoundaries(ghostBody);
+  handleBodyWarp(ballBody, true);
+  handleBodyWarp(ghostBody, false);
+
+  ballMesh.position.copy(bpos); ballMesh.quaternion.copy(ballBody.quaternion);
+  ghostGroup.position.copy(gpos);
+
+  if (warpCooldownPlayer <= 0) {
+    const fdist = Math.hypot(bpos.x-gpos.x, bpos.z-gpos.z);
+    if (fdist < (ballRadius+ghostRadius)*0.9) {
+      if (isHunterMode) {
+        score+=50; ghostBody.position.set(ghostSpawnPos.x, ghostSpawnPos.y, ghostSpawnPos.z);
+        ghostBody.velocity.set(0,0,0); 
+        isHunterMode = false;
+        resetGhostVisuals();
+        morphShell.material.opacity = 0;
+        document.getElementById('score').innerText=`SCORE: ${score}`;
+      } else {
+        isPlaying=false; handleEnd();
+        document.getElementById('go-title').innerText='CAUGHT!';
+        document.getElementById('go-msg').innerText=`Score: ${score} - Reached Level ${level}`;
+        document.getElementById('gameover').style.display='flex';
+      }
+    }
+  }
+
+  activeCherries.forEach(c => {
+    if (!c.eaten && Math.hypot(bpos.x-c.x, bpos.z-c.z) < 0.6) {
+      c.eaten=true; c.group.visible=false; isHunterMode=true; hunterTimer=10;
+      ghostMat.color.setHex(0x00FFff); ghostLight.color.setHex(0x00ffff);
+      eyeMat.color.setHex(0xffffff);
+    }
+  });
+
+  let dotsUpdated=false;
+  activeDots.forEach(dot => {
+    if (!dot.eaten && Math.hypot(bpos.x-dot.x, bpos.z-dot.z) < 0.5) {
+      dot.eaten=true; score+=10; dotsEaten++;
+      dotsMesh.setMatrixAt(dot.index, hiddenMatrix); dotsUpdated=true;
+      document.getElementById('score').innerText=`SCORE: ${score}`;
+      playGobbleSound(dot.x, dot.z, speedXZ);
+    }
+  });
+  
+  if (dotsUpdated) {
+    dotsMesh.instanceMatrix.needsUpdate=true;
+    if (dotsEaten>=totalDots) {
+      isPlaying=false; handleEnd();
+      level++;
+      currW += 2;
+      currH += 2;
+      document.getElementById('level-msg').innerText=`LEVEL ${level}`;
+      document.getElementById('level-transition').style.display='flex';
+      setTimeout(() => {
+          startGame(false); 
+      }, 2000);
+    }
+  }
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
