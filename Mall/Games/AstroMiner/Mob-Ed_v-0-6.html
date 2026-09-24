@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mob Ed — Three.js model extractor &amp; editor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --bg:#0E1118; --panel:#151A26; --panel2:#111623; --border:#242C3E;
+    --text:#DDE3F0; --muted:#8B94AB; --accent:#FFB454; --accent-dim:#8a5f24;
+    --sel:#56C8CC; --danger:#E0637A; --mono:ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg); color:var(--text);
+    font:14px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  header{
+    display:flex; align-items:center; gap:14px;
+    padding:10px 16px; background:var(--panel2); border-bottom:1px solid var(--border);
+    flex-wrap:wrap;
+  }
+  header h1{font-size:15px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;}
+  header h1 span{color:var(--accent);}
+  #file-label{font-family:var(--mono); font-size:12px; color:var(--muted); flex:1; min-width:120px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  button{
+    background:#1D2434; color:var(--text); border:1px solid var(--border);
+    border-radius:6px; padding:7px 12px; font-size:13px; cursor:pointer;
+  }
+  button:hover{border-color:var(--accent-dim);}
+  button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#241703; font-weight:600;}
+  button.primary:hover{filter:brightness(1.08);}
+  button.danger{color:var(--danger); border-color:#4a2733;}
+  button:disabled{opacity:.4; cursor:default;}
+  #layout{flex:1; display:flex; min-height:0;}
+  aside{width:250px; background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden;}
+  #inspector{width:300px; border-right:none; border-left:1px solid var(--border);}
+  .pane-title{padding:9px 14px; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--muted); border-bottom:1px solid var(--border); font-weight:600;}
+  .pane-scroll{flex:1; overflow-y:auto; padding:10px;}
+  #viewport-wrap{flex:1; position:relative; min-width:0;}
+  #viewport{width:100%; height:100%; display:block; touch-action:none;}
+  #viewport-hint{position:absolute; left:12px; bottom:10px; font-family:var(--mono);
+    font-size:11px; color:var(--muted); pointer-events:none; opacity:.85;}
+  #viewport-tools{position:absolute; right:12px; top:10px; display:flex; gap:6px;}
+  #viewport-tools button{padding:5px 9px; font-size:12px; background:rgba(21,26,38,.85);}
+  .model-item{padding:8px 10px; border:1px solid var(--border); border-radius:7px;
+    margin-bottom:8px; cursor:pointer; background:var(--panel2);}
+  .model-item:hover{border-color:var(--accent-dim);}
+  .model-item.active{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset;}
+  .model-item .m-name{font-family:var(--mono); font-size:13px;}
+  .model-item .m-meta{font-size:11px; color:var(--muted); margin-top:2px;}
+  .model-item .m-kind{font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:#56C8CC;border:1px solid #2b4a53;border-radius:8px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+  .m-kind.warn{color:#FFB454;border-color:#5a4526}
+  .m-flag{color:var(--accent); font-size:11px;}
+  .model-item.failed{opacity:.5; cursor:default;}
+  .empty-note{color:var(--muted); font-size:12.5px; padding:6px 4px;}
+  fieldset{border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:12px;}
+  legend{font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+    padding:0 5px; font-weight:600;}
+  label.f{display:block; font-size:11px; color:var(--muted); margin:7px 0 3px;}
+  input[type=text], input[type=number], select{
+    width:100%; background:#0d1220; border:1px solid var(--border); color:var(--text);
+    border-radius:5px; padding:5px 7px; font-family:var(--mono); font-size:12.5px;
+  }
+  input:focus-visible, select:focus-visible{outline:1px solid var(--accent);}
+  input[type=color]{width:100%; height:30px; background:#0d1220; border:1px solid var(--border);
+    border-radius:5px; padding:2px; cursor:pointer;}
+  .vec3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+  .btn-row{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+  .btn-row button{flex:1;}
+  #parts-list{margin-bottom:12px;}
+  .part-item{display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:5px;
+    cursor:pointer; font-family:var(--mono); font-size:12px;}
+  .part-item:hover{background:#1b2233;}
+  .part-item.sel{background:#153a3d; color:var(--sel);}
+  .part-item .dot{width:8px; height:8px; border-radius:2px; flex:none;}
+  .part-item .geo{color:var(--muted); font-size:10px; margin-left:auto;}
+  .indent{margin-left:14px;}
+  #warnings{font-size:11.5px; color:var(--accent); padding:0 4px 8px;}
+  #warnings div{margin-bottom:4px;}
+  dialog{
+    background:var(--panel); color:var(--text); border:1px solid var(--border);
+    border-radius:10px; padding:0; width:min(760px, 92vw); max-height:84vh;
+  }
+  dialog::backdrop{background:rgba(5,8,14,.7);}
+  .dlg-head{display:flex; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border);}
+  .dlg-head h2{font-size:14px; flex:1;}
+  .dlg-body{padding:14px 16px; overflow:auto; max-height:60vh;}
+  .dlg-body pre{font-family:var(--mono); font-size:11.5px; white-space:pre; color:#c8d3e8;
+    background:#0b0f1a; border:1px solid var(--border); border-radius:8px; padding:12px; overflow:auto;}
+  .dlg-foot{display:flex; gap:8px; justify-content:flex-end; padding:12px 16px; border-top:1px solid var(--border);}
+  #toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%);
+    background:#1c2434; border:1px solid var(--accent-dim); color:var(--text);
+    padding:9px 16px; border-radius:8px; font-size:13px; opacity:0; pointer-events:none;
+    transition:opacity .25s; z-index:50; max-width:80vw;}
+  #toast.show{opacity:1;}
+  @media (max-width:900px){
+    #layout{flex-direction:column; overflow-y:auto;}
+    aside{width:100%; max-height:220px; border-right:none; border-bottom:1px solid var(--border);}
+    #inspector{width:100%; border-left:none; max-height:none;}
+    #viewport-wrap{min-height:340px; flex:none; height:48vh;}
+  }
+  @media (prefers-reduced-motion: reduce){ #toast{transition:none;} }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mob <span>Ed</span></h1>
+  <button id="btn-open" class="primary">Open game file</button>
+  <button id="btn-sample">Load sample</button>
+  <input type="file" id="file-input" accept=".html,.htm,.js,.txt" hidden>
+  <span id="file-label">No file loaded</span>
+  <button id="btn-copy" disabled>Copy model code</button>
+  <button id="btn-export" disabled>Download updated HTML</button>
+</header>
+
+<div id="layout">
+  <aside id="models-pane">
+    <div class="pane-title">Detected models</div>
+    <div class="pane-scroll" id="model-list">
+      <div class="empty-note">Open your game's HTML file. Mob Ed scans every inline script for functions that build characters out of Three.js primitives.</div>
+    </div>
+  </aside>
+
+  <div id="viewport-wrap">
+    <canvas id="viewport"></canvas>
+    <div id="viewport-tools">
+      <button id="btn-frame" title="Frame model">Frame</button>
+      <button id="btn-wire" title="Toggle wireframe">Wire</button>
+    </div>
+    <div id="viewport-hint">drag orbit · right-drag pan · wheel zoom · click part to select</div>
+  </div>
+
+  <aside id="inspector">
+    <div class="pane-title">Inspector</div>
+    <div class="pane-scroll" id="inspector-body">
+      <div class="empty-note">Select a model, then click one of its primitives in the viewport (or in the parts list) to edit it.</div>
+    </div>
+  </aside>
+</div>
+
+<dialog id="code-dialog">
+  <div class="dlg-head"><h2 id="dlg-title">Generated code</h2></div>
+  <div class="dlg-body"><pre id="dlg-code"></pre></div>
+  <div class="dlg-foot">
+    <button id="dlg-copy">Copy to clipboard</button>
+    <button id="dlg-close" class="primary">Close</button>
+  </div>
+</dialog>
+
+<div id="toast" role="status"></div>
+
+<script>
+"use strict";
+/* =========================================================================
+   Mob Ed — extract, view, edit and write back primitive-built models
+   ========================================================================= */
+
+/* ---------- custom geometries ---------- */
+class TuskGeometry extends THREE.ConeGeometry {
+  constructor(radius = 0.25, height = 2.0, curl = 0.5, spiral = 0.3, radialSegments = 8, heightSegments = 16) {
+    super(radius, height, Math.max(3, radialSegments), Math.max(2, heightSegments));
+    this.type = 'TuskGeometry';
+    this.parameters = { radius, height, curl, spiral, radialSegments, heightSegments };
+
+    const pos = this.attributes.position;
+    const halfH = height / 2;
+    const totalAngle = curl * Math.PI * 2; // curl 0.5 = 180 deg (half circle), 1.0 = 360 deg (full spiral)
+
+    for (let i = 0; i < pos.count; i++) {
+      const y0 = pos.getY(i);
+      const dx = pos.getX(i);
+      const dz = pos.getZ(i);
+
+      // Normalized progress t from base (0) to tip (1)
+      const t = (y0 + halfH) / height;
+
+      if (Math.abs(totalAngle) < 1e-4) {
+        pos.setZ(i, dz + t * spiral * height);
+        pos.setY(i, y0 + halfH);
+      } else {
+        const theta = t * totalAngle;
+        const R = height / totalAngle;
+
+        // Centerline arc position
+        const Sx = R * (Math.cos(theta) - 1);
+        const Sy = R * Math.sin(theta);
+        const Sz = t * spiral * height;
+
+        // Rotate ring cross-section along local tangent & normal
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+
+        pos.setX(i, Sx + dx * cosT);
+        pos.setY(i, Sy + dx * sinT);
+        pos.setZ(i, Sz + dz);
+      }
+    }
+    this.computeVertexNormals();
+  }
+}
+THREE.TuskGeometry = TuskGeometry;
+window.TuskGeometry = TuskGeometry;
+
+/* ---------- geometry catalog (low-poly defaults) ---------- */
+const GEOMETRY_DEFS = {
+  Box:          { params: [['width',1],['height',1],['depth',1],['widthSegments',1],['heightSegments',1],['depthSegments',1]] },
+  Sphere:       { params: [['radius',0.5],['widthSegments',8],['heightSegments',6]] },
+  Cylinder:     { params: [['radiusTop',0.5],['radiusBottom',0.5],['height',1],['radialSegments',8],['heightSegments',1]] },
+  Cone:         { params: [['radius',0.5],['height',1],['radialSegments',8]] },
+  Tusk:         { params: [['radius',0.25],['height',2.0],['curl',0.5],['spiral',0.3],['radialSegments',8],['heightSegments',16]] },
+  Torus:        { params: [['radius',0.5],['tube',0.18],['radialSegments',6],['tubularSegments',10]] },
+  TorusKnot:    { params: [['radius',0.4],['tube',0.12],['tubularSegments',28],['radialSegments',4]] },
+  Tetrahedron:  { params: [['radius',0.6],['detail',0]] },
+  Octahedron:   { params: [['radius',0.6],['detail',0]] },
+  Dodecahedron: { params: [['radius',0.6],['detail',0]] },
+  Icosahedron:  { params: [['radius',0.6],['detail',0]] },
+  Plane:        { params: [['width',1],['height',1],['widthSegments',1],['heightSegments',1]] },
+  Circle:       { params: [['radius',0.5],['segments',8]] },
+  Ring:         { params: [['innerRadius',0.25],['outerRadius',0.5],['thetaSegments',8]] },
+};
+const GEO_NAMES = Object.keys(GEOMETRY_DEFS);
+const GEO_CTOR_NAMES = GEO_NAMES.map(n => n + 'Geometry').concat(['CapsuleGeometry','LatheGeometry','ExtrudeGeometry','ShapeGeometry']);
+
+function buildGeometry(type, params){
+  const def = GEOMETRY_DEFS[type];
+  const args = def.params.map(([k, d]) => (params && params[k] !== undefined) ? params[k] : d);
+  return new THREE[type + 'Geometry'](...args);
+}
+function defaultParams(type){
+  const o = {};
+  GEOMETRY_DEFS[type].params.forEach(([k, d]) => o[k] = d);
+  return o;
+}
+function geoTypeOf(mesh){
+  let t = (mesh.geometry && mesh.geometry.type || '').replace('Geometry','');
+  if (!GEOMETRY_DEFS[t] && mesh.userData && mesh.userData.__geoType) t = mesh.userData.__geoType;
+  return GEOMETRY_DEFS[t] ? t : null;
+}
+function geoParamsOf(mesh){
+  const t = geoTypeOf(mesh);
+  if (!t) return null;
+  let src = mesh.geometry.parameters;
+  if ((!src || !Object.keys(src).length) && mesh.userData && mesh.userData.__geoParams) src = mesh.userData.__geoParams;
+  src = src || {};
+  const out = {};
+  GEOMETRY_DEFS[t].params.forEach(([k, d]) => out[k] = (src[k] !== undefined ? src[k] : d));
+  return out;
+}
+
+/* =========================================================================
+   1. FILE PARSING — find candidate model-builder functions
+   ========================================================================= */
+function extractScripts(fileText, fileName){
+  if (/\.js$|\.txt$/i.test(fileName || '') && !/<script/i.test(fileText)) {
+    return [{ code: fileText, offset: 0 }];
+  }
+  const out = [];
+  const re = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(fileText))) {
+    if (/\bsrc\s*=/i.test(m[1])) continue;
+    const codeStart = m.index + m[0].length - m[2].length - '<\/script>'.length;
+    out.push({ code: m[2], offset: codeStart });
+  }
+  return out;
+}
+
+const REGEX_PREV_WORDS = new Set(['return','typeof','case','instanceof','in','of','new','delete','void','do','else','yield','await','throw']);
+function buildCodeMask(s){
+  const mask = new Uint8Array(s.length);
+  let mode = null, inClass = false, lastSig = '', lastWordIsKw = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i], p = s[i-1];
+    if (mode) {
+      if (esc) { esc = false; continue; }
+      if ((mode === 's' || mode === 'd' || mode === 't' || mode === 'r') && c === '\\') { esc = true; continue; }
+      if (mode === 'lc' && c === '\n') mode = null;
+      else if (mode === 'bc' && c === '/' && p === '*') mode = null;
+      else if (mode === 's' && c === "'") mode = null;
+      else if (mode === 'd' && c === '"') mode = null;
+      else if (mode === 't' && c === '`') mode = null;
+      else if (mode === 'r') {
+        if (c === '[') inClass = true;
+        else if (c === ']') inClass = false;
+        else if (c === '/' && !inClass) { mode = null; lastSig = '/re'; }
+      }
+      continue;
+    }
+    if (c === '/' && s[i+1] === '/') { mode = 'lc'; continue; }
+    if (c === '/' && s[i+1] === '*') { mode = 'bc'; continue; }
+    if (c === "'") { mode = 's'; lastSig = c; continue; }
+    if (c === '"') { mode = 'd'; lastSig = c; continue; }
+    if (c === '`') { mode = 't'; lastSig = c; continue; }
+    if (c === '/') {
+      const ls = lastSig;
+      const exprEnd = ls === '/re' || (/[\w$)\]]/.test(ls) && !(/[A-Za-z_$]/.test(ls) && lastWordIsKw));
+      if (!exprEnd) { mode = 'r'; inClass = false; continue; }
+      lastSig = c; mask[i] = 1; continue;
+    }
+    mask[i] = 1;
+    if (!/\s/.test(c)) {
+      if (/[A-Za-z0-9_$]/.test(c)) {
+        let j = i, w = '';
+        while (j >= 0 && /[A-Za-z0-9_$]/.test(s[j]) && w.length < 12) { w = s[j] + w; j--; }
+        lastWordIsKw = REGEX_PREV_WORDS.has(w);
+      } else lastWordIsKw = false;
+      lastSig = c;
+    }
+  }
+  return mask;
+}
+
+function matchBraceMasked(s, mask, i){
+  let depth = 0;
+  for (; i < s.length; i++) {
+    if (!mask[i]) continue;
+    const c = s[i];
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return i; }
+  }
+  return -1;
+}
+
+function findFunctions(code, mask, baseOffset){
+  const found = [];
+  let re = /function\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/g, m;
+  while ((m = re.exec(code))) {
+    if (!mask[m.index]) continue;
+    const braceAt = m.index + m[0].length - 1;
+    const end = matchBraceMasked(code, mask, braceAt);
+    if (end < 0) continue;
+    found.push({ kind:'decl', name:m[1], params:m[2].trim(), start:m.index, end:end+1,
+                 src:code.slice(m.index, end+1), baseOffset });
+  }
+  re = /(const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:function(?:\s+[\w$]+)?\s*\(([^)]*)\)|(?:\(([^)]*)\)|([A-Za-z_$][\w$]*))\s*=>)\s*\{/g;
+  while ((m = re.exec(code))) {
+    if (!mask[m.index]) continue;
+    const rawParams = (m[3] !== undefined ? m[3] : (m[4] !== undefined ? m[4] : m[5] || '')).trim();
+    if (m[3] === undefined && /[()]/.test(rawParams)) continue;
+    const braceAt = m.index + m[0].length - 1;
+    const end = matchBraceMasked(code, mask, braceAt);
+    if (end < 0) continue;
+    found.push({ kind:'expr', decl:m[1], name:m[2], params:rawParams,
+                 start:m.index, end:end+1, src:code.slice(m.index, end+1), baseOffset });
+  }
+  return found;
+}
+
+function countOcc(src, needle){ let n = 0, i = -1; while ((i = src.indexOf(needle, i+1)) !== -1) n++; return n; }
+function scoreCandidate(fn){
+  let geoCount = 0;
+  for (const g of GEO_CTOR_NAMES) geoCount += countOcc(fn.src, 'THREE.' + g);
+  const meshCount = (fn.src.match(/new\s+THREE\.Mesh\b/g) || []).length;
+  const fBox = countOcc(fn.src, '_fBox(');
+  const mp = /\bmergeParts\s*\(/.test(fn.src);
+  const ok = (meshCount >= 2 && geoCount >= 2) || (mp && (geoCount + fBox) >= 1) || fBox >= 2;
+  return { geoCount: geoCount + fBox, meshCount, mp, ok };
+}
+
+function topLevelStatements(code, mask){
+  const stmts = []; let start = 0, depth = 0, lastSig = '';
+  const push = (end) => { const t = code.slice(start, end).trim(); if (t) stmts.push(t); start = end; };
+  const KW = /^(function|class|const|let|var)\b/;
+  const NOSPLIT = /[=([{,:?&|!+\-*%<>^~.]/;
+  for (let i = 0; i < code.length; i++) {
+    if (!mask[i]) continue;
+    const c = code[i];
+    if (depth === 0 && /[a-z]/.test(c) && (i === 0 || !/[A-Za-z0-9_$.]/.test(code[i-1]))) {
+      const kw = KW.exec(code.slice(i, i + 9));
+      if (kw && lastSig && !NOSPLIT.test(lastSig) && code.slice(start, i).trim()) push(i);
+    }
+    if (c === '(' || c === '[' || c === '{') depth++;
+    else if (c === ')' || c === ']' || c === '}') {
+      depth--;
+      if (depth === 0 && c === '}') {
+        const head = code.slice(start, i+1).replace(/^[\s]*(\/\*[\s\S]*?\*\/|\/\/.*\n)*[\s]*/, '');
+        if (/^(async\s+)?function\b|^class\b/.test(head)) push(i + 1);
+      }
+    }
+    else if (c === ';' && depth === 0) push(i + 1);
+    if (!/\s/.test(c)) lastSig = c;
+  }
+  push(code.length);
+  return stmts;
+}
+const SIDE_EFFECT_RE = /\bdocument\.|\bwindow\.|WebGLRenderer|addEventListener|requestAnimationFrame|querySelector|getElementById|innerHTML|location\.|\bnew\s+Audio\b|AudioContext/;
+function buildPrelude(scriptsWithMasks){
+  const parts = []; const names = new Set();
+  for (const s of scriptsWithMasks) {
+    for (let t of topLevelStatements(s.code, s.mask)) {
+      t = t.replace(/^\s*(\/\*[\s\S]*?\*\/\s*|\/\/[^\n]*\n\s*)+/, '').trim();
+      if (!t) continue;
+      let out = null; const declared = [];
+      if (/^(async\s+)?function\s+[A-Za-z_$]/.test(t)) {
+        out = t; const m = t.match(/function\s+([A-Za-z_$][\w$]*)/); if (m) declared.push(m[1]);
+      } else if (/^class\s+[A-Za-z_$]/.test(t)) {
+        out = t; const m = t.match(/^class\s+([A-Za-z_$][\w$]*)/); if (m) declared.push(m[1]);
+      } else if (/^(const|let|var)\s+[A-Za-z_$]/.test(t)) {
+        if (SIDE_EFFECT_RE.test(t)) continue;
+        out = 'try{ ' + t.replace(/^(const|let)\b/, 'var') + (/;\s*$/.test(t) ? '' : ';') + ' }catch(__e){}';
+        const m1 = t.match(/^(?:const|let|var)\s+([A-Za-z_$][\w$]*)/); if (m1) declared.push(m1[1]);
+        let mm; const multire = /,\s*([A-Za-z_$][\w$]*)\s*=/g;
+        while ((mm = multire.exec(t))) declared.push(mm[1]);
+      } else continue;
+      try { new Function(out); } catch (e) { continue; }
+      parts.push(out);
+      declared.forEach(n => names.add(n));
+    }
+  }
+  return { code: parts.join('\n'), names };
+}
+
+function makeAnything(){
+  const target = function(){};
+  const any = new Proxy(target, {
+    get(t, p){
+      if (p === Symbol.toPrimitive) return () => 1;
+      if (p === Symbol.iterator) return function*(){};
+      if (p === 'length') return 0;
+      return any;
+    },
+    set(){ return true; },
+    has(){ return true; },
+    apply(){ return any; },
+    construct(){ return any; },
+  });
+  return any;
+}
+
+function makeMergePartsInterceptor(){
+  return function(parts){
+    const group = new THREE.Group();
+    group.userData.__mpModel = true;
+    (Array.isArray(parts) ? parts : []).forEach((p, i) => {
+      if (!p || !p.geo) return;
+      const g = (p.geo.clone ? p.geo.clone() : p.geo);
+      const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
+        color: (typeof p.color === 'number') ? p.color : 0xffffff,
+        flatShading: true, roughness: 0.85 }));
+      if (p.matrix && p.matrix.decompose) p.matrix.decompose(mesh.position, mesh.quaternion, mesh.scale);
+      mesh.userData.__mp = true;
+      mesh.userData.__geoType = (p.geo.type || '').replace('Geometry', '');
+      mesh.userData.__geoParams = p.geo.parameters ? Object.assign({}, p.geo.parameters) : null;
+      mesh.name = (typeof p.name === 'string' && p.name) ? p.name : ('part' + (i + 1));
+      group.add(mesh);
+    });
+    return group;
+  };
+}
+
+function compileFactory(preludeCode){
+  return new Function('__sb__', '__any__', '__expr__',
+    (preludeCode || '') + '\n;with(__sb__){ return eval(__expr__); }');
+}
+
+function countDescendants(o){ let n = 0; o.traverse(() => n++); return n; }
+
+function normalizeResult(res, recordedGroups, recordedMeshes){
+  let root = null, kind = null;
+  if (res && res instanceof THREE.Object3D) {
+    root = res; kind = (res.userData && res.userData.__mpModel) ? 'mp' : 'group';
+  }
+  else if (res && res.isBufferGeometry === true && res instanceof THREE.BufferGeometry) {
+    kind = 'merged';
+    root = new THREE.Group();
+    root.add(new THREE.Mesh(res, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true })));
+  }
+  else if (Array.isArray(res) && res.length && res.every(p => p && p.geo && p.geo.isBufferGeometry)) {
+    kind = 'mpArray';
+    root = makeMergePartsInterceptor()(res);
+    root.userData.__mpModel = true;
+  }
+  else if (res && typeof res === 'object' && !(res instanceof THREE.Object3D)) {
+    let best = null;
+    try {
+      for (const v of Object.values(res))
+        if (v && v instanceof THREE.Object3D && (!best || countDescendants(v) > countDescendants(best))) best = v;
+    } catch (e) {}
+    if (best) { root = best; kind = 'complex'; }
+  }
+  if (!root) {
+    const tops = recordedGroups
+      .filter(g => g.children.length > 0 && !recordedGroups.includes(g.parent))
+      .sort((a, b) => countDescendants(b) - countDescendants(a));
+    if (tops[0]) { root = tops[0]; kind = 'group'; }
+  }
+  if (!root && recordedMeshes && recordedMeshes.length >= 2) {
+    root = new THREE.Group();
+    recordedMeshes.filter(ms => !ms.parent || !ms.parent.isObject3D).forEach(ms => root.add(ms));
+    if (root.children.length) kind = 'group'; else root = null;
+  }
+  if (!root) return null;
+  let meshes = 0; root.traverse(o => { if (o.isMesh) meshes++; });
+  if (!meshes) return null;
+  return { root, kind, meshes };
+}
+
+function instantiateCandidate(fn, ctx){
+  let expr = fn.src;
+  if (fn.kind === 'expr') expr = expr.replace(/^(?:const|let|var)\s+[\w$]*\s*=\s*/, '');
+  expr = '(' + expr + ')';
+  const usesMP = /\bmergeParts\s*\(/.test(fn.src);
+  const strategies = [
+    { factory: ctx.factory,     names: ctx.names,  label: 'prelude/zeros', zeros: true  },
+    { factory: ctx.factory,     names: ctx.names,  label: 'prelude/any',   zeros: false },
+    { factory: ctx.bareFactory, names: new Set(),  label: 'bare/zeros',    zeros: true  },
+    { factory: ctx.bareFactory, names: new Set(),  label: 'bare/any',      zeros: false },
+  ];
+  const errs = [];
+  for (const st of strategies) {
+    const recordedGroups = [], recordedMeshes = [];
+    class RecGroup extends THREE.Group { constructor(){ super(); recordedGroups.push(this); } }
+    class RecMesh  extends THREE.Mesh  { constructor(...a){ super(...a); recordedMeshes.push(this); } }
+    const T = Object.create(THREE);
+    T.Group = RecGroup;
+    T.Mesh = RecMesh;
+    const mpFn = makeMergePartsInterceptor();
+    const anything = makeAnything();
+    const sandbox = new Proxy({}, {
+      has(t, p){
+        if (p === 'THREE') return true;
+        if (usesMP && p === 'mergeParts') return true;
+        if (p === '__expr__' || p === '__sb__' || p === '__any__' || p === 'eval' || p === 'arguments') return false;
+        if (typeof p === 'string' && st.names.has(p)) return false;
+        if (p in window) return false;
+        return true;
+      },
+      get(t, p){
+        if (p === Symbol.unscopables) return undefined;
+        if (p === 'THREE') return T;
+        if (usesMP && p === 'mergeParts') return mpFn;
+        return anything;
+      },
+      set(){ return true; },
+    });
+    let fnObj;
+    try { fnObj = st.factory(sandbox, anything, expr); }
+    catch (e) { errs.push('compile: ' + e.message); continue; }
+    if (typeof fnObj !== 'function') { errs.push('not callable'); continue; }
+    let result;
+    try { result = st.zeros ? fnObj(0, 0, 0, 0) : fnObj(anything, anything, anything, anything); }
+    catch (e) { errs.push(e.message); }
+    const norm = normalizeResult(result, recordedGroups, recordedMeshes);
+    if (norm) {
+      norm.strategy = st.label;
+      return { root: sanitizeModel(norm.root), modelKind: norm.kind, strategy: norm.strategy };
+    }
+  }
+  return { error: errs[0] || 'ran, but no group/mesh could be captured' };
+}
+
+function sanitizeModel(root){
+  root.traverse(o => {
+    const clean = {};
+    for (const k in o.userData) {
+      try { JSON.stringify(o.userData[k]); clean[k] = o.userData[k]; } catch (e) {}
+    }
+    o.userData = clean;
+  });
+  const model = root.clone(true);
+  const junk = [];
+  model.traverse(o => {
+    if (o !== model && (o.isLight || o.isCamera || o.isPoints || o.isLine || o.isSprite)) junk.push(o);
+  });
+  junk.forEach(o => o.parent && o.parent.remove(o));
+  model.traverse(o => {
+    if (!o.visible) { o.userData.__hidden = true; o.visible = true; }
+    if (o.isMesh) {
+      if (!o.geometry || !o.geometry.isBufferGeometry) o.geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+      let mat = Array.isArray(o.material) ? o.material[0] : o.material;
+      if (!mat || !mat.isMaterial) mat = new THREE.MeshLambertMaterial({ color: 0x9aa4b8 });
+      o.material = mat.clone();
+      if (!o.material.color) o.material.color = new THREE.Color(0x9aa4b8);
+    }
+  });
+  return model;
+}
+
+/* =========================================================================
+   2. APP STATE
+   ========================================================================= */
+const state = {
+  fileText: null, fileName: null,
+  candidates: [],
+  activeIndex: -1,
+  selected: null,
+  anim: 'none',
+  animBase: null,
+  limbs: null,
+  wireframe: false,
+};
+
+/* =========================================================================
+   3. VIEWPORT
+   ========================================================================= */
+const canvas = document.getElementById('viewport');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0E1118);
+scene.fog = new THREE.Fog(0x0E1118, 45, 170);
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 500);
+const orbit = { theta: 0.8, phi: 1.05, r: 7, target: new THREE.Vector3(0, 1, 0) };
+function updateCamera(){
+  orbit.phi = Math.max(0.05, Math.min(Math.PI - 0.05, orbit.phi));
+  orbit.r = Math.max(0.4, Math.min(220, orbit.r));
+  const s = Math.sin(orbit.phi);
+  camera.position.set(
+    orbit.target.x + orbit.r * s * Math.sin(orbit.theta),
+    orbit.target.y + orbit.r * Math.cos(orbit.phi),
+    orbit.target.z + orbit.r * s * Math.cos(orbit.theta)
+  );
+  camera.lookAt(orbit.target);
+}
+
+scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x352a1c, 0.95));
+const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+sun.position.set(6, 11, 7);
+scene.add(sun);
+const grid = new THREE.GridHelper(24, 24, 0x2c3554, 0x1a2138);
+scene.add(grid);
+
+(function stars(){
+  const n = 420, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const v = new THREE.Vector3().setFromSphericalCoords(
+      70 + Math.random() * 80, Math.acos(2 * Math.random() - 1), Math.random() * Math.PI * 2);
+    pos.set([v.x, Math.abs(v.y) * 0.9 + 2, v.z], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0x93a3c8, size: 0.6, sizeAttenuation: true, fog: false })));
+})();
+
+const modelRoot = new THREE.Group();
+scene.add(modelRoot);
+let selectionHelper = null;
+
+function resize(){
+  const w = canvas.clientWidth || canvas.parentElement.clientWidth;
+  const h = canvas.clientHeight || canvas.parentElement.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(document.getElementById('viewport-wrap'));
+
+let drag = null;
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('pointerdown', e => {
+  drag = { button: e.button, x: e.clientX, y: e.clientY, moved: 0, shift: e.shiftKey };
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const dx = e.movementX, dy = e.movementY;
+  drag.moved += Math.abs(dx) + Math.abs(dy);
+  if (drag.button === 0 && !drag.shift) {
+    orbit.theta -= dx * 0.0055;
+    orbit.phi   -= dy * 0.0055;
+  } else {
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0);
+    const up    = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+    orbit.target.addScaledVector(right, -dx * orbit.r * 0.0016);
+    orbit.target.addScaledVector(up,     dy * orbit.r * 0.0016);
+  }
+  updateCamera();
+});
+canvas.addEventListener('pointerup', e => {
+  if (drag && drag.moved < 6 && drag.button === 0) pick(e);
+  drag = null;
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  orbit.r *= 1 + Math.sign(e.deltaY) * 0.1;
+  updateCamera();
+}, { passive: false });
+
+const raycaster = new THREE.Raycaster();
+function pick(e){
+  const rect = canvas.getBoundingClientRect();
+  const ndc = new THREE.Vector2(
+    ((e.clientX - rect.left) / rect.width) * 2 - 1,
+    -((e.clientY - rect.top) / rect.height) * 2 + 1
+  );
+  raycaster.setFromCamera(ndc, camera);
+  const meshes = [];
+  modelRoot.traverse(o => { if (o.isMesh) meshes.push(o); });
+  const hits = raycaster.intersectObjects(meshes, false);
+  selectPart(hits.length ? hits[0].object : null);
+}
+
+function frameModel(){
+  const c = activeCandidate();
+  if (!c || !c.model) return;
+  const box = new THREE.Box3().setFromObject(c.model);
+  if (box.isEmpty()) return;
+  const size = box.getSize(new THREE.Vector3()), center = box.getCenter(new THREE.Vector3());
+  orbit.target.copy(center);
+  orbit.r = Math.max(2, Math.max(size.x, size.y, size.z) * 1.9);
+  updateCamera();
+}
+document.getElementById('btn-frame').addEventListener('click', frameModel);
+document.getElementById('btn-wire').addEventListener('click', () => {
+  state.wireframe = !state.wireframe;
+  modelRoot.traverse(o => { if (o.isMesh && o.material) o.material.wireframe = state.wireframe; });
+});
+
+/* =========================================================================
+   4. ANIMATION
+   ========================================================================= */
+function rigModel(model){
+  const limbs = { legs: [], arms: [], wings: [], head: null, tail: null };
+  const parts = [];
+  model.traverse(o => { if (o !== model && (o.isMesh || o.isGroup)) parts.push(o); });
+
+  for (const o of parts) {
+    const n = (o.name || '').toLowerCase();
+    if (!n) continue;
+    if (/leg|foot|thigh|paw/.test(n)) limbs.legs.push(o);
+    else if (/arm|hand|claw/.test(n)) limbs.arms.push(o);
+    else if (/wing|fin/.test(n)) limbs.wings.push(o);
+    else if (/head|skull|face/.test(n)) limbs.head = limbs.head || o;
+    else if (/tail/.test(n)) limbs.tail = limbs.tail || o;
+  }
+  if (!limbs.legs.length && !limbs.arms.length && !limbs.wings.length) {
+    const box = new THREE.Box3().setFromObject(model);
+    const midY = (box.min.y + box.max.y) / 2;
+    for (const o of parts) {
+      if (o.parent !== model && !o.parent.isGroup) continue;
+      const p = new THREE.Vector3(); o.getWorldPosition(p);
+      if (p.y < midY && (Math.abs(p.x) > 0.03 || Math.abs(p.z) > 0.03)) limbs.legs.push(o);
+    }
+    limbs.legs = limbs.legs.slice(0, 6);
+  }
+  return limbs;
+}
+function captureRest(model){
+  const map = new Map();
+  model.traverse(o => map.set(o, { pos: o.position.clone(), rot: o.rotation.clone() }));
+  return map;
+}
+function restoreRest(){
+  if (!state.animBase) return;
+  state.animBase.forEach((b, o) => { o.position.copy(b.pos); o.rotation.copy(b.rot); });
+  state.animBase = null;
+}
+function setAnimation(mode){
+  const c = activeCandidate();
+  restoreRest();
+  state.anim = mode;
+  if (!c || !c.model || mode === 'none') return;
+  state.animBase = captureRest(c.model);
+  state.limbs = rigModel(c.model);
+  const sel = document.getElementById('anim-select');
+  if (sel && sel.value !== mode) sel.value = mode;
+}
+function tickAnimation(t){
+  const c = activeCandidate();
+  if (!c || !c.model || state.anim === 'none' || !state.animBase) return;
+  const m = c.model, L = state.limbs, base = state.animBase;
+  const b = o => base.get(o);
+  if (state.anim === 'spin') { m.rotation.y = (b(m) ? b(m).rot.y : 0) + t * 0.8; return; }
+
+  const speed = state.anim === 'walk' ? 6.5 : 2.2;
+  const amp   = state.anim === 'walk' ? 0.55 : 0.08;
+  L.legs.forEach((o, i) => { const bb = b(o); if (bb) o.rotation.x = bb.rot.x + Math.sin(t * speed + i * Math.PI) * amp; });
+  L.arms.forEach((o, i) => { const bb = b(o); if (bb) o.rotation.x = bb.rot.x + Math.sin(t * speed + i * Math.PI + Math.PI) * amp * 0.8; });
+  L.wings.forEach((o, i) => { const bb = b(o); if (bb) o.rotation.z = bb.rot.z + Math.sin(t * speed * 1.6) * (i % 2 ? -0.5 : 0.5); });
+  if (L.head) { const bb = b(L.head); if (bb) L.head.rotation.y = bb.rot.y + Math.sin(t * 1.3) * 0.15; }
+  if (L.tail) { const bb = b(L.tail); if (bb) L.tail.rotation.y = bb.rot.y + Math.sin(t * speed * 0.9) * 0.3; }
+  const bm = b(m);
+  if (bm) m.position.y = bm.pos.y + Math.abs(Math.sin(t * speed)) * (state.anim === 'walk' ? 0.05 : 0.02);
+}
+
+/* =========================================================================
+   5. SELECTION + INSPECTOR UI
+   ========================================================================= */
+const $ = id => document.getElementById(id);
+function activeCandidate(){ return state.candidates[state.activeIndex] || null; }
+function markEdited(){
+  const c = activeCandidate();
+  if (c && !c.edited) { c.edited = true; renderModelList(); }
+  $('btn-export').disabled = !state.candidates.some(x => x.edited);
+}
+
+function selectPart(mesh){
+  if (state.anim !== 'none') setAnimation('none');
+  state.selected = mesh || null;
+  if (selectionHelper) { scene.remove(selectionHelper); selectionHelper = null; }
+  if (mesh) {
+    selectionHelper = new THREE.BoxHelper(mesh, 0x56C8CC);
+    scene.add(selectionHelper);
+  }
+  renderInspector();
+}
+
+function setModel(index){
+  restoreRest();
+  state.anim = 'none';
+  state.selected = null;
+  if (selectionHelper) { scene.remove(selectionHelper); selectionHelper = null; }
+  while (modelRoot.children.length) modelRoot.remove(modelRoot.children[0]);
+  state.activeIndex = index;
+  const c = activeCandidate();
+  if (c && c.model) {
+    modelRoot.add(c.model);
+    if (state.wireframe) c.model.traverse(o => { if (o.isMesh) o.material.wireframe = true; });
+    frameModel();
+  }
+  $('btn-copy').disabled = !c;
+  renderModelList();
+  renderInspector();
+}
+
+function renderModelList(){
+  const list = $('model-list');
+  if (!state.candidates.length) {
+    list.innerHTML = '<div class="empty-note">' + (state.fileText
+      ? 'No primitive-built model functions found. Mob Ed looks for functions creating THREE primitives and meshes, or merged part lists (mergeParts style).'
+      : "Open your game's HTML file. Mob Ed scans every inline script for functions that build characters out of Three.js primitives.") + '</div>';
+    return;
+  }
+  list.innerHTML = '';
+  state.candidates.forEach((c, i) => {
+    const div = document.createElement('div');
+    div.className = 'model-item' + (i === state.activeIndex ? ' active' : '') + (c.ok ? '' : ' failed');
+    const KIND_LABEL = { mp: 'merged parts', mpArray: 'part list', group: 'group', complex: 'manual merge', merged: 'reference' };
+    const badge = c.ok && KIND_LABEL[c.modelKind] ? ' <span class="m-kind' + (c.modelKind === 'complex' || c.modelKind === 'merged' ? ' warn' : '') + '">' + KIND_LABEL[c.modelKind] + '</span>' : '';
+    div.innerHTML = '<div class="m-name">' + esc(c.name) + '()' + badge +
+      (c.edited ? ' <span class="m-flag">● edited</span>' : '') + '</div>' +
+      '<div class="m-meta">' + (c.ok
+        ? c.partCount + ' parts · ' + c.geoCount + ' primitives'
+        : 'could not run — ' + esc(c.error || '')) + '</div>';
+    if (c.ok) div.addEventListener('click', () => setModel(i));
+    list.appendChild(div);
+  });
+}
+
+function esc(s){ return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+function fmtNum(n){ const v = Math.round((+n + Number.EPSILON) * 10000) / 10000; return Object.is(v, -0) ? 0 : v; }
+
+function renderInspector(){
+  const body = $('inspector-body');
+  const c = activeCandidate();
+  if (!c || !c.model) {
+    body.innerHTML = '<div class="empty-note">Select a model, then click one of its primitives in the viewport (or in the parts list) to edit it.</div>';
+    return;
+  }
+  body.innerHTML = '';
+
+  if (c.warnings && c.warnings.length) {
+    const w = document.createElement('div'); w.id = 'warnings';
+    w.innerHTML = c.warnings.map(x => '<div>⚠ ' + esc(x) + '</div>').join('');
+    body.appendChild(w);
+  }
+
+  /* animation */
+  const fsA = document.createElement('fieldset');
+  fsA.innerHTML = '<legend>Preview animation</legend>' +
+    '<select id="anim-select"><option value="none">Rest pose (edit mode)</option>' +
+    '<option value="walk">Walk cycle</option><option value="idle">Idle</option>' +
+    '<option value="spin">Turntable</option></select>' +
+    '<label class="f">Limbs are auto-rigged from part names (leg, arm, wing, head, tail…) or position. Selecting a part returns to rest pose.</label>';
+  body.appendChild(fsA);
+  $('anim-select').value = state.anim;
+  $('anim-select').addEventListener('change', e => setAnimation(e.target.value));
+
+  /* parts tree */
+  const fsP = document.createElement('fieldset');
+  fsP.innerHTML = '<legend>Parts</legend><div id="parts-list"></div>' +
+    '<div class="btn-row"><button id="btn-add-part">Add part</button></div>';
+  body.appendChild(fsP);
+  const listEl = fsP.querySelector('#parts-list');
+  (function walk(o, depth){
+    o.children.forEach(ch => {
+      if (!(ch.isMesh || ch.isGroup)) return;
+      const row = document.createElement('div');
+      row.className = 'part-item' + (ch === state.selected ? ' sel' : '');
+      row.style.marginLeft = (depth * 14) + 'px';
+      const color = ch.isMesh && ch.material.color ? '#' + ch.material.color.getHexString() : '#39415a';
+      row.innerHTML = '<span class="dot" style="background:' + color + '"></span>' +
+        '<span>' + esc(ch.name || (ch.isMesh ? 'part' : 'group')) + '</span>' +
+        '<span class="geo">' + (ch.isMesh ? (geoTypeOf(ch) || 'custom') : 'group') + '</span>';
+      if (ch.isMesh) row.addEventListener('click', () => selectPart(ch));
+      listEl.appendChild(row);
+      walk(ch, depth + 1);
+    });
+  })(c.model, 0);
+  fsP.querySelector('#btn-add-part').addEventListener('click', () => {
+    const mesh = new THREE.Mesh(buildGeometry('Sphere', null),
+      new THREE.MeshLambertMaterial({ color: 0xffb454 }));
+    mesh.name = 'newPart';
+    mesh.position.set(0, 1, 0);
+    c.model.add(mesh);
+    markEdited();
+    selectPart(mesh);
+  });
+
+  /* selected part editor */
+  const sel = state.selected;
+  if (!sel) {
+    const note = document.createElement('div');
+    note.className = 'empty-note';
+    note.textContent = 'Click a primitive in the viewport or the list above to edit it.';
+    body.appendChild(note);
+  } else {
+    body.appendChild(buildPartEditor(sel));
+  }
+
+  /* export */
+  const fsX = document.createElement('fieldset');
+  fsX.innerHTML = '<legend>Write back</legend>' +
+    '<label class="f">Regenerates ' + esc(c.name) + '() and splices it into your file at its original location.</label>' +
+    '<div class="btn-row"><button id="btn-view-code">View code</button>' +
+    '<button id="btn-export2" class="primary">Download HTML</button></div>';
+  body.appendChild(fsX);
+  fsX.querySelector('#btn-view-code').addEventListener('click', showCodeDialog);
+  fsX.querySelector('#btn-export2').addEventListener('click', exportFile);
+}
+
+function buildPartEditor(mesh){
+  const wrap = document.createElement('div');
+
+  /* identity + geometry */
+  const fs1 = document.createElement('fieldset');
+  fs1.innerHTML = '<legend>Selected part</legend>';
+  fs1.appendChild(field('Name', textInput(mesh.name || '', v => { mesh.name = v; markEdited(); renderPartsOnly(); })));
+
+  const typeSel = document.createElement('select');
+  const currentType = geoTypeOf(mesh);
+  if (!currentType) {
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = 'custom geometry (pick to replace)';
+    typeSel.appendChild(o);
+  }
+  GEO_NAMES.forEach(n => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    typeSel.appendChild(o);
+  });
+  typeSel.value = currentType || '';
+  const normWrap = document.createElement('label');
+  normWrap.style.cssText = 'display:flex;align-items:center;gap:6px;margin:6px 0;font-size:12px;color:var(--muted);cursor:pointer;';
+  const normCheckbox = document.createElement('input');
+  normCheckbox.type = 'checkbox';
+  normCheckbox.checked = true;
+  normCheckbox.style.width = 'auto';
+  normWrap.appendChild(normCheckbox);
+  normWrap.appendChild(document.createTextNode('Normalize replacement size'));
+  fs1.appendChild(normWrap);
+
+  typeSel.addEventListener('change', () => {
+    if (!typeSel.value) return;
+    const oldScale = mesh.scale.clone();
+    let oldSize = null;
+    if (normCheckbox.checked) {
+      mesh.geometry.computeBoundingBox();
+      oldSize = mesh.geometry.boundingBox.getSize(new THREE.Vector3()).multiply(oldScale);
+    }
+    const old = mesh.geometry;
+    mesh.geometry = buildGeometry(typeSel.value, null);
+    old && old.dispose && old.dispose();
+    if (normCheckbox.checked && oldSize) {
+      mesh.geometry.computeBoundingBox();
+      const newSize = mesh.geometry.boundingBox.getSize(new THREE.Vector3());
+      const eps = 1e-6;
+      mesh.scale.set(
+        newSize.x > eps && oldSize.x > eps ? oldSize.x / newSize.x : oldScale.x,
+        newSize.y > eps && oldSize.y > eps ? oldSize.y / newSize.y : oldScale.y,
+        newSize.z > eps && oldSize.z > eps ? oldSize.z / newSize.z : oldScale.z
+      );
+    }
+    markEdited(); refreshSelectionHelper(); renderInspector();
+  });
+  fs1.appendChild(field('Geometry (low-poly defaults)', typeSel));
+
+  const params = geoParamsOf(mesh);
+  if (params) {
+    const grid2 = document.createElement('div'); grid2.className = 'row2';
+    GEOMETRY_DEFS[currentType || typeSel.value].params.forEach(([k]) => {
+      const isSeg = /Segments|segments|detail/.test(k);
+      grid2.appendChild(field(k, numInput(params[k], isSeg ? 1 : 0.05, v => {
+        params[k] = isSeg ? Math.max(k === 'detail' ? 0 : (/(radial|width.*S|tubular|heightSegments)/.test(k) ? 3 : 1), Math.round(v)) : v;
+        const old = mesh.geometry;
+        mesh.geometry = buildGeometry(geoTypeOf(mesh) || typeSel.value, params);
+        old && old.dispose && old.dispose();
+        markEdited(); refreshSelectionHelper();
+      })));
+    });
+    fs1.appendChild(grid2);
+  }
+
+  const colorIn = document.createElement('input');
+  colorIn.type = 'color';
+  colorIn.value = '#' + (mesh.material.color ? mesh.material.color.getHexString() : '9aa4b8');
+  colorIn.addEventListener('input', () => {
+    if (!mesh.material.color) mesh.material.color = new THREE.Color();
+    mesh.material.color.set(colorIn.value);
+    markEdited();
+    const selDot = document.querySelector('.part-item.sel .dot');
+    if (selDot) selDot.style.background = colorIn.value;
+  });
+  fs1.appendChild(field('Color', colorIn));
+  wrap.appendChild(fs1);
+
+  /* transform */
+  const fs2 = document.createElement('fieldset');
+  fs2.innerHTML = '<legend>Transform</legend>';
+  fs2.appendChild(vec3Row('Position', ['x','y','z'].map(ax =>
+    numInput(mesh.position[ax], 0.05, v => { mesh.position[ax] = v; markEdited(); refreshSelectionHelper(); }))));
+  fs2.appendChild(vec3Row('Rotation (deg)', ['x','y','z'].map(ax =>
+    numInput(THREE.MathUtils.radToDeg(mesh.rotation[ax]), 5, v => {
+      mesh.rotation[ax] = THREE.MathUtils.degToRad(v); markEdited(); refreshSelectionHelper(); }))));
+  fs2.appendChild(vec3Row('Scale', ['x','y','z'].map(ax =>
+    numInput(mesh.scale[ax], 0.05, v => { mesh.scale[ax] = v || 0.0001; markEdited(); refreshSelectionHelper(); }))));
+  wrap.appendChild(fs2);
+
+  /* actions */
+  const fs3 = document.createElement('fieldset');
+  fs3.innerHTML = '<legend>Part actions</legend><div class="btn-row">' +
+    '<button id="pa-dup">Duplicate</button><button id="pa-del" class="danger">Delete</button></div>';
+  wrap.appendChild(fs3);
+  fs3.querySelector('#pa-dup').addEventListener('click', () => {
+    const copy = mesh.clone();
+    copy.material = mesh.material.clone();
+    copy.name = (mesh.name || 'part') + 'Copy';
+    copy.position.x += 0.3;
+    mesh.parent.add(copy);
+    markEdited(); selectPart(copy);
+  });
+  fs3.querySelector('#pa-del').addEventListener('click', () => {
+    mesh.parent.remove(mesh);
+    markEdited(); selectPart(null);
+  });
+
+  return wrap;
+}
+function field(label, input){
+  const d = document.createElement('div');
+  const l = document.createElement('label');
+  l.className = 'f'; l.textContent = label;
+  d.appendChild(l); d.appendChild(input);
+  return d;
+}
+function textInput(val, on){
+  const i = document.createElement('input');
+  i.type = 'text'; i.value = val;
+  i.addEventListener('change', () => on(i.value));
+  return i;
+}
+function numInput(val, step, on){
+  const i = document.createElement('input');
+  i.type = 'number'; i.step = step; i.value = fmtNum(val);
+  i.addEventListener('input', () => { const v = parseFloat(i.value); if (!isNaN(v)) on(v); });
+  return i;
+}
+function vec3Row(label, inputs){
+  const d = document.createElement('div');
+  const l = document.createElement('label'); l.className = 'f'; l.textContent = label;
+  const g = document.createElement('div'); g.className = 'vec3';
+  inputs.forEach(x => g.appendChild(x));
+  d.appendChild(l); d.appendChild(g);
+  return d;
+}
+function refreshSelectionHelper(){ if (selectionHelper) selectionHelper.update(); }
+function renderPartsOnly(){ renderInspector(); }
+
+/* =========================================================================
+   6. CODE GENERATION + WRITE-BACK
+   ========================================================================= */
+function generateMergedPartsCode(c){
+  const warnings = [];
+  const f = fmtNum;
+  const lines = [];
+  lines.push(c.kind === 'expr'
+    ? `${c.decl} ${c.name} = (${c.params}) => {`
+    : `function ${c.name}(${c.params}) {`);
+  const entries = [];
+  c.model.children.forEach(mesh => {
+    if (!mesh.isMesh) return;
+    const geo = geoCode(mesh, warnings);
+    const p = mesh.position, r = mesh.rotation, sc = mesh.scale;
+    const hasS = Math.abs(sc.x-1) > 1e-6 || Math.abs(sc.y-1) > 1e-6 || Math.abs(sc.z-1) > 1e-6;
+    const hasR = Math.abs(r.x) > 1e-6 || Math.abs(r.y) > 1e-6 || Math.abs(r.z) > 1e-6;
+    const args = [f(p.x), f(p.y), f(p.z)];
+    if (hasR || hasS) args.push(f(r.x), f(r.y), f(r.z));
+    if (hasS) args.push(f(sc.x), f(sc.y), f(sc.z));
+    const color = '0x' + (mesh.material && mesh.material.color ? mesh.material.color.getHexString() : 'ffffff');
+    entries.push(`        {name:${JSON.stringify(mesh.name || 'part')},geo:${geo},matrix:M(${args.join(',')}),color:${color}},`);
+  });
+  let nested = 0;
+  c.model.children.forEach(ch => { if (!ch.isMesh) ch.traverse(o => { if (o.isMesh) nested++; }); });
+  if (nested) warnings.push(nested + ' nested part(s) could not be exported — merged-part models must stay flat.');
+  if (c.modelKind === 'mpArray') {
+    lines.push('    return [');
+    lines.push(...entries);
+    lines.push('    ];');
+  } else {
+    lines.push('    return mergeParts([');
+    lines.push(...entries);
+    lines.push('    ]);');
+  }
+  lines.push('}');
+  return { code: lines.join('\n'), warnings };
+}
+
+function generateCode(c){
+  if (c.modelKind === 'mp' || c.modelKind === 'mpArray') return generateMergedPartsCode(c);
+  const used = new Set(['model','THREE']);
+  const warnings = [];
+  if (c.modelKind === 'complex') {
+    warnings.push('This function returns extra references the game uses (animation joints, armor visibility groups). ' +
+      'The code below is a flattened reference — copy the sizes, positions and geometry you changed into the original function by hand.');
+  } else if (c.modelKind === 'merged') {
+    warnings.push('This model was captured as one pre-merged geometry, so the code below is a reference only.');
+  }
+  function ident(name, fallback){
+    let s = String(name || fallback).replace(/[^A-Za-z0-9_$]/g, '_');
+    if (!/^[A-Za-z_$]/.test(s)) s = 'p_' + s;
+    let base = s, i = 2;
+    while (used.has(s)) s = base + (i++);
+    used.add(s);
+    return s;
+  }
+  const lines = [];
+  if (c.modelKind === 'complex' || c.modelKind === 'merged') {
+    lines.push('/* Mob Ed reference model — NOT a drop-in replacement.');
+    lines.push('   The original function returns references the game depends on,');
+    lines.push('   so merge these sizes/positions/geometries into it by hand. */');
+  }
+  const head = c.kind === 'expr'
+    ? `${c.decl} ${c.name} = (${c.params}) => {`
+    : `function ${c.name}(${c.params}) {`;
+  lines.push(head);
+  lines.push('  const model = new THREE.Group();');
+  emitTransforms('model', c.model, lines);
+  lines.push('');
+
+  (function walk(node, parentVar){
+    node.children.forEach(child => {
+      if (child.isMesh) {
+        const v = ident(child.name, 'part');
+        lines.push(`  const ${v} = new THREE.Mesh(${geoCode(child, warnings)}, ${matCode(child)});`);
+        emitTransforms(v, child, lines);
+        lines.push(`  ${parentVar}.add(${v});`, '');
+      } else if (child.isGroup || child.isObject3D) {
+        let has = false;
+        child.traverse(o => { if (o.isMesh) has = true; });
+        if (!has) return;
+        const v = ident(child.name, 'group');
+        lines.push(`  const ${v} = new THREE.Group();`);
+        emitTransforms(v, child, lines);
+        lines.push(`  ${parentVar}.add(${v});`, '');
+        walk(child, v);
+      }
+    });
+  })(c.model, 'model');
+
+  lines.push('  return model;');
+  lines.push('}');
+  return { code: lines.join('\n'), warnings };
+}
+function emitTransforms(v, o, lines){
+  const f = fmtNum;
+  if (o.name && v !== 'model') lines.push(`  ${v}.name = ${JSON.stringify(o.name)};`);
+  if (o.position.x || o.position.y || o.position.z)
+    lines.push(`  ${v}.position.set(${f(o.position.x)}, ${f(o.position.y)}, ${f(o.position.z)});`);
+  if (o.rotation.x || o.rotation.y || o.rotation.z)
+    lines.push(`  ${v}.rotation.set(${f(o.rotation.x)}, ${f(o.rotation.y)}, ${f(o.rotation.z)});`);
+  if (o.scale.x !== 1 || o.scale.y !== 1 || o.scale.z !== 1)
+    lines.push(`  ${v}.scale.set(${f(o.scale.x)}, ${f(o.scale.y)}, ${f(o.scale.z)});`);
+  if (o.castShadow) lines.push(`  ${v}.castShadow = true;`);
+  if (o.receiveShadow) lines.push(`  ${v}.receiveShadow = true;`);
+  if (o.userData && o.userData.__hidden) lines.push(`  ${v}.visible = false;`);
+}
+
+function geoCode(mesh, warnings){
+  const t = geoTypeOf(mesh);
+  if (t) {
+    if (t === 'Tusk' && warnings) {
+      warnings.push('TuskGeometry is a custom primitive. Ensure THREE.TuskGeometry is included in your project code.');
+    }
+    const p = geoParamsOf(mesh);
+    const args = GEOMETRY_DEFS[t].params.map(([k]) => fmtNum(p[k]));
+    while (args.length && args[args.length - 1] === GEOMETRY_DEFS[t].params[args.length - 1][1]) args.pop();
+    
+    let code = `new THREE.${t}Geometry(${args.join(', ')})`;
+    
+    // --- FIX FOR BAKED SCALING (like _fEll and _fBox) ---
+    mesh.geometry.computeBoundingBox();
+    const actualSize = mesh.geometry.boundingBox.getSize(new THREE.Vector3());
+    
+    // Create a temporary unscaled geometry to find what the size *should* be
+    const tempGeo = buildGeometry(t, p);
+    tempGeo.computeBoundingBox();
+    const expectedSize = tempGeo.boundingBox.getSize(new THREE.Vector3());
+    tempGeo.dispose();
+    
+    // If the actual size differs from the expected size, append .scale()
+    if (Math.abs(actualSize.x - expectedSize.x) > 1e-4 || 
+        Math.abs(actualSize.y - expectedSize.y) > 1e-4 || 
+        Math.abs(actualSize.z - expectedSize.z) > 1e-4) {
+        
+        const sx = actualSize.x / (expectedSize.x || 1);
+        const sy = actualSize.y / (expectedSize.y || 1);
+        const sz = actualSize.z / (expectedSize.z || 1);
+        
+        code += `.scale(${fmtNum(sx)}, ${fmtNum(sy)}, ${fmtNum(sz)})`;
+    }
+    // ----------------------------------------------------
+    
+    return code;
+  }
+  mesh.geometry.computeBoundingBox();
+  const s = mesh.geometry.boundingBox.getSize(new THREE.Vector3());
+  warnings.push(`"${mesh.name || 'part'}" had a non-primitive geometry — exported as a bounding box.`);
+  return `new THREE.BoxGeometry(${fmtNum(s.x || 0.5)}, ${fmtNum(s.y || 0.5)}, ${fmtNum(s.z || 0.5)})`;
+}
+
+function matCode(mesh){
+  const m = mesh.material;
+  const known = ['MeshLambertMaterial','MeshStandardMaterial','MeshPhongMaterial','MeshBasicMaterial','MeshToonMaterial'];
+  const type = known.includes(m.type) ? m.type : 'MeshLambertMaterial';
+  const opts = [`color: 0x${m.color ? m.color.getHexString() : '9aa4b8'}`];
+  if (m.flatShading) opts.push('flatShading: true');
+  if (m.type === 'MeshStandardMaterial') {
+    if (m.metalness !== undefined && m.metalness !== 0.5) opts.push(`metalness: ${fmtNum(m.metalness)}`);
+    if (m.roughness !== undefined && m.roughness !== 0.5) opts.push(`roughness: ${fmtNum(m.roughness)}`);
+  }
+  if (m.transparent && m.opacity < 1) opts.push('transparent: true', `opacity: ${fmtNum(m.opacity)}`);
+  return `new THREE.${type}({ ${opts.join(', ')} })`;
+}
+
+function buildUpdatedFile(){
+  setAnimIfNeeded();
+  state.candidates.forEach(c => {
+    if (c.edited && c.ok && (c.modelKind === 'complex' || c.modelKind === 'merged')) {
+      toast(c.name + '() is view/edit only — use "View code" and merge it by hand.');
+    }
+  });
+  const edits = state.candidates
+    .filter(c => c.edited && c.ok && c.modelKind !== 'complex' && c.modelKind !== 'merged')
+    .map(c => {
+      const g = generateCode(c);
+      c.warnings = g.warnings;
+      return { c, start: c.absStart, end: c.absEnd, code: g.code };
+    })
+    .sort((a, b) => b.start - a.start);
+  const accepted = [];
+  for (const e of edits) {
+    if (accepted.some(a => e.start < a.end && e.end > a.start)) {
+      e.c.warnings.push('Skipped on export: its code span overlaps another edited model.');
+      toast(e.c.name + '() skipped — overlaps another edited function.');
+      continue;
+    }
+    accepted.push(e);
+  }
+  let text = state.fileText;
+  for (const e of accepted) text = text.slice(0, e.start) + e.code + text.slice(e.end);
+  return text;
+}
+function setAnimIfNeeded(){ if (state.anim !== 'none') setAnimation('none'); }
+
+function exportFile(){
+  if (!state.candidates.some(c => c.edited)) { toast('Nothing edited yet.'); return; }
+  const text = buildUpdatedFile();
+  const name = (state.fileName || 'game.html').replace(/(\.\w+)?$/, m => '.forged' + (m || '.html'));
+  const blob = new Blob([text], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  toast('Downloaded ' + name + ' — your edited models are spliced in.');
+  renderInspector();
+}
+
+function showCodeDialog(){
+  const c = activeCandidate();
+  if (!c) return;
+  setAnimIfNeeded();
+  const g = generateCode(c);
+  c.warnings = g.warnings;
+  $('dlg-title').textContent = c.name + '() — regenerated';
+  $('dlg-code').textContent = g.code;
+  $('code-dialog').showModal();
+  renderInspector();
+}
+$('dlg-close').addEventListener('click', () => $('code-dialog').close());
+$('dlg-copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('dlg-code').textContent); toast('Code copied.'); }
+  catch { toast('Copy failed — select the text manually.'); }
+});
+$('btn-copy').addEventListener('click', showCodeDialog);
+$('btn-export').addEventListener('click', exportFile);
+
+/* =========================================================================
+   7. FILE LOADING
+   ========================================================================= */
+$('btn-open').addEventListener('click', () => $('file-input').click());
+$('file-input').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => loadFile(String(r.result), f.name);
+  r.readAsText(f);
+  e.target.value = '';
+});
+
+function loadFile(text, name){
+  state.fileText = text;
+  state.fileName = name;
+  state.candidates = [];
+  $('file-label').textContent = name;
+
+  const scripts = extractScripts(text, name).map(s => ({ ...s, mask: buildCodeMask(s.code) }));
+  const prelude = buildPrelude(scripts);
+  const bareFactory = compileFactory('');
+  let factory = bareFactory;
+  try { factory = compileFactory(prelude.code); }
+  catch (e) { console.warn('Mob Ed: prelude failed to compile, running without file helpers.', e); }
+  const ctx = { factory, bareFactory, names: prelude.names };
+
+  let all = [];
+  for (const s of scripts) all = all.concat(findFunctions(s.code, s.mask, s.offset));
+
+  all.forEach(f => { f.absStart = f.baseOffset + f.start; f.absEnd = f.baseOffset + f.end; });
+  all = all.filter((f, i) => all.findIndex(g => g.absStart === f.absStart && g.absEnd === f.absEnd) === i);
+  all = all.filter(f => !all.some(g => g !== f && g.absEnd === f.absEnd && g.absStart < f.absStart));
+
+  for (const f of all) {
+    const sc = scoreCandidate(f);
+    if (!sc.ok) continue;
+    let inst;
+    try { inst = instantiateCandidate(f, ctx); }
+    catch (e) { inst = { error: e.message }; }
+    const cand = {
+      name: f.name, params: f.params, kind: f.kind, decl: f.decl,
+      absStart: f.absStart, absEnd: f.absEnd,
+      geoCount: sc.geoCount, edited: false, warnings: [],
+      ok: !!inst.root, error: inst.error || null, model: inst.root || null,
+      modelKind: inst.modelKind || null,
+      partCount: 0,
+    };
+    if (cand.model) cand.model.traverse(o => { if (o.isMesh) cand.partCount++; });
+    state.candidates.push(cand);
+  }
+  state.candidates.sort((a, b) => (b.ok - a.ok) || (b.geoCount - a.geoCount));
+
+  $('btn-export').disabled = true;
+  const firstOk = state.candidates.findIndex(c => c.ok);
+  setModel(firstOk);
+  const okCount = state.candidates.filter(c => c.ok).length;
+  toast(okCount
+    ? 'Found ' + okCount + ' model' + (okCount === 1 ? '' : 's') + ' in ' + name
+    : 'No primitive-built models found in ' + name);
+}
+
+/* ---------- sample game file ---------- */
+const SAMPLE_FILE = `<!DOCTYPE html>
+<html><head><title>Sample Planet Game<\/title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
+<\/head><body>
+<script>
+const scene = new THREE.Scene();
+
+function createAstronaut() {
+  const astronaut = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.42, 0.9, 8),
+    new THREE.MeshLambertMaterial({ color: 0xdde3f0 }));
+  body.name = "body"; body.position.y = 0.95; astronaut.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 6),
+    new THREE.MeshLambertMaterial({ color: 0xf0f2f8 }));
+  head.name = "head"; head.position.y = 1.7; astronaut.add(head);
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6),
+    new THREE.MeshLambertMaterial({ color: 0x38b6c9 }));
+  visor.name = "visor"; visor.position.set(0, 1.7, 0.14); astronaut.add(visor);
+  const pack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.25),
+    new THREE.MeshLambertMaterial({ color: 0xffb454 }));
+  pack.name = "backpack"; pack.position.set(0, 1.05, -0.35); astronaut.add(pack);
+  const armMat = new THREE.MeshLambertMaterial({ color: 0xc4ccdd });
+  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.7, 6), armMat);
+  leftArm.name = "leftArm"; leftArm.position.set(-0.5, 1.1, 0); leftArm.rotation.z = 0.15;
+  astronaut.add(leftArm);
+  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.7, 6), armMat.clone());
+  rightArm.name = "rightArm"; rightArm.position.set(0.5, 1.1, 0); rightArm.rotation.z = -0.15;
+  astronaut.add(rightArm);
+  const legMat = new THREE.MeshLambertMaterial({ color: 0x9aa4b8 });
+  const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.8, 6), legMat);
+  leftLeg.name = "leftLeg"; leftLeg.position.set(-0.18, 0.4, 0); astronaut.add(leftLeg);
+  const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.8, 6), legMat.clone());
+  rightLeg.name = "rightLeg"; rightLeg.position.set(0.18, 0.4, 0); astronaut.add(rightLeg);
+  return astronaut;
+}
+
+const createSporeMob = (x, z) => {
+  const mob = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 0),
+    new THREE.MeshLambertMaterial({ color: 0x7bc86a, flatShading: true }));
+  body.name = "body"; body.position.y = 0.7; mob.add(body);
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 5),
+    new THREE.MeshLambertMaterial({ color: 0x1b2233 }));
+  eye.name = "eye"; eye.position.set(0, 0.85, 0.5); mob.add(eye);
+  for (let i = 0; i < 4; i++) {
+    const leg = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.5, 5),
+      new THREE.MeshLambertMaterial({ color: 0x4e8f43 }));
+    leg.name = "leg" + i;
+    leg.position.set(i < 2 ? -0.28 : 0.28, 0.22, i % 2 ? -0.22 : 0.22);
+    leg.rotation.x = Math.PI;
+    mob.add(leg);
+  }
+  const spike = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.45, 5),
+    new THREE.MeshLambertMaterial({ color: 0xe0637a }));
+  spike.name = "spike"; spike.position.y = 1.3; mob.add(spike);
+  mob.position.set(x || 0, 0, z || 0);
+  scene.add(mob);
+  return mob;
+};
+
+function updateHUD(score) { /* not a model — should be ignored *\/ }
+<\/script>
+<\/body><\/html>`;
+$('btn-sample').addEventListener('click', () => loadFile(SAMPLE_FILE, 'sample-game.html'));
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+/* ---------- render loop ---------- */
+const clock = new THREE.Clock();
+updateCamera();
+resize();
+(function loop(){
+  requestAnimationFrame(loop);
+  tickAnimation(clock.getElapsedTime());
+  if (selectionHelper) selectionHelper.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
