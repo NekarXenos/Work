@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Bleaux AstroMiner — v2.13.7</title>
+<title>Bleaux AstroMiner — v2.13.10</title>
 <style>
     :root{
         --ink:#dff3ff; --dim:#6fa0b8; --accent:#37e0ff; --dark-energy:#b26bff;
@@ -2389,6 +2389,90 @@ import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
            stalls) stays visually coherent. On the GT740 the meter
            should now read ~100%% at every scale — if it dips, that
            is a REAL stall and worth reporting.
+
+   v2.13.10: THE OPENING SCENE, REBUILT — SHE NO LONGER FLIES OFF.
+            PLAYER REPORT: "CHRiSPi seems to disappear and suddenly return
+            smaller." BRIEF: she opens (the top half floats up to reveal
+            Bleaux inside), he jumps forward out of her, she slowly closes and
+            gradually shrinks while floating up slightly to attach to his back,
+            "a bit higher up like a backpack".
+
+            ROOT CAUSE, MEASURED. The old scene posed her in SPACE coordinates
+            from a start point captured once at the click, while the planet
+            ORBITS and carries Bleaux ~50 u/s. She was 12.7 u from him during
+            a "hover" that should have held 0.95, and 24.7 u mid-jump, then
+            snapped onto his back at travel size.
+
+            FIX: the whole scene plays in BLEAUX'S LOCAL FRAME. She is parented
+            to `player` from the first frame and only her local position,
+            scale and lid move; carryChrispi() at the end changes nothing in
+            space. The capsule never moves: she starts INTRO_CINE_LEAP behind
+            it with his model inside, and the model leaps forward onto it.
+              open 1.4 s · leap 0.9 s · close+shrink+float 2.4 s · swing 1.1 s
+            The camera stands ~35 deg off dead-ahead (INTRO_CINE_ANGLE): head
+            on, the leap read as a hop on the spot and she vanished behind him
+            while mounting. The per-frame body pose was writing his height
+            back to the floor mid-scene; the scene now re-asserts it each frame.
+
+            BACKPACK: the mount is CHRISPI_BACK_POS / CHRISPI_BACK_SCALE, shared
+            by carryChrispi and the scene, raised 0.30 (base -0.75 -> -0.45).
+            CHRiSPi's two greetings moved back 1.8 s with the longer scene.
+
+   v2.13.9: SHORTER UPPER LIMBS, CATS AND DOGS ON THEIR TOES, JOINTED ALIENS.
+            PLAYER BRIEF: "The upper limbs should be shorter on the
+            quadrupeds. The wolf and the Sabre-toothed lion need a longer
+            tail and longer rear feet (higher heel). Add joints for the
+            aliens as well."
+
+            QUADRUPEDS: elbow and knee raised to 0.78 / 0.85 of leg height
+            (were 0.55 / 0.62), up at the belly line, so the upper arm and
+            thigh are mostly inside the barrel. New `heel` field = hock
+            height as a fraction of leg height (default 0.34); wolf and
+            sabre stand at 0.50, which is the longer rear foot. New
+            `longTail` flag: a five-point chain that sweeps back, hangs most
+            of the way down and hooks up at the tip — still far short of the
+            nose, so the head leads on every quadruped.
+
+            ALIENS (buildGuardGeometry): post-legs and the one-box rifle arm
+            are now jointLimb chains with knees and elbows, a pelvis and an
+            icosahedron torso. Reptilians bend the knee forward like a human;
+            MANTIDS get insect legs, knee high and BACK. Both hands sit on the
+            rifle. Wedge head, yoke, rifle line and the -0.95 muzzle reach are
+            unchanged, and so is everything that is not geometry.
+
+   v2.13.8: KNEES, ELBOWS, AND HORNS THAT POINT THE RIGHT WAY.
+            PLAYER BRIEF: mobs get knee and elbow joints; stay low poly but
+            use icosahedrons for heads and bodies "so it doesn't look like
+            minecraft"; fewer sphere polygons on the sea creatures; a shark
+            nose that is not a needle from above; and curved tusks / horns /
+            fangs from ONE builder, pointing where the real animals' do.
+
+            THE KIT (next to _fBox): _fIco, _fSeg (a 5-sided tapered limb
+            segment laid from point to point), jointLimb (a chain of
+            segments with an icosahedron knuckle at every inner point) and
+            curvedHorn (a tapered tube swept along a Catmull-Rom curve
+            through control points, closing to a tip). A horn's direction is
+            the ORDER its points are written in, root first.
+
+            QUADRUPEDS: barrel and head are icosahedrons fitted to the old
+            boxes; fore legs run shoulder -> ELBOW (back) -> wrist -> paw,
+            hind legs hip -> KNEE (forward) -> hock -> paw, with a per-species
+            `bend` (wolf springy, mammoth columnar). Neck and a jointed,
+            drooping tail inside the old reach. CAVEMAN: icosahedron torso,
+            head and hair; jointed legs and arms, right hand ON the club haft.
+            HOPPER / GHOST / FOXBAT: spheres swapped for icosahedrons.
+
+            HORNS: mammoth tusks root beside the mouth, go down and out, curve
+            forward, then up and in. Bison horns root on the top sides of the
+            skull, go out sideways, then up and forward. Sabre fangs root at
+            the front corners of the mouth, go down, then down and back.
+
+            SEA: _fEll default 7x5 (was 10x7), whale 9/8 (was 12/10), fish
+            7x5 (was 8x6). Shark snout is a dodecahedron squashed vertically,
+            quarter-turned so a flat edge leads, and pitched nose-up.
+
+            UNCHANGED: every collider, foot lift, speed and FAUNA/SEA row —
+            this is geometry only. Guards are untouched.
 
    v2.13.7: THE STICK YOU COULD NOT SEE — AND A PHONE YOU CAN LEAN.
             PLAYER BRIEF, VERBATIM: "I don't see any movement controls on
@@ -18848,6 +18932,66 @@ let _tribeSeq=0;            // v2.11.12: group id, one per spawned band
    POINTS ALONG +Z - the same facing axis the fish geometry uses, because
    the shared yaw convention here is "rotate -heading about local up". */
 const _fBox=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
+/* ============ v2.13.8 LOW-POLY ANATOMY KIT ============
+   PLAYER BRIEF: mobs get KNEE AND ELBOW JOINTS, heads and bodies lean on
+   icosahedrons "so it doesn't look like minecraft", and tusks / horns /
+   fangs become real curves pointing the right way. Still low poly: every
+   limb segment is a 5-sided tapered cylinder, every joint a detail-0
+   icosahedron (20 faces), and a horn is 8 rings of 5.
+   _fIco    an icosahedron, scaled per axis through M() like every other part.
+   _fSeg    one tapered limb segment laid from point a to point b.
+   jointLimb a chain of segments with an icosahedron knuckle at every INNER
+            point — the knee, the elbow, the hock. Ends get no ball: the
+            shoulder/hip sinks into the body and the foot gets its own pad.
+   curvedHorn a tapered tube swept along a Catmull-Rom curve through the
+            given control points, closing to a point at the last one. The
+            FIRST point is the root (buried in the head), so the direction a
+            horn grows is simply the order its points are written in. */
+const _fIco=(r,d)=>new THREE.IcosahedronGeometry(r,d||0);
+const _segY=V3(0,1,0);
+function _fSeg(a,b,r0,r1,color,sides){
+    const d=V3().subVectors(b,a),len=d.length();
+    const q=new THREE.Quaternion().setFromUnitVectors(_segY,d.multiplyScalar(1/len));
+    return {geo:new THREE.CylinderGeometry(r1,r0,len,sides||5,1),
+            matrix:new THREE.Matrix4().compose(V3().addVectors(a,b).multiplyScalar(0.5),q,V3(1,1,1)),
+            color};
+}
+function jointLimb(P,pts,rads,color,jointColor){
+    for(let i=0;i<pts.length-1;i++){
+        P.push(_fSeg(pts[i],pts[i+1],rads[i],rads[i+1],color));
+        if(i>0)P.push({geo:_fIco(rads[i]*1.15),matrix:M(pts[i].x,pts[i].y,pts[i].z),
+                       color:jointColor===undefined?color:jointColor});
+    }
+    return P;
+}
+function curvedHorn(pts,r0,seg,sides){
+    seg=seg||8;sides=sides||5;
+    const curve=new THREE.CatmullRomCurve3(pts,false,'centripetal');
+    const fr=curve.computeFrenetFrames(seg,false);
+    const rings=[];
+    for(let i=0;i<seg;i++){
+        const t=i/seg,c=curve.getPointAt(t),r=r0*Math.pow(1-t,0.75),ring=[];
+        for(let j=0;j<sides;j++){
+            const a=j/sides*Math.PI*2;
+            ring.push(c.clone().addScaledVector(fr.normals[i],Math.cos(a)*r)
+                               .addScaledVector(fr.binormals[i],Math.sin(a)*r));
+        }
+        rings.push(ring);
+    }
+    const tip=curve.getPointAt(1),root=curve.getPointAt(0),out=[];
+    const tri=(a,b,c)=>out.push(a.x,a.y,a.z,b.x,b.y,b.z,c.x,c.y,c.z);
+    for(let j=0;j<sides;j++){
+        const k=(j+1)%sides;
+        tri(root,rings[0][k],rings[0][j]);                       // root cap
+        for(let i=0;i<seg-1;i++)                                  // wall, outward winding
+            {tri(rings[i][j],rings[i][k],rings[i+1][j]);tri(rings[i][k],rings[i+1][k],rings[i+1][j]);}
+        tri(rings[seg-1][j],rings[seg-1][k],tip);                 // closes to the point
+    }
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(out,3));
+    g.computeVertexNormals();
+    return g;
+}
 /* ============ v2.11.12 CAVEMEN (plan 4.5) ============
    [PLAN CORRECTION — the premise of 4.5 does not exist in the code.]
    The plan asks for cavemen on "the last Earth-like planet" / "the final
@@ -18885,24 +19029,18 @@ const CAVEMAN_MIN_SYSTEM=3;
 function cavemanGeo(){
     const skin=0x8a6242,fur=0x6b5236,hair=0x2b2119,wood=0x6b4426,stone=0x8d8d95;
     const P=[
-        // legs
-        {geo:_fBox(0.17,0.62,0.20),matrix:M(-0.13,0.31,0),color:skin},
-        {geo:_fBox(0.17,0.62,0.20),matrix:M( 0.13,0.31,0),color:skin},
-        // hide kilt
-        {geo:_fBox(0.46,0.26,0.32),matrix:M(0,0.72,0),color:fur},
-        // torso, tapered by two stacked boxes
-        {geo:_fBox(0.44,0.38,0.28),matrix:M(0,1.02,0),color:skin},
-        {geo:_fBox(0.50,0.22,0.30),matrix:M(0,1.28,0),color:skin},
+        // hide kilt: a six-sided skirt rather than a crate
+        {geo:new THREE.CylinderGeometry(0.21,0.27,0.28,6),matrix:M(0,0.74,0),color:fur},
+        // v2.13.8: torso is two icosahedrons — ribcage over belly — not stacked boxes
+        {geo:_fIco(1),matrix:M(0,0.98,0,0,0,0,0.21,0.22,0.16),color:skin},
+        {geo:_fIco(1),matrix:M(0,1.22,0,0,0,0,0.29,0.22,0.19),color:skin},
         // hide strap over one shoulder
         {geo:_fBox(0.52,0.10,0.32),matrix:M(0,1.20,0,0,0,0.35),color:fur},
-        // arms
-        {geo:_fBox(0.14,0.52,0.16),matrix:M(-0.31,1.10,0.02,0,0,0.18),color:skin},
-        {geo:_fBox(0.14,0.52,0.16),matrix:M( 0.31,1.10,0.02,0,0,-0.18),color:skin},
         // neck + head
-        {geo:_fBox(0.14,0.08,0.14),matrix:M(0,1.43,0),color:skin},
-        {geo:_fBox(0.28,0.30,0.30),matrix:M(0,1.60,0.01),color:skin},
+        {geo:new THREE.CylinderGeometry(0.07,0.08,0.14,5),matrix:M(0,1.43,0),color:skin},
+        {geo:_fIco(1),matrix:M(0,1.60,0.01,0,0,0,0.17,0.19,0.18),color:skin},
         // heavy brow — the cue that reads as "caveman" and not "villager"
-        {geo:_fBox(0.30,0.07,0.10),matrix:M(0,1.66,0.16),color:hair},
+        {geo:_fBox(0.30,0.07,0.10),matrix:M(0,1.66,0.15),color:hair},
         /* THE NOSE IS WHAT CARRIES THE FACING, and it is here because a test
            demanded it. The first cut had no forward face feature at all, so
            the "+Z leads" assertion was satisfied by the CLUB — a caveman
@@ -18912,12 +19050,26 @@ function cavemanGeo(){
            about the face rather than the weapon. */
         {geo:_fBox(0.10,0.11,0.13),matrix:M(0,1.57,0.20),color:skin},
         // hair/beard mass
-        {geo:_fBox(0.31,0.20,0.26),matrix:M(0,1.72,-0.04),color:hair},
-        {geo:_fBox(0.20,0.14,0.10),matrix:M(0,1.48,0.15),color:hair},
+        {geo:_fIco(1),matrix:M(0,1.72,-0.04,0,0,0,0.19,0.13,0.17),color:hair},
+        {geo:_fIco(1),matrix:M(0,1.48,0.13,0,0,0,0.12,0.09,0.07),color:hair},
         // CLUB, held out in the right hand: haft then stone head
         {geo:_fBox(0.09,0.46,0.09),matrix:M(0.40,1.00,0.20,0.55,0,0.12),color:wood},
-        {geo:_fBox(0.17,0.17,0.19),matrix:M(0.46,1.20,0.40,0.55,0,0.12),color:stone},
+        {geo:_fIco(0.13),matrix:M(0.46,1.20,0.40,0.55,0,0.12,1,1.1,1),color:stone},
     ];
+    /* v2.13.8 JOINTED LIMBS. Legs: hip -> knee (a touch forward) -> ankle,
+       so the knee reads from the side. Arms: shoulder -> elbow (back) ->
+       hand. The right hand is placed ON the club haft a quarter of the way
+       up — worked back from the haft's own matrix — so the club is held,
+       not floating beside a fist. */
+    for(const sx of [-1,1]){
+        jointLimb(P,[V3(sx*0.12,0.74,0),V3(sx*0.13,0.40,0.06),V3(sx*0.13,0.08,0)],
+                  [0.095,0.075,0.06],skin);
+        P.push({geo:_fIco(1),matrix:M(sx*0.13,0.05,0.05,0,0,0,0.08,0.05,0.13),color:skin});   // foot
+    }
+    jointLimb(P,[V3(0.27,1.32,0),V3(0.36,1.06,-0.08),V3(0.41,0.90,0.14)],[0.075,0.06,0.05],skin);
+    jointLimb(P,[V3(-0.27,1.32,0),V3(-0.34,1.06,-0.05),V3(-0.34,0.84,0.08)],[0.075,0.06,0.05],skin);
+    for(const h of [V3(0.41,0.90,0.14),V3(-0.34,0.84,0.08)])
+        P.push({geo:_fIco(0.065),matrix:M(h.x,h.y,h.z),color:skin});                        // fists
     return mergeParts(P);
 }
 function hopperGeo(){
@@ -18925,7 +19077,7 @@ function hopperGeo(){
        mergeParts purely so its material can carry vertexColors like the rest;
        baked WHITE means the per-instance HSL tint multiplies to exactly the
        colour v2.9.12 produced. */
-    const g=new THREE.SphereGeometry(0.34,8,6);
+    const g=new THREE.IcosahedronGeometry(0.34,1);   // v2.13.8: was an 8x6 sphere
     g.scale(1,0.85,1.1);
     const out=mergeParts([{geo:g,matrix:_I4,color:0xffffff}]);
     g.dispose();return out;
@@ -18934,72 +19086,137 @@ function quadruped(o){
     /* Shared skeleton for wolf / bison / mammoth / sabre: barrel, head,
        four legs, tail. Species differ by numbers and by the extras they
        append, which is cheaper than four hand-built part lists that would
-       drift apart the first time the leg height changed. */
+       drift apart the first time the leg height changed.
+       v2.13.8: THE BOXES ARE GONE. Barrel and head are icosahedrons scaled
+       to the same box the old parts filled (x0.55 of the full extent on a
+       unit icosahedron, so the faces — not only the points — reach it), and
+       every leg is a JOINTED chain:
+         FORE  shoulder -> ELBOW (sits back) -> wrist -> paw
+         HIND  hip -> KNEE (sits forward) -> hock (back) -> paw
+       `bend` is how far the joints sit off the straight line, as a fraction
+       of leg height: a wolf is springy, a mammoth is a column.
+       v2.13.9: UPPER LIMBS SHORTENED — the elbow and knee now sit up at the
+       belly line (0.78 / 0.85 of leg height, were 0.55 / 0.62), so most of
+       the upper arm / thigh is inside the barrel and the visible leg is
+       forearm and shank, as on the real animals. `heel` is the hock height
+       as a fraction of leg height (default 0.34): the cats and dogs stand
+       on their toes, so theirs is higher and the rear foot longer. The chain's
+       numbers are returned on the array (P.by / P.headY / P.headZ) so each
+       species' extras hang off the head it actually has. */
     const P=[];
-    const lh=o.leg, by=lh+o.bodyH/2;
-    P.push({geo:_fBox(o.bodyW,o.bodyH,o.bodyL),matrix:M(0,by,0),color:o.hide});
-    for(const sx of [-1,1])for(const sz of [-1,1])
-        P.push({geo:_fBox(o.legW,lh,o.legW),
-                matrix:M(sx*(o.bodyW/2-o.legW*0.6),lh/2,sz*(o.bodyL/2-o.legW)),color:o.limb});
-    P.push({geo:_fBox(o.headW,o.headH,o.headL),
-            matrix:M(0,by+o.headUp,o.bodyL/2+o.headL/2),color:o.hide});
+    const lh=o.leg, by=lh+o.bodyH/2, hz=o.bodyL/2, b=(o.bend||0.10)*lh;
+    const hoof=o.hoof===undefined?o.limb:o.hoof;
+    P.push({geo:_fIco(1,1),matrix:M(0,by,0,0,0,0,o.bodyW*0.55,o.bodyH*0.55,o.bodyL*0.55),color:o.hide});
+    const r0=o.legW*0.78,r1=o.legW*0.60,r2=o.legW*0.50;
+    for(const sx of [-1,1]){
+        const x=sx*(o.bodyW/2-o.legW*0.6);
+        const zf=hz-o.legW*1.3, zh=-hz+o.legW*1.3;
+        const heel=(o.heel||0.34)*lh, hf=zh-b*0.2;           // hock height, hind foot z
+        jointLimb(P,[V3(x,by-o.bodyH*0.05,zf),V3(x,lh*0.78,zf-b),V3(x,lh*0.18,zf-b*0.3),V3(x,o.legW*0.22,zf+b*0.1)],
+                  [r0,r1,r2,r2*0.9],o.limb);
+        jointLimb(P,[V3(x,by-o.bodyH*0.05,zh),V3(x,lh*0.85,zh+b*0.9),V3(x,heel,zh-b*1.4),V3(x,o.legW*0.22,hf)],
+                  [r0*1.1,r1,r2,r2*0.9],o.limb);
+        P.push({geo:_fIco(1),matrix:M(x,o.legW*0.22,zf+b*0.1+o.legW*0.12,0,0,0,o.legW*0.5,o.legW*0.28,o.legW*0.62),color:hoof});
+        P.push({geo:_fIco(1),matrix:M(x,o.legW*0.22,hf+o.legW*0.12,0,0,0,o.legW*0.5,o.legW*0.28,o.legW*0.62),color:hoof});
+    }
+    const headY=by+o.headUp, headZ=hz+o.headL*0.42;
+    P.push(_fSeg(V3(0,by+o.bodyH*0.12,hz-o.bodyL*0.12),V3(0,headY,headZ),
+                 Math.min(o.bodyW,o.bodyH)*0.36,Math.min(o.headW,o.headH)*0.40,o.hide,6));   // neck
+    P.push({geo:_fIco(1),matrix:M(0,headY,headZ,0,0,0,o.headW*0.62,o.headH*0.62,o.headL*0.62),color:o.hide});
     /* [FINDING] the first cut gave every species a tail 0.45x its body long,
        hung a further 0.2x clear of the rump — which put the TAIL TIP further
        from the origin than the nose on the bison and the sabre lion. Caught
        by the +Z facing assertion, not by eye. Tails are now a third of that
-       reach, so the head leads on all four quadrupeds. */
-    P.push({geo:_fBox(o.legW*0.7,o.legW*0.7,o.bodyL*0.30),
-            matrix:M(0,by+o.bodyH*0.2,-o.bodyL/2-o.bodyL*0.12),color:o.limb});
+       reach, so the head leads on all four quadrupeds. v2.13.8: jointed and
+       drooping, still inside the same reach. v2.13.9: `longTail` (wolf,
+       sabre) is a five-point chain that sweeps back, hangs most of the way
+       to the ground and hooks up at the tip — still well short of the nose. */
+    if(o.longTail){
+        const H=o.bodyH,L=o.bodyL,w=o.legW;
+        jointLimb(P,[V3(0,by+H*0.22,-hz*0.92),V3(0,by+H*0.06,-hz-L*0.13),V3(0,by-H*0.45,-hz-L*0.22),
+                     V3(0,by-H*0.95,-hz-L*0.22),V3(0,by-H*1.20,-hz-L*0.30)],
+                  [w*0.32,w*0.36,w*0.34,w*0.28,w*0.14],o.limb);
+    }else
+        jointLimb(P,[V3(0,by+o.bodyH*0.22,-hz*0.92),V3(0,by+o.bodyH*0.02,-hz-o.bodyL*0.10),V3(0,by-o.bodyH*0.38,-hz-o.bodyL*0.14)],
+                  [o.legW*0.30,o.legW*0.24,o.legW*0.12],o.limb);
+    P.by=by;P.headY=headY;P.headZ=headZ;
     return P;
 }
 function wolfGeo(){
-    const o={leg:0.52,bodyW:0.42,bodyH:0.40,bodyL:0.95,legW:0.13,
+    const o={leg:0.52,bodyW:0.42,bodyH:0.40,bodyL:0.95,legW:0.13,bend:0.13,heel:0.50,longTail:true,
              headW:0.30,headH:0.30,headL:0.34,headUp:0.14,hide:0x6e6e78,limb:0x4a4a54};
     const P=quadruped(o);
-    const by=o.leg+o.bodyH/2;
-    P.push({geo:_fBox(0.16,0.15,0.24),matrix:M(0,by+0.08,0.95),color:0x3a3a42});   // muzzle
+    const hy=P.headY,hz=P.headZ;
+    P.push({geo:_fIco(1),matrix:M(0,hy-0.05,hz+0.22,0,0,0,0.09,0.08,0.16),color:0x3a3a42});   // muzzle
+    P.push({geo:_fIco(0.035),matrix:M(0,hy-0.01,hz+0.37),color:0x1c1c20});                    // nose
     for(const sx of [-1,1])
-        P.push({geo:new THREE.ConeGeometry(0.08,0.18,4),
-                matrix:M(sx*0.10,by+0.36,0.62),color:0x4a4a54});                   // ears
+        P.push({geo:new THREE.ConeGeometry(0.07,0.18,4),
+                matrix:M(sx*0.09,hy+0.20,hz-0.04,-0.15,0,-sx*0.2),color:0x4a4a54});          // ears
     return mergeParts(P);
 }
 function bisonGeo(){
-    const o={leg:0.80,bodyW:0.86,bodyH:0.82,bodyL:1.70,legW:0.23,
+    const o={leg:0.80,bodyW:0.86,bodyH:0.82,bodyL:1.70,legW:0.23,bend:0.08,hoof:0x241810,
              headW:0.54,headH:0.50,headL:0.50,headUp:-0.16,hide:0x5a3a26,limb:0x3b271a};
     const P=quadruped(o);
-    const by=o.leg+o.bodyH/2;
-    P.push({geo:_fBox(0.80,0.46,0.72),matrix:M(0,by+0.50,0.34),color:0x4a2f1e});    // shoulder hump
-    for(const sx of [-1,1])
-        P.push({geo:new THREE.ConeGeometry(0.09,0.34,5),
-                matrix:M(sx*0.30,by+0.10,1.02,0,0,sx*1.15),color:0xd9cdb0});        // horns
+    const by=P.by,hy=P.headY,hz=P.headZ;
+    P.push({geo:_fIco(1,1),matrix:M(0,by+0.26,0.36,0,0,0,0.46,0.40,0.62),color:0x4a2f1e});   // shoulder hump
+    P.push({geo:_fIco(1),matrix:M(0,hy+0.12,hz-0.06,0,0,0,0.30,0.20,0.26),color:0x4a2f1e});  // shaggy poll
+    P.push({geo:_fIco(1),matrix:M(0,hy-0.26,hz+0.02,0,0,0,0.13,0.14,0.12),color:0x3b271a});  // beard
+    /* HORNS: rooted on the top sides of the skull, out SIDEWAYS first, then
+       curving UP and FORWARD — tips finish in front of the root and a little
+       inboard, the way a bison's hook does. */
+    for(const sx of [-1,1]){
+        const x0=sx*0.20,y0=hy+0.16,z0=hz-0.02;
+        P.push({geo:curvedHorn([V3(x0,y0,z0),V3(x0+sx*0.16,y0+0.01,z0),V3(x0+sx*0.29,y0+0.08,z0+0.03),
+                                V3(x0+sx*0.33,y0+0.22,z0+0.11),V3(x0+sx*0.28,y0+0.32,z0+0.21)],0.075),
+                matrix:_I4,color:0xd9cdb0});
+    }
     return mergeParts(P);
 }
 function mammothGeo(){
-    const o={leg:1.10,bodyW:1.24,bodyH:1.22,bodyL:2.10,legW:0.34,
+    const o={leg:1.10,bodyW:1.24,bodyH:1.22,bodyL:2.10,legW:0.34,bend:0.05,hoof:0x3e2414,
              headW:0.86,headH:0.84,headL:0.78,headUp:0.10,hide:0x7a4a2a,limb:0x5e3820};
     const P=quadruped(o);
-    const by=o.leg+o.bodyH/2;
-    P.push({geo:_fBox(1.10,0.50,0.90),matrix:M(0,by+0.62,0.20),color:0x8a5730});    // shoulder mass
-    for(let i=0;i<3;i++)                                                             // trunk
-        P.push({geo:new THREE.CylinderGeometry(0.15-i*0.035,0.19-i*0.035,0.42,6),
-                matrix:M(0,by+0.10-i*0.34,1.52+i*0.10,0.35,0,0),color:0x6b4024});
-    for(const sx of [-1,1])                                                          // tusks
-        P.push({geo:new THREE.ConeGeometry(0.10,0.95,5),
-                matrix:M(sx*0.34,by+0.02,1.62,1.15,0,sx*0.30),color:0xefe6cf});
+    const by=P.by,hy=P.headY,hz=P.headZ;
+    P.push({geo:_fIco(1,1),matrix:M(0,by+0.38,0.25,0,0,0,0.62,0.44,0.70),color:0x8a5730});   // shoulder mass
+    P.push({geo:_fIco(1),matrix:M(0,hy+0.34,hz-0.08,0,0,0,0.36,0.30,0.34),color:0x8a5730});  // domed skull
+    // trunk: a jointed chain hanging down and curling forward at the tip
+    jointLimb(P,[V3(0,hy-0.02,hz+0.36),V3(0,hy-0.46,hz+0.52),V3(0,hy-0.90,hz+0.50),
+                 V3(0,hy-1.16,hz+0.40),V3(0,hy-1.28,hz+0.52)],[0.19,0.15,0.12,0.09,0.07],0x6b4024);
+    /* TUSKS: rooted either side of the mouth, run DOWN and OUTWARD, curve
+       FORWARD, then sweep UP and back INWARD so the tips close toward each
+       other in front of the trunk. */
+    for(const sx of [-1,1]){
+        const x0=sx*0.22,y0=hy-0.30,z0=hz+0.26;
+        P.push({geo:curvedHorn([V3(x0,y0,z0),V3(x0+sx*0.13,y0-0.34,z0+0.12),V3(x0+sx*0.28,y0-0.66,z0+0.44),
+                                V3(x0+sx*0.28,y0-0.70,z0+0.86),V3(x0+sx*0.17,y0-0.44,z0+1.18),
+                                V3(x0+sx*0.03,y0-0.12,z0+1.26)],0.10,10,6),
+                matrix:_I4,color:0xefe6cf});
+    }
     for(const sx of [-1,1])                                                          // ears
-        P.push({geo:_fBox(0.06,0.52,0.44),matrix:M(sx*0.46,by+0.34,1.16),color:0x6b4024});
+        P.push({geo:_fIco(1),matrix:M(sx*0.44,hy+0.06,hz-0.22,0,sx*0.3,0,0.06,0.28,0.22),color:0x6b4024});
     return mergeParts(P);
 }
 function sabreGeo(){
-    const o={leg:0.62,bodyW:0.56,bodyH:0.52,bodyL:1.26,legW:0.17,
+    const o={leg:0.62,bodyW:0.56,bodyH:0.52,bodyL:1.26,legW:0.17,bend:0.12,heel:0.50,longTail:true,
              headW:0.42,headH:0.40,headL:0.42,headUp:0.16,hide:0xf0f0f2,limb:0xdcdce6};
     const P=quadruped(o);
-    const by=o.leg+o.bodyH/2;
+    const hy=P.headY,hz=P.headZ;
     P.push({geo:new THREE.IcosahedronGeometry(0.40,0),
-            matrix:M(0,by+0.16,0.66),color:0xe2e2ee});                               // mane
-    for(const sx of [-1,1])                                                          // sabres
-        P.push({geo:new THREE.ConeGeometry(0.055,0.40,4),
-                matrix:M(sx*0.11,by+0.04,0.90,Math.PI,0,0),color:0xfffdf0});
+            matrix:M(0,hy-0.02,hz-0.26,0,0,0,0.85,0.85,0.75),color:0xe2e2ee});       // mane
+    P.push({geo:_fIco(1),matrix:M(0,hy-0.06,hz+0.18,0,0,0,0.14,0.11,0.12),color:0xf0f0f2}); // muzzle
+    P.push({geo:_fIco(0.04),matrix:M(0,hy,hz+0.30),color:0x5a4a4a});                      // nose
+    for(const sx of [-1,1])
+        P.push({geo:new THREE.ConeGeometry(0.07,0.14,4),
+                matrix:M(sx*0.13,hy+0.24,hz-0.02),color:0xdcdce6});                     // ears
+    /* SABRES: rooted at the front corners of the mouth, straight DOWN first,
+       then curving DOWN and BACK — the tips finish behind the root. */
+    for(const sx of [-1,1]){
+        const x0=sx*0.075,y0=hy-0.12,z0=hz+0.24;
+        P.push({geo:curvedHorn([V3(x0,y0,z0),V3(x0+sx*0.005,y0-0.10,z0+0.015),V3(x0+sx*0.01,y0-0.20,z0),
+                                V3(x0+sx*0.012,y0-0.28,z0-0.05),V3(x0+sx*0.012,y0-0.33,z0-0.12)],0.036,8,5),
+                matrix:_I4,color:0xfffdf0});
+    }
     return mergeParts(P);
 }
 /* THE TABLE. `hop` marks the shipped hopper bounce and its spherical
@@ -20611,7 +20828,7 @@ function strandFish(body,f){
    its own swim direction. FLAGGED ASSUMPTION: if in-game testing shows
    fish swimming tail-first, rotate FISH_GEO PI about Y — one line. */
 const FISH_GEO=(()=>{ 
-    const body=new THREE.SphereGeometry(0.28,8,6);
+    const body=new THREE.SphereGeometry(0.28,7,5);   // v2.13.8: was 8x6
     const tail=new THREE.ConeGeometry(0.16,0.3,6);
     const g=mergeParts([
         {geo:body,matrix:new THREE.Matrix4().makeScale(0.55,0.8,1.45),color:0xffffff},
@@ -20677,7 +20894,10 @@ const FISH_GEO=(()=>{
 const SEA_CAP=20;              // shared slot space across ALL swimmer species
 const SEA_BITE_CD=0.85;        // s between bites from any one swimmer
 const _fEll=(rx,ry,rz,seg)=>{  // ellipsoid: one sphere, three scales, baked
-    const g=new THREE.SphereGeometry(1,seg||10,(seg||10)-3);
+    /* v2.13.8: default 7x5 (was 10x7) and the whale's 12/10 are now 9/8 —
+       roughly half the triangles per swimmer, and the flat shading reads
+       as the same low-poly style as the land mobs. */
+    const g=new THREE.SphereGeometry(1,seg||7,(seg||7)-2);
     g.scale(rx,ry,rz);return g;
 };
 /* GEOMETRY CONVENTION, inherited from FISH_GEO and enforced by test:
@@ -20708,7 +20928,14 @@ function sharkGeo(){
     const P=[
         {geo:_fEll(0.40,0.44,1.35),matrix:M(0,0,0.05),color:hide},
         {geo:_fEll(0.32,0.20,0.98),matrix:M(0,-0.20,0.06),color:belly},
-        {geo:new THREE.ConeGeometry(0.30,0.72,7),matrix:M(0,0.02,1.62,Math.PI/2,0,0),color:hide},  // snout
+        /* v2.13.8 SNOUT: was a 7-sided cone, a needle from above. Now a
+           dodecahedron squashed flat along its vertical axis and pitched
+           nose-UP a touch, so the top view is a blunt rounded wedge and the
+           side view has the shark's lifted, overhanging snout. The quarter
+           turn about X first puts a HORIZONTAL edge at the front instead of a
+           vertical one, so from above it ends flat, not in a point. */
+        {geo:new THREE.DodecahedronGeometry(1,0).rotateX(Math.PI/2),
+         matrix:M(0,0.05,1.26,-0.16,0,0,0.34,0.20,0.56),color:hide},                                // snout
         {geo:new THREE.ConeGeometry(0.22,0.62,4),matrix:M(0,0.50,0.10,-0.30,0,0),color:fin},        // dorsal
         {geo:_fBox(0.16,0.20,0.52),matrix:M(0,0,-1.38),color:hide},                                 // peduncle
         /* AND THE SHARK'S CAUDAL FIN IS VERTICAL - the mirror assertion of
@@ -20723,9 +20950,9 @@ function sharkGeo(){
 function whaleGeo(){
     const hide=0x3d4d5e,belly=0x8e9aa6,fin=0x32404f;
     const P=[
-        {geo:_fEll(0.80,0.88,2.45,12),matrix:M(0,0,0.10),color:hide},
-        {geo:_fEll(0.64,0.40,1.90,12),matrix:M(0,-0.44,0.12),color:belly},   // pleated underside
-        {geo:_fEll(0.62,0.52,0.95,10),matrix:M(0,0.02,2.20),color:hide},     // head boss
+        {geo:_fEll(0.80,0.88,2.45,9),matrix:M(0,0,0.10),color:hide},
+        {geo:_fEll(0.64,0.40,1.90,9),matrix:M(0,-0.44,0.12),color:belly},   // pleated underside
+        {geo:_fEll(0.62,0.52,0.95,8),matrix:M(0,0.02,2.20),color:hide},     // head boss
         {geo:_fBox(0.50,0.16,1.00),matrix:M(0,-0.42,2.42),color:belly},      // lower jaw
         {geo:new THREE.ConeGeometry(0.20,0.44,4),matrix:M(0,0.86,-0.90,-0.35,0,0),color:fin}, // small dorsal
         {geo:_fBox(0.34,0.36,0.90),matrix:M(0,0,-2.62),color:hide},          // peduncle
@@ -21339,7 +21566,7 @@ function ghostGeo(){
        tatters. No legs — it has never touched the ground. */
     const P=[];
     P.push({geo:new THREE.ConeGeometry(0.46,1.15,7),matrix:M(0,0.15,0),color:0xcfe6ff});
-    P.push({geo:new THREE.SphereGeometry(0.30,8,6),matrix:M(0,0.62,0),color:0xe6f3ff});
+    P.push({geo:_fIco(0.30,1),matrix:M(0,0.62,0),color:0xe6f3ff});   // v2.13.8: was an 8x6 sphere
     P.push({geo:_fBox(0.20,0.16,0.06),matrix:M(0,0.64,0.26),color:0x14283c});   // hollow face
     for(const sx of [-1,1])
         P.push({geo:new THREE.ConeGeometry(0.13,0.62,5),
@@ -21352,8 +21579,8 @@ function foxbatGeo(){
        not be satisfiable by an appendage, so the SNOUT reaches furthest
        forward of anything on this model. */
     const P=[];
-    P.push({geo:new THREE.SphereGeometry(0.30,8,6),matrix:M(0,0,0,0,0,0,1,0.9,1.35),color:0x5a3324});
-    P.push({geo:new THREE.SphereGeometry(0.24,8,6),matrix:M(0,0.08,0.36),color:0x74432e});   // head
+    P.push({geo:_fIco(0.30,1),matrix:M(0,0,0,0,0,0,1,0.9,1.35),color:0x5a3324});   // v2.13.8: icosahedrons, were 8x6 spheres
+    P.push({geo:_fIco(0.25),matrix:M(0,0.08,0.36),color:0x74432e});                  // head
     P.push({geo:new THREE.ConeGeometry(0.13,0.34,6),matrix:M(0,0.02,0.60,Math.PI/2,0,0),color:0x8a5238}); // snout
     for(const sx of [-1,1]){
         P.push({geo:new THREE.ConeGeometry(0.09,0.26,4),matrix:M(sx*0.13,0.30,0.30),color:0x74432e}); // ears
@@ -22978,17 +23205,39 @@ function buildGuardGeometry(faction){
     const hull=D.hue,trim=D.trim;
     const parts=[];
     const box=(w,h,d)=>new THREE.BoxGeometry(w,h,d);
-    // legs
-    parts.push({geo:box(0.22,0.72,0.24),matrix:M(-0.17,0.36,0),color:trim});
-    parts.push({geo:box(0.22,0.72,0.24),matrix:M( 0.17,0.36,0),color:trim});
-    // torso, canted forward a touch so it reads as a stance not a post
-    parts.push({geo:box(0.62,0.66,0.38),matrix:M(0,1.06,0,-0.10,0,0),color:hull});
+    /* v2.13.9 JOINTED TROOPERS. Same silhouette budget, but the post-legs and
+       the one-box rifle arm become jointLimb chains (the v2.13.8 kit) with
+       knees and elbows. THESE FACE -Z, unlike the fauna, so "forward" below
+       is negative z. The factions now differ in the legs: a Reptilian knee
+       bends forward like ours; a MANTID leg is insect-jointed — the knee
+       sits high and BACK and the shin rakes forward to the foot, which is
+       the cue that reads as "not a person in armour" at distance. */
+    const mantid=D.key==='mantid';
+    for(const sx of [-1,1]){
+        const x=sx*0.17;
+        if(mantid)
+            jointLimb(parts,[V3(x,0.80,0),V3(sx*0.22,0.52,0.16),V3(x,0.10,-0.04)],[0.10,0.075,0.055],trim,hull);
+        else
+            jointLimb(parts,[V3(x,0.80,0.03),V3(x,0.44,-0.13),V3(x,0.09,0.02)],[0.11,0.085,0.07],trim,hull);
+        parts.push({geo:_fIco(1),matrix:M(x,0.05,-0.07,0,0,0,0.09,0.06,0.15),color:trim});   // foot
+    }
+    // pelvis + torso: icosahedrons, canted forward a touch so it reads as a stance not a post
+    parts.push({geo:_fIco(1),matrix:M(0,0.80,0,0,0,0,0.22,0.12,0.15),color:trim});
+    parts.push({geo:_fIco(1,1),matrix:M(0,1.06,0,-0.10,0,0,0.33,0.36,0.21),color:hull});
     // shoulder yoke
     parts.push({geo:box(0.92,0.18,0.30),matrix:M(0,1.32,0),color:trim});
     // head: an angular wedge, not a ball — these are not hoppers
     parts.push({geo:new THREE.ConeGeometry(0.24,0.42,4),matrix:M(0,1.62,0,0,Math.PI/4,0),color:hull});
-    // weapon arm, held across the body pointing -Z (the facing axis)
-    parts.push({geo:box(0.16,0.16,0.86),matrix:M(0.30,1.14,-0.30),color:trim});
+    /* ARMS. Right: shoulder -> ELBOW (back and down) -> hand on the rifle
+       grip. Left: shoulder -> elbow -> hand forward under the barrel. The
+       rifle keeps the shipped line and muzzle, so the -0.95 reach the
+       facing notes quote is unchanged. */
+    jointLimb(parts,[V3(0.40,1.30,0),V3(0.42,1.02,0.10),V3(0.30,1.08,-0.14)],[0.085,0.07,0.06],trim,hull);
+    jointLimb(parts,[V3(-0.40,1.30,0),V3(-0.28,1.02,-0.14),V3(0.18,1.09,-0.42)],[0.085,0.07,0.06],trim,hull);
+    parts.push({geo:_fIco(0.07),matrix:M(0.30,1.08,-0.14),color:hull});                   // grip hand
+    parts.push({geo:_fIco(0.07),matrix:M(0.18,1.09,-0.42),color:hull});                   // support hand
+    // rifle, held across the body pointing -Z (the facing axis)
+    parts.push({geo:box(0.13,0.15,0.74),matrix:M(0.30,1.14,-0.36),color:trim});
     parts.push({geo:box(0.10,0.10,0.26),matrix:M(0.30,1.14,-0.82),color:0x222222});
     return mergeParts(parts);
 }
@@ -34316,15 +34565,20 @@ function chrispiWorldPos(){const p=V3();if(chrispi)chrispi.getWorldPosition(p).a
 /* v2.7.2: CHRiSPi rides on Bleaux's back by default. The old code blocked
    carrying once the mech was printed (forcing the fly-follow drone that got
    in the way); she can now be carried at any stage. `quiet` skips the line
-   for silent re-mounts (respawn, disembark, wake-up). */
+   for silent re-mounts (respawn, disembark, wake-up).
+   v2.13.10: the mount is two named constants, read by carryChrispi AND by the
+   opening scene's float-up, so the two can never disagree about where "on
+   his back" is. Raised 0.30 (base was -0.75, at his hips): she now rides
+   between the shoulder blades like a backpack. */
+const CHRISPI_BACK_POS=V3(0,-0.45,0.62), CHRISPI_BACK_SCALE=0.28;
 function carryChrispi(quiet){
     if(!chrispi||chrispiCarried) return;
     chrispiCarried=true;
     chrispiBody=null;                            // she rides Bleaux now
     chrispi.userData.targetOpen=0;               // lid shut for travel
     player.add(chrispi);                         // three re-parents automatically
-    chrispi.scale.setScalar(0.28);               // compact travel mode — still bulky
-    chrispi.position.set(0,-0.75,0.62);          // mounted on the back
+    chrispi.scale.setScalar(CHRISPI_BACK_SCALE); // compact travel mode — still bulky
+    chrispi.position.copy(CHRISPI_BACK_POS);     // mounted on the back, backpack height
     chrispi.quaternion.identity();
     if(!quiet)showMessage('CHRiSPi: "Do mind the bumps, Bleaux."');
 }
@@ -34344,87 +34598,128 @@ function setDownChrispi(quiet){
     if(!quiet)showMessage('CHRiSPi set down.');
 }
 
-  /* Opening reveal: CHRiSPi starts around Bleaux in front view, then takes her
-     normal place before the existing third-person-to-first-person handoff. */
-  const INTRO_CINE_HOVER=1.2, INTRO_CINE_JUMP=0.75,
-    INTRO_CINE_MOUNT=0.95, INTRO_CINE_SWING=1.1;
-  const INTRO_CINE_DISTANCE=8, INTRO_CINE_EYE_HEIGHT=2.0;
-  const introCine={phase:'off',t:0,base:V3(),fwd:V3(),target:V3(),pos:V3(),safe:V3(),look:new THREE.Matrix4()};
-  function introCineActive(){return introCine.phase!=='off'&&introCine.phase!=='done';}
-  function introCineEase(t){return t*t*(3-2*t);}
-  function introCineCamera(up,fwd){
-    const levelFwd=fwd.clone().addScaledVector(up,-fwd.dot(up)).normalize();
-    introCine.target.copy(player.position).addScaledVector(up,INTRO_CINE_EYE_HEIGHT);
-    introCine.pos.copy(introCine.target).addScaledVector(levelFwd,INTRO_CINE_DISTANCE);
+/* ==================== OPENING SCENE (v2.13.10) ====================
+   PLAYER BRIEF, VERBATIM: "CHRiSPi opens up (the top half floats up to
+   reveal Bleaux inside), Bleaux jumps forward out of CHRiSPi. CHRiSPi slowly
+   closes and gradually shrinks while floating up slightly to attach to
+   Bleaux's back (a bit higher up like a backpack please)."
+
+   WHY THE FIRST CUT LOST HER. It placed CHRiSPi in SPACE coordinates
+   (player.position + offsets) and lerped from a start point captured once at
+   the click. But the planet is ORBITING — Bleaux is carried ~50 u/s through
+   space while he stands still on it — so by the jump the captured start was
+   ~100 u behind him: she flew in from off screen (MEASURED: 24.7 u from Bleaux
+   mid-jump, 12.7 u during the "hover" that should have held 0.95), then
+   snapped onto his back at travel size. That is the reported "disappears and
+   suddenly returns smaller".
+
+   THE FIX IS THE FRAME, NOT THE NUMBERS. The whole scene now plays in
+   BLEAUX'S OWN LOCAL FRAME: CHRiSPi is parented to `player` from the first
+   frame and only her LOCAL position / scale / lid are animated, exactly the
+   frame carryChrispi() leaves her in. Whatever the planet, the orbit or the
+   floating origin do, she moves with him, and the hand-over to carryChrispi()
+   at the end is a no-op in space — same parent, same pose.
+
+   LAYOUT (player local: +Y up, -Z forward, feet at GOR_FEET_Y). The capsule
+   never moves: CHRiSPi stands INTRO_CINE_LEAP behind it with Bleaux's MODEL
+   inside her, and the model jumps forward onto the capsule. So the landing
+   spot is the real one and nothing fights the physics.
+     open   the top half floats up                              (1.4 s)
+     jump   Bleaux leaps forward out of her                     (0.9 s)
+     mount  she closes, shrinks and floats up onto his back     (2.4 s)
+     swing  camera swings from his face round to the chase view (1.1 s) */
+const INTRO_CINE_OPEN=1.4, INTRO_CINE_JUMP=0.9, INTRO_CINE_MOUNT=2.4, INTRO_CINE_SWING=1.1;
+const INTRO_CINE_DISTANCE=8, INTRO_CINE_EYE_HEIGHT=2.0;
+const INTRO_CINE_EGG=0.75;      // her scale while Bleaux is standing inside her
+const INTRO_CINE_LEAP=2.4;      // how far behind his landing spot she starts
+const INTRO_CINE_INSIDE=0.45;   // his feet above her floor while inside the shell
+const INTRO_CINE_HOP=1.5;       // height of the leap's arc
+const INTRO_CINE_FLOAT=0.45;    // extra rise mid-float before she settles on his back
+/* The camera stands this far round from dead ahead (rad, ~35 deg). Straight
+   on, a forward leap reads as a hop on the spot and she vanishes behind him
+   as she mounts; three-quarter on, both read. The swing starts from here. */
+const INTRO_CINE_ANGLE=0.6;
+const introCine={phase:'off',t:0,target:V3(),pos:V3(),safe:V3(),look:new THREE.Matrix4()};
+function introCineActive(){return introCine.phase!=='off'&&introCine.phase!=='done';}
+function introCineEase(t){return t*t*(3-2*t);}
+/* The camera stands along `dir` (a level direction out from Bleaux). The look
+   target slides `lookBack` behind him along HIS OWN back axis (local +Z) —
+   not along `dir` — so the egg and the leap stay centred in frame from any
+   camera angle, then eases to 0. */
+function introCineCamera(up,dir,lookBack){
+    const levelDir=dir.clone().addScaledVector(up,-dir.dot(up)).normalize();
+    const back=V3(0,0,1).applyQuaternion(player.quaternion);
+    introCine.target.copy(player.position).addScaledVector(up,INTRO_CINE_EYE_HEIGHT)
+        .addScaledVector(back,lookBack||0);
+    introCine.pos.copy(introCine.target).addScaledVector(levelDir,INTRO_CINE_DISTANCE);
     const colliders=(activeBody&&mode==='foot')?collidersOf(activeBody):[];
     if(colliders.length){
-      const pivotRS=introCine.target.clone().sub(ORIGIN);
-      const posRS=introCine.pos.clone().sub(ORIGIN);
-      camClipEyeSafe(pivotRS,posRS,colliders,introCine.safe);
-      introCine.pos.copy(introCine.safe).add(ORIGIN);
+        const pivotRS=introCine.target.clone().sub(ORIGIN);
+        const posRS=introCine.pos.clone().sub(ORIGIN);
+        camClipEyeSafe(pivotRS,posRS,colliders,introCine.safe);
+        introCine.pos.copy(introCine.safe).add(ORIGIN);
     }
     camera.position.copy(introCine.pos);
     introCine.look.lookAt(introCine.pos,introCine.target,up);
     camera.quaternion.setFromRotationMatrix(introCine.look);
-  }
-  function introCineStart(){
+}
+function introCineSetLid(open){
+    const u=chrispi.userData;
+    u.openAmount=open;u.targetOpen=open;u.top.position.y=3.15+open*2.4;
+}
+function introCineStart(){
     if(!chrispi)return;
-    const up=playerUp(),fwd=V3(0,0,-1).applyQuaternion(player.quaternion);
-    introCine.phase='hover';introCine.t=0;introCine.base.copy(player.position);
-    chrispiCarried=false;
-    spaceRoot.add(chrispi);
-    chrispi.position.copy(player.position).addScaledVector(up,GOR_FEET_Y);
-    chrispi.quaternion.setFromUnitVectors(V3(0,1,0),up);
-    chrispi.scale.setScalar(0.75);
-    chrispi.userData.targetOpen=0;chrispi.userData.openAmount=0;
-    gorilla.group.position.set(0,GOR_FEET_Y,0);
-    introCine.fwd.copy(fwd);
-  }
-  function introCineStep(dt){
+    introCine.phase='open';introCine.t=0;
+    chrispiCarried=false;chrispiBody=null;       // not riding a planet: riding Bleaux's frame
+    player.add(chrispi);
+    chrispi.position.set(0,GOR_FEET_Y,INTRO_CINE_LEAP);
+    chrispi.quaternion.identity();
+    chrispi.scale.setScalar(INTRO_CINE_EGG);
+    introCineSetLid(0);
+    gorilla.group.position.set(0,GOR_FEET_Y+INTRO_CINE_INSIDE,INTRO_CINE_LEAP);
+}
+function introCineStep(dt){
     if(!introCineActive()||!chrispi)return;
     introCine.t+=Math.max(0,dt||0);
-    const up=playerUp(),fwd=introCine.fwd,right=V3(1,0,0).applyQuaternion(player.quaternion);
-    const u=chrispi.userData;
-    if(introCine.phase!=='swing')introCineCamera(up,fwd);
-    if(introCine.phase==='hover'){
-      const p=Math.min(1,introCine.t/INTRO_CINE_HOVER),e=introCineEase(p);
-      u.openAmount=e;u.top.position.y=3.15+e*2.4;
-      gorilla.group.position.y=GOR_FEET_Y+e*0.45;
-      if(p>=1){introCine.phase='jump';introCine.t=0;}
-      return;
+    const up=playerUp(),fwd=V3(0,0,-1).applyQuaternion(player.quaternion);
+    const right=V3(1,0,0).applyQuaternion(player.quaternion);
+    const aim=th=>fwd.clone().multiplyScalar(Math.cos(th)).addScaledVector(right,Math.sin(th));
+    const side=aim(INTRO_CINE_ANGLE);
+    if(introCine.phase==='open'){
+        const p=Math.min(1,introCine.t/INTRO_CINE_OPEN);
+        introCineSetLid(introCineEase(p));
+        /* re-asserted EVERY frame: the per-frame body pose (deathLieLift's line)
+           writes the model's height back to GOR_FEET_Y before this runs. */
+        gorilla.group.position.set(0,GOR_FEET_Y+INTRO_CINE_INSIDE,INTRO_CINE_LEAP);
+        introCineCamera(up,side,INTRO_CINE_LEAP*0.5);
+        if(p>=1){introCine.phase='jump';introCine.t=0;}
+        return;
     }
     if(introCine.phase==='jump'){
-      const p=Math.min(1,introCine.t/INTRO_CINE_JUMP),arc=Math.sin(p*Math.PI);
-      const e=introCineEase(p);
-      const back=player.position.clone().addScaledVector(up,-0.75)
-        .add(V3(0,0,0.62).applyQuaternion(player.quaternion));
-      const start=introCine.base.clone().addScaledVector(up,GOR_FEET_Y);
-      chrispi.position.copy(start).lerp(back,e);
-      chrispi.scale.setScalar(0.75+(0.28-0.75)*e);
-      u.openAmount=1-e;u.top.position.y=3.15+u.openAmount*2.4;
-      gorilla.group.position.set(0,GOR_FEET_Y+arc*3+0.45*(1-p),-arc*0.65);
-      if(p>=1){introCine.phase='mount';introCine.t=0;}
-      return;
+        const p=Math.min(1,introCine.t/INTRO_CINE_JUMP),e=introCineEase(p);
+        gorilla.group.position.set(0,
+            GOR_FEET_Y+INTRO_CINE_INSIDE*(1-p)+Math.sin(p*Math.PI)*INTRO_CINE_HOP,
+            INTRO_CINE_LEAP*(1-e));
+        introCineCamera(up,side,INTRO_CINE_LEAP*0.5*(1-e*0.4));
+        if(p>=1){gorilla.group.position.set(0,GOR_FEET_Y,0);introCine.phase='mount';introCine.t=0;}
+        return;
     }
     if(introCine.phase==='mount'){
-      const p=Math.min(1,introCine.t/INTRO_CINE_MOUNT),e=introCineEase(p);
-      const back=player.position.clone().addScaledVector(up,-0.75)
-        .add(V3(0,0,0.62).applyQuaternion(player.quaternion));
-      chrispi.position.copy(back).addScaledVector(up,Math.sin(p*Math.PI)*0.12);
-      chrispi.scale.setScalar(0.28);
-      u.openAmount=0;u.top.position.y=3.15;
-      if(p>=1){carryChrispi(true);introCine.phase='swing';introCine.t=0;}
-      return;
+        const p=Math.min(1,introCine.t/INTRO_CINE_MOUNT),e=introCineEase(p);
+        introCineSetLid(1-introCineEase(Math.min(1,p/0.55)));   // lid is down by 55%
+        chrispi.scale.setScalar(INTRO_CINE_EGG+(CHRISPI_BACK_SCALE-INTRO_CINE_EGG)*e);
+        chrispi.position.set(0,GOR_FEET_Y,INTRO_CINE_LEAP).lerp(CHRISPI_BACK_POS,e)
+            .y+=Math.sin(p*Math.PI)*INTRO_CINE_FLOAT;
+        introCineCamera(up,side,INTRO_CINE_LEAP*0.3*(1-e));
+        if(p>=1){carryChrispi(true);introCine.phase='swing';introCine.t=0;}
+        return;
     }
     if(introCine.phase==='swing'){
-      const p=Math.min(1,introCine.t/INTRO_CINE_SWING),e=introCineEase(p);
-      const theta=Math.PI*e;
-      const swingFwd=fwd.clone().multiplyScalar(Math.cos(theta))
-        .add(right.clone().multiplyScalar(Math.sin(theta)));
-      introCineCamera(up,swingFwd);
-      if(p>=1){introCine.phase='done';introCine.t=0;introViewArm();}
+        const p=Math.min(1,introCine.t/INTRO_CINE_SWING);
+        introCineCamera(up,aim(INTRO_CINE_ANGLE+(Math.PI-INTRO_CINE_ANGLE)*introCineEase(p)),0);
+        if(p>=1){introCine.phase='done';introCine.t=0;introViewArm();}
     }
-  }
+}
 
 /* ==================== INTERACTION / PROMPTS ==================== */
 function exitRocket(){
@@ -39176,7 +39471,7 @@ function updateCamera(dt){
         craftCamClearGround(camera.position);
         return;
     }
-      if(introCineActive())return;
+    if(introCineActive())return;                       // the opening scene owns the frame
     const up=playerUp();
     if(mode==='foot'&&orbitCamera){
       camClipIdle();
@@ -39573,10 +39868,10 @@ function animate(){
     updateDeathCine(rawDt);
     if(chrispi){
         const u=chrispi.userData;
-      if(!introCineActive()){
-        u.openAmount+=(u.targetOpen-u.openAmount)*Math.min(1,rawDt*3);
-        u.top.position.y=3.15+u.openAmount*2.4;
-      }
+        if(!introCineActive()){                  // the opening scene drives the lid itself
+            u.openAmount+=(u.targetOpen-u.openAmount)*Math.min(1,rawDt*3);
+            u.top.position.y=3.15+u.openAmount*2.4;
+        }
         /* v2.11.54: NOT while the dying animation is flying her. Detaching
            her clears chrispiCarried, which is exactly this branch's trigger -
            two writers on one position, and this one runs later. */
@@ -39592,7 +39887,7 @@ function animate(){
             chrispi.quaternion.slerp(q,Math.min(1,rawDt*2));
             chrispiBody=activeBody;              // keep riding the same planet
         }
-        if(!chrispiCarried&&!deathCineActive())
+        if(!chrispiCarried&&!deathCineActive()&&!introCineActive())   // v2.13.10: not while the opening scene poses her
             chrispi.position.add(V3(0,Math.sin(t*1.5)*0.0015,0)); // gentle UFO hover
     }
     if(laserLine){laserTimer-=rawDt;if(laserTimer<=0){spaceRoot.remove(laserLine);
@@ -39656,16 +39951,18 @@ function startGame(){
     ui.intro.style.display='none';
     gameStarted=true;
     lockPointer();
-  introCineStart();                            // reveal CHRiSPi, then mount her before the view ease
+    introCineStart();                            // v2.13.10: she opens, he jumps out, she mounts — then the view ease
     updateHotbar();updateStats();updateObjective();
     /* v2.13.6: CHRiSPi's two opening lines now wait for the view ease. There is
        ONE message slot (showMessage overwrites), and the ease ends by posting
        the [F4] prompt at WAIT+EASE = 2.5s — so the old 0.8s greeting would have
        been stomped mid-read, and the prompt stomped in turn at 6.2s. The whole
        opening is now one queue: ease (0-2.5s), view prompt (2.5-6.1s), then
-       her two lines. Only the delays moved; the lines are untouched. */
-    setTimeout(()=>showMessage('CHRiSPi: "Good morning, Bleaux. Kindly mine me a rocket\'s worth of planet."',5000),10400);
-    setTimeout(()=>showMessage('CHRiSPi: "I ride upon your back, beaming in ores as you mine."',5000),15800);   // v2.11.42: [C] no longer sets her down
+       her two lines. Only the delays moved; the lines are untouched.
+       v2.13.10: the opening scene grew from 4.0 s to 5.8 s, so both lines
+       moved back the same 1.8 s. */
+    setTimeout(()=>showMessage('CHRiSPi: "Good morning, Bleaux. Kindly mine me a rocket\'s worth of planet."',5000),12200);
+    setTimeout(()=>showMessage('CHRiSPi: "I ride upon your back, beaming in ores as you mine."',5000),17600);   // v2.11.42: [C] no longer sets her down
     /* v2.13.7: THIS CLICK IS THE GESTURE. iOS will only hand over the motion
        sensor from inside a user gesture, and a preference saved last run has
        none of its own — so a player who chose tilt gets it back HERE, on the
