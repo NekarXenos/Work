@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const test = require('node:test');
 
 const root = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(root, 'WrapaCar_v5.html'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'WrapaCar_v9.html'), 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1]);
 const core = vm.createContext({});
 vm.runInContext(scripts[0], core);

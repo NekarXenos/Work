@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v5.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v9.html'), 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 const coreContext = vm.createContext({});
 vm.runInContext(scripts[0], coreContext);
@@ -24,7 +24,7 @@ function harness() {
   };
   $('mirrorOn').checked = $('snapMirror').checked = true;
   const mesh = PC.makeMesh([-1,-1,0, 1,-1,0, 1,1,0, -1,1,0], [0,1,2, 0,2,3]);
-  const S = { mesh, mode: 'draw', points: [], history: [], selected: -1, unwrap: null, panels: [],
+  const S = { mesh, mode: 'draw', points: [], history: [], selected: -1, unwrap: null, panels: [], suggestions: [],
     plane: { axis: 0, offset: 0, extent: [2,2,0], diag: Math.sqrt(8) } };
   const canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 1000 }) };
   class Vector3 {
@@ -34,9 +34,11 @@ function harness() {
   let hit = { faceIndex: 0, point: { x: 0.02, y: 0, z: 0 }, distance: 5 };
   const raycaster = { setFromCamera() {}, intersectObject() { return hit ? [hit] : []; } };
   const ctx = vm.createContext({ $, PC, S, canvas, raycaster, meshObj: {}, DL: null,
-    camera: { fov: 42 }, THREE: { Vector2: class {}, Vector3 } });
+    camera: { fov: 42 }, THREE: { Vector2: class {}, Vector3 }, renderSuggestions() {}, showErase() {} });
   for (const name of ['mirrorEnabled', 'activePlane', 'planeOffset', 'mirrorTolerance',
-    'symmetricPanelReady', 'drawingOutline', 'drawingAnchor', 'centerPanelStarted', 'canCloseSeam', 'seamOnPlane', 'pick', 'updateButtons', 'updateHud']) {
+    'symmetricPanelReady', 'drawingOutline', 'drawingAnchor', 'centerPanelStarted', 'canCloseSeam', 'seamOnPlane', 'pick', 'updateButtons', 'updateHud',
+    'leadPoint', 'seamNet', 'seamPick', 'seamStretch', 'hasLooseEnds', 'isCreaseEnd', 'withSeamTail', 'seamHooks',
+    'stretchPoints', 'liftStretch', 'allJoined', 'closingPreview', 'pruneSuggestions']) {
     vm.runInContext(appFunction(name), ctx);
   }
   return { ctx, $, S, setHit: value => { hit = value; } };
@@ -177,8 +179,9 @@ for (const mirrored of [false, true]) test(`Float32 render hits accept consecuti
     remove(value) { this.children.splice(this.children.indexOf(value), 1); } });
   Object.assign(ctx.THREE, { Mesh: Marker, BufferGeometry: Geometry,
     Float32BufferAttribute: class { constructor(array, itemSize) { Object.assign(this, { array, itemSize }); } } });
-  Object.assign(ctx, { dots: group(), ghostDots: group(), dotGeo: {}, dotMat: {}, snapDotMat: {},
+  Object.assign(ctx, { dots: group(), ghostDots: group(), leadDots: group(), dotGeo: {}, dotMat: {}, snapDotMat: {},
     ghostDotMat: {}, cursor: {}, pathObj: { geometry: new Geometry() }, ghostObj: { geometry: new Geometry() },
+    closeObj: { geometry: new Geometry() },
     vnCache: Array.from({ length: pos.length / 3 }, () => [0, -0.123456789, 1]).flat(),
     fmt: String, setAtlasEmpty() {}, syncAll() {} });
   const messages = [];

@@ -6,7 +6,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v5.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v9.html'), 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1]);
 const core = vm.createContext({});
 vm.runInContext(scripts[0], core);
@@ -37,7 +37,7 @@ function harness() {
   };
   $('mirrorOn').checked = true;
   const S = { mesh: grid(), mode: 'draw', points: [], segs: [], live: null, radius: 2,
-    history: [], selected: -1, unwrap: null, panels: [],
+    history: [], selected: -1, unwrap: null, panels: [], suggestions: [],
     plane: { axis: 0, offset: 0, extent: [4, 4, 0], diag: Math.sqrt(32) } };
   S.edgeMap = PC.buildEdgeMap(S.mesh);
   const group = () => ({ children: [], add(value) { this.children.push(value); },
@@ -49,12 +49,12 @@ function harness() {
     PC: Object.assign({}, PC, {
       traceSeam(...args) { traces.push(args[2]); return PC.traceSeam(...args); }
     }),
-    dots: group(), ghostDots: group(), dotGeo: {}, dotMat: {}, snapDotMat: {}, cursor: {},
+    dots: group(), ghostDots: group(), leadDots: group(), dotGeo: {}, dotMat: {}, snapDotMat: {}, cursor: {},
     vnCache: Array.from({ length: S.mesh.pos.length / 3 }, () => [0, 0, 1]).flat(),
     window: { addEventListener(name, callback) { keys[name] = callback; } },
     toast: message => messages.push(message), fmt: String,
     // Keep the real drawing, keyboard, geometry, and control logic; only omit rendering.
-    rebuildPath() {}, syncGhostDots() {}, setAtlasEmpty() {}, syncAll() {},
+    rebuildPath() {}, syncGhostDots() {}, setAtlasEmpty() {}, syncAll() {}, renderSuggestions() {}, showErase() {},
     recomputePanels() {
       S.edgeMap = PC.buildEdgeMap(S.mesh);
       const regions = PC.computePanels(S.mesh, S.edgeMap);
@@ -66,7 +66,8 @@ function harness() {
     'seamOnPlane', 'drawingOutline', 'drawingAnchor', 'syncDrawingSegments',
     'symmetricPanelReady', 'centerPanelStarted', 'canCloseSeam',
     'traceSeg', 'crossPoint', 'segPoints', 'addPoint', 'clearPoints', 'undoPoint', 'snapshot',
-    'doCut', 'updateButtons', 'updateHud']) vm.runInContext(appFunction(name), app);
+    'doCut', 'updateButtons', 'updateHud', 'leadPoint', 'seamNet', 'seamPick', 'seamStretch', 'hasLooseEnds', 'isCreaseEnd', 'withSeamTail', 'seamHooks',
+    'stretchPoints', 'liftStretch', 'allJoined', 'closingPreview', 'pruneSuggestions']) vm.runInContext(appFunction(name), app);
   const keyStart = scripts[1].indexOf("  window.addEventListener('keydown',");
   const keyEnd = scripts[1].indexOf('\n  });', keyStart) + '\n  });'.length;
   assert.ok(keyStart >= 0 && keyEnd > keyStart, 'Actual keyboard handler exists');
