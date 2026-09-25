@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Bleaux AstroMiner — v2.13.11</title>
+<title>Bleaux AstroMiner — v2.12.45</title>
 <style>
     :root{
         --ink:#dff3ff; --dim:#6fa0b8; --accent:#37e0ff; --dark-energy:#b26bff;
@@ -209,7 +209,7 @@
     /* ---------- Test console (Ctrl+Shift+P) ---------- */
     /* v2.7.6: docked to the RIGHT EDGE and non-modal (no dimming backdrop)
        so the scene stays fully visible while live-tuning scales */
-    #testmenu{position:fixed;top:0;right:0;bottom:0;display:none!important;align-items:center;
+    #testmenu{position:fixed;top:0;right:0;bottom:0;display:none;align-items:center;   /* v2.12.45: was !important — see the changelog entry below */
         justify-content:flex-end;background:none;pointer-events:none;z-index:32}
     #testpanel{width:290px;max-height:94vh;overflow-y:auto;margin-right:10px;
         background:rgba(4,16,24,.88);border:1px solid var(--warn);
@@ -2391,10 +2391,73 @@ import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
            should now read ~100%% at every scale — if it dips, that
            is a REAL stall and worth reporting.
 
-   v2.13.11: THEY WALK, SWIM AND FLAP — WHERE THE DEVICE CAN AFFORD IT.
+   v2.12.45: DEMO_MODE WAS STILL TRUE IN THE GAME YOU KEEP PLAYING.
+            PLAYER REPORT, VERBATIM: the Test menu (Ctrl+Shift+P) was
+            disabled; setting Demo Mode to false by hand did not bring it
+            back either. They also needed to know whether blowing up the sun
+            with the Starship still reaches a new star system.
+
+            ROOT CAUSE. v2.12.44's own changelog entry says it plainly: "this
+            build IS that [Demo] line, carried over verbatim." It was — DOWN
+            TO DEMO_MODE=true, the one const the two lines are supposed to
+            disagree on. That single flag gates three things:
+              - toggleTestMenu() returns immediately while DEMO_MODE is true,
+                so Ctrl+Shift+P opened nothing.
+              - finishChartWarp() — reached by building a Starship, feeding a
+                Lab-Grown Mini-Sun to the star, riding the collapsed sun's
+                horizon (starshipReady() gates entry), picking a star at the
+                galaxy chart and hitting LAUNCH — branches on DEMO_MODE: true
+                calls triggerGameOver() instead of rebuildWorldForNextSystem().
+                MEASURED (rig/tests_wormhole.mjs) against v2.12.44: that exact
+                sequence ends the run and systemNumber never moves. It is the
+                correct ending for the short arcade Demo, which is why
+                Bleaux_Demo.html and index.html both keep DEMO_MODE=true —
+                but it silently turned the numbered game's climax into a
+                dead end.
+              - the keydown handler's own DEMO_MODE guard on Ctrl+Shift+P,
+                consistent with toggleTestMenu — confirms the const was read
+                the same way twice, nothing separate to fix there.
+
+            THE PLAYER'S OWN FIX WAS RIGHT AND STILL WOULD NOT HAVE SHOWN
+            ANYTHING. Editing DEMO_MODE to false is correct — it is exactly
+            this patch's H1 — but it is not the whole bug. #testmenu came
+            along for the same "carried over verbatim" ride, and its CSS
+            gained a SECOND, independent gate the Demo needs and the numbered
+            game does not: `display:none!important`. toggleTestMenu() only
+            ever set the panel's INLINE style.display; !important in the
+            stylesheet beats that regardless of what DEMO_MODE is doing, so
+            with only DEMO_MODE flipped the open STATE is real (testMenuOpen
+            flips, ui.test.style.display does become 'flex') while the panel
+            stays invisible — SCREENSHOTTED, not inferred: a headless check
+            of the JS state alone reads success. v2.12.41/42, the last
+            normal builds before the Demo-line merge, carry no !important on
+            this rule at all; the Demo needs it belt-and-braces only because
+            DEMO_MODE already makes the toggle a no-op there.
+
+            TWO EDITS, BOTH REVERSIONS TO THE PRE-MERGE NUMBERED BUILD.
+            DEMO_MODE=false. #testmenu drops !important. Nothing else
+            changed, in either the JS or the CSS.
+
+            VERIFIED, NOT ASSUMED — including the part a JS-only check would
+            have missed. rig/tests_wormhole.mjs drives the wormhole end to
+            end in the headless rig (grantStarship, enterRocket,
+            beginCollapse, stepping updateCollapse() through the supernova to
+            the black hole, stepping updateRocket() to cross the horizon and
+            fire enterWormhole(), picking a chart star, launchChartWarp(),
+            stepping updateGalaxyChart() through the warp) and asserts the
+            PRE-FIX control reproduces the bug on v2.12.44 (game over,
+            systemNumber unchanged) while this build reaches systemNumber 2
+            on a freshly generated earthBody with gameIsOver false. The
+            Ctrl+Shift+P half was ALSO run in a real Chromium, not just the
+            headless rig — a real keypress, a real click on the real Grant
+            Starship / Trigger Sun Collapse test buttons, a real screenshot
+            of the panel actually on screen, which is what caught the
+            !important a JS-state check could not have.
+
+   v2.12.44: THEY WALK, SWIM AND FLAP — WHERE THE DEVICE CAN AFFORD IT.
             PLAYER BRIEF, VERBATIM: "add proper walking/swimming animations
             for all mobs, that only activate if the device is powerful
-            enough". Same code as v2.12.44 on the other line.
+            enough". Same code as v2.13.11 on the other line.
 
             BEFORE: every creature was one rigid merged mesh and a "walk" was
             the whole animal squashing 3.5% on a clock. The v2.13.8 knees and
@@ -2451,33 +2514,36 @@ import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
             animals. ?anim=1 / ?anim=0 force it either way; the state is at
             the foot of the [H] help panel.
 
-   v2.13.10: THE OPENING SCENE, REBUILT — SHE NO LONGER FLIES OFF.
-            PLAYER REPORT: "CHRiSPi seems to disappear and suddenly return
-            smaller." BRIEF: she opens (the top half floats up to reveal
-            Bleaux inside), he jumps forward out of her, she slowly closes and
-            gradually shrinks while floating up slightly to attach to his back,
-            "a bit higher up like a backpack".
+   v2.12.43: THE OPENING SCENE, FIRST PERSON, AND THE PHONE CONTROLS.
+            PLAYER BRIEF: CHRiSPi "opens up (the top half floats up to reveal
+            Bleaux inside), Bleaux jumps forward out of CHRiSPi. CHRiSPi slowly
+            closes and gradually shrinks while floating up slightly to attach
+            to Bleaux's back (a bit higher up like a backpack please)" — then
+            "make it first person as well" and "make sure they all have the
+            mobile controls".
 
-            ROOT CAUSE, MEASURED. The old scene posed her in SPACE coordinates
-            from a start point captured once at the click, while the planet
-            ORBITS and carries Bleaux ~50 u/s. She was 12.7 u from him during
-            a "hover" that should have held 0.95, and 24.7 u mid-jump, then
-            snapped onto his back at travel size.
+            WHAT THIS FILE IS. v2.12.42 had no intro, no first-person ease and
+            no touch controls. The Demo line had all three (v2.13.5 touch +
+            no roll on a phone, v2.13.6 opening view ease, v2.13.7 ghost stick
+            + tilt move) on top of byte-identical v2.12.42 game code — the two
+            files differed in nothing else. So this build IS that line, carried
+            over verbatim, with its changelog entries kept below as the record
+            of what each piece does, plus the rebuilt opening scene, plus the
+            Demo's v2.13.8/v2.13.9 mob and alien geometry (jointed limbs,
+            icosahedron heads and bodies, curved tusks / horns / fangs, lower-
+            poly sea creatures, the blunt shark snout, jointed guards) — the
+            same builders byte for byte; their two entries follow this one.
 
-            FIX: the whole scene plays in BLEAUX'S LOCAL FRAME. She is parented
-            to `player` from the first frame and only her local position,
-            scale and lid move; carryChrispi() at the end changes nothing in
-            space. The capsule never moves: she starts INTRO_CINE_LEAP behind
-            it with his model inside, and the model leaps forward onto it.
-              open 1.4 s · leap 0.9 s · close+shrink+float 2.4 s · swing 1.1 s
-            The camera stands ~35 deg off dead-ahead (INTRO_CINE_ANGLE): head
-            on, the leap read as a hop on the spot and she vanished behind him
-            while mounting. The per-frame body pose was writing his height
-            back to the floor mid-scene; the scene now re-asserts it each frame.
-
-            BACKPACK: the mount is CHRISPI_BACK_POS / CHRISPI_BACK_SCALE, shared
-            by carryChrispi and the scene, raised 0.30 (base -0.75 -> -0.45).
-            CHRiSPi's two greetings moved back 1.8 s with the longer scene.
+            THE SCENE (see OPENING SCENE above INTERACTION / PROMPTS). The old
+            one posed CHRiSPi in SPACE coordinates while the planet orbits and
+            carries Bleaux ~50 u/s: MEASURED 12.7 u off during the "hover",
+            24.7 u off mid-jump, then a snap onto his back at travel size —
+            "disappears and suddenly returns smaller". Now it plays in BLEAUX'S
+            LOCAL FRAME: open 1.4 s, leap 0.9 s, close+shrink+float 2.4 s,
+            camera swing 1.1 s from a ~35 deg three-quarter view, then the
+            v2.13.6 ease into first person. The back mount is CHRISPI_BACK_POS,
+            raised 0.30 to backpack height and shared with carryChrispi.
+            CHRiSPi's greetings follow the scene, ease and view prompt.
 
    v2.13.9: SHORTER UPPER LIMBS, CATS AND DOGS ON THEIR TOES, JOINTED ALIENS.
             PLAYER BRIEF: "The upper limbs should be shorter on the
@@ -11785,7 +11851,7 @@ const playerStats={maxHealth:100,health:100,speed:5,runSpeed:18,jump:6, // v2.8.
                    mineRange:6,mineCooldown:0.28,digRadius:0.6,lastMine:0,lastDamage:0};
 let bubblesCollected=0, totalBubbles=0, systemNumber=1;
 let mode='foot'; // 'foot' | 'rocket'
-const DEMO_MODE=true;
+const DEMO_MODE=false;   // v2.12.45: was true — see the changelog entry below
 let gameStarted=false, warping=false;
 
 /* ==================== RECIPES (v2.11.6 — plan 2.4) ====================
@@ -14202,7 +14268,7 @@ function alienTargetPos(){
 function mergeParts(parts){
     let total=0;
     const baked=[];
-    let rigged=false;                             // v2.13.11: does any part name a bone?
+    let rigged=false;                             // v2.12.44: does any part name a bone?
     for(const p of parts){
         let g=p.geo.index?p.geo.toNonIndexed():p.geo.clone();
         g.applyMatrix4(p.matrix);
@@ -14228,7 +14294,7 @@ function mergeParts(parts){
     out.setAttribute('position',new THREE.BufferAttribute(pos,3));
     out.setAttribute('normal',new THREE.BufferAttribute(nor,3));
     out.setAttribute('color',new THREE.BufferAttribute(col,3));
-    /* v2.13.11: the bone each vertex rides (see CREATURE ANIMATION). Only a
+    /* v2.12.44: the bone each vertex rides (see CREATURE ANIMATION). Only a
        part list that names bones gets one — huts, saucers, trees and every
        other merged prop come out exactly as they always did. */
     if(bone)out.setAttribute('aBone',new THREE.BufferAttribute(bone,1));
@@ -19027,7 +19093,7 @@ function _fSeg(a,b,r0,r1,color,sides){
 }
 function jointLimb(P,pts,rads,color,jointColor,bones){
     for(let i=0;i<pts.length-1;i++){
-        /* v2.13.11: `bones[i]` is the bone segment i rides, and so does the
+        /* v2.12.44: `bones[i]` is the bone segment i rides, and so does the
            knuckle at its root. pts[i] IS that bone's pivot, so the knuckle
            turns in place and the joint never opens a gap. */
         const b=bones?bones[i]:0;
@@ -19066,7 +19132,7 @@ function curvedHorn(pts,r0,seg,sides){
     g.computeVertexNormals();
     return g;
 }
-/* ============ v2.13.11 CREATURE ANIMATION — WALK, SWIM, FLAP ============
+/* ============ v2.12.44 CREATURE ANIMATION — WALK, SWIM, FLAP ============
    PLAYER BRIEF, VERBATIM: "add proper walking/swimming animations for all
    mobs, that only activate if the device is powerful enough".
 
@@ -19489,7 +19555,7 @@ const CAVEMAN_MIN_SYSTEM=3;
    every other walker (the v2.11.10 per-species lift rule). */
 function cavemanGeo(){
     const skin=0x8a6242,fur=0x6b5236,hair=0x2b2119,wood=0x6b4426,stone=0x8d8d95;
-    /* v2.13.11 THE WALK. Hips swing the legs and each knee folds on its forward
+    /* v2.12.44 THE WALK. Hips swing the legs and each knee folds on its forward
        stroke; each arm swings against its own leg — in step with the other
        one — elbow bending as it comes forward, the club riding the right
        forearm; the chest counter-twists over the kilt and the head nods
@@ -19594,7 +19660,7 @@ function quadruped(o){
        on their toes, so theirs is higher and the rear foot longer. The chain's
        numbers are returned on the array (P.by / P.headY / P.headZ) so each
        species' extras hang off the head it actually has.
-       v2.13.11 THE GAIT (see CREATURE ANIMATION). Each leg is three bones laid on
+       v2.12.44 THE GAIT (see CREATURE ANIMATION). Each leg is three bones laid on
        the chain jointLimb already builds, so the modelled joints ARE the
        pivots: UPPER turns at the shoulder / hip and swings the leg fore and
        aft; LOWER (elbow / knee) and FOOT (wrist / hock) only FOLD, and only
@@ -19631,7 +19697,7 @@ function quadruped(o){
         const heel=(o.heel||0.34)*lh, hf=zh-b*0.2;           // hock height, hind foot z
         const F=[V3(x,by-o.bodyH*0.05,zf),V3(x,lh*0.78,zf-b),V3(x,lh*0.18,zf-b*0.3),V3(x,o.legW*0.22,zf+b*0.1)];
         const H=[V3(x,by-o.bodyH*0.05,zh),V3(x,lh*0.85,zh+b*0.9),V3(x,heel,zh-b*1.4),V3(x,o.legW*0.22,hf)];
-        /* v2.13.11 phases: a trot pairs the diagonals (fore-left with hind-right);
+        /* v2.12.44 phases: a trot pairs the diagonals (fore-left with hind-right);
            a walk puts each fore foot a quarter-cycle after its own hind foot.
            A leg swings at gait phase = -its offset, so LATER is a SMALLER
            offset (the suite caught the first cut walking the diagonal
@@ -19652,7 +19718,7 @@ function quadruped(o){
         P.push({geo:_fIco(1),matrix:M(x,o.legW*0.22,hf+o.legW*0.12,0,0,0,o.legW*0.5,o.legW*0.28,o.legW*0.62),color:hoof,b:h3});
     }
     const headY=by+o.headUp, headZ=hz+o.headL*0.42;
-    /* v2.13.11: the head turns at the root of the neck — it nods twice a stride,
+    /* v2.12.44: the head turns at the root of the neck — it nods twice a stride,
        once per footfall, and lifts clear of the water to swim */
     const neck0=V3(0,by+o.bodyH*0.12,hz-o.bodyL*0.12);
     const hb=rigBone(R,neck0,0,_rX,_rw(o.nod||0.06,0,2),_rw(0.04,0,2,-(o.swimHead||0.35)));
@@ -19668,7 +19734,7 @@ function quadruped(o){
        drooping, still inside the same reach. v2.13.9: `longTail` (wolf,
        sabre) is a five-point chain that sweeps back, hangs most of the way
        to the ground and hooks up at the tip — still well short of the nose. */
-    /* v2.13.11: a tail WAGS from its root (about Y), LIFTS from its second joint
+    /* v2.12.44: a tail WAGS from its root (about Y), LIFTS from its second joint
        (about X — straight out behind in the water, where a real one floats)
        and whips down its length with a lag at every joint; the joints that
        HANG swing about the forward axis, because a turn about the vertical
@@ -19695,7 +19761,7 @@ function quadruped(o){
 function wolfGeo(){
     const o={leg:0.52,bodyW:0.42,bodyH:0.40,bodyL:0.95,legW:0.13,bend:0.13,heel:0.50,longTail:true,
              headW:0.30,headH:0.30,headL:0.34,headUp:0.14,hide:0x6e6e78,limb:0x4a4a54,
-             gait:'trot',swing:0.45,flex:0.95,swimHead:0.45};                 // v2.13.11: a springy trot
+             gait:'trot',swing:0.45,flex:0.95,swimHead:0.45};                 // v2.12.44: a springy trot
     const P=quadruped(o);
     const hy=P.headY,hz=P.headZ,hb=P.hb;
     P.push({geo:_fIco(1),matrix:M(0,hy-0.05,hz+0.22,0,0,0,0.09,0.08,0.16),color:0x3a3a42,b:hb});   // muzzle
@@ -19708,7 +19774,7 @@ function wolfGeo(){
 function bisonGeo(){
     const o={leg:0.80,bodyW:0.86,bodyH:0.82,bodyL:1.70,legW:0.23,bend:0.08,hoof:0x241810,
              headW:0.54,headH:0.50,headL:0.50,headUp:-0.16,hide:0x5a3a26,limb:0x3b271a,
-             gait:'walk',swing:0.26,flex:1.0,nod:0.05};                      // v2.13.11: a grazer's four-beat walk
+             gait:'walk',swing:0.26,flex:1.0,nod:0.05};                      // v2.12.44: a grazer's four-beat walk
     const P=quadruped(o);
     const by=P.by,hy=P.headY,hz=P.headZ,hb=P.hb;
     P.push({geo:_fIco(1,1),matrix:M(0,by+0.26,0.36,0,0,0,0.46,0.40,0.62),color:0x4a2f1e});   // shoulder hump
@@ -19728,13 +19794,13 @@ function bisonGeo(){
 function mammothGeo(){
     const o={leg:1.10,bodyW:1.24,bodyH:1.22,bodyL:2.10,legW:0.34,bend:0.05,hoof:0x3e2414,
              headW:0.86,headH:0.84,headL:0.78,headUp:0.10,hide:0x7a4a2a,limb:0x5e3820,
-             gait:'walk',swing:0.20,flex:0.85,nod:0.04};                       // v2.13.11: columns, not springs
+             gait:'walk',swing:0.20,flex:0.85,nod:0.04};                       // v2.12.44: columns, not springs
     const P=quadruped(o),R=P.rig;
     const by=P.by,hy=P.headY,hz=P.headZ,hb=P.hb;
     P.push({geo:_fIco(1,1),matrix:M(0,by+0.38,0.25,0,0,0,0.62,0.44,0.70),color:0x8a5730});   // shoulder mass
     P.push({geo:_fIco(1),matrix:M(0,hy+0.34,hz-0.08,0,0,0,0.36,0.30,0.34),color:0x8a5730,b:hb});  // domed skull
     // trunk: a jointed chain hanging down and curling forward at the tip
-    /* v2.13.11: four bones down the trunk, alternately lifting (about X) and
+    /* v2.12.44: four bones down the trunk, alternately lifting (about X) and
        swaying (about Z — it hangs, so a turn about the vertical would not move
        it), each a little behind the one above: a wave runs down it as he
        walks. In water the lifting joints curl it up and forward — a drowning
@@ -19756,7 +19822,7 @@ function mammothGeo(){
                                 V3(x0+sx*0.03,y0-0.12,z0+1.26)],0.10,10,6),
                 matrix:_I4,color:0xefe6cf,b:hb});
     }
-    /* v2.13.11: the ears hinge at their front edge and fan out and back */
+    /* v2.12.44: the ears hinge at their front edge and fan out and back */
     for(const sx of [-1,1])                                                          // ears
         P.push({geo:_fIco(1),matrix:M(sx*0.44,hy+0.06,hz-0.22,0,sx*0.3,0,0.06,0.28,0.22),color:0x6b4024,
                 b:rigBone(R,V3(sx*0.50,hy+0.06,hz-0.02),hb,_rY,_rw(-sx*0.14,0),_rw(-sx*0.22,0,2))});
@@ -19765,7 +19831,7 @@ function mammothGeo(){
 function sabreGeo(){
     const o={leg:0.62,bodyW:0.56,bodyH:0.52,bodyL:1.26,legW:0.17,bend:0.12,heel:0.50,longTail:true,
              headW:0.42,headH:0.40,headL:0.42,headUp:0.16,hide:0xf0f0f2,limb:0xdcdce6,
-             gait:'trot',swing:0.42,flex:0.9,swimHead:0.40};                 // v2.13.11: a cat's trot
+             gait:'trot',swing:0.42,flex:0.9,swimHead:0.40};                 // v2.12.44: a cat's trot
     const P=quadruped(o);
     const hy=P.headY,hz=P.headZ,hb=P.hb;
     P.push({geo:new THREE.IcosahedronGeometry(0.40,0),
@@ -20847,7 +20913,7 @@ function ensureMobSpecies(body,sp){
     if(im)return im;
     const mat=new THREE.MeshLambertMaterial({vertexColors:true,flatShading:!FAUNA[sp].hop});
     im=new THREE.InstancedMesh(FAUNA[sp].geo(),mat,MOB_CAP);
-    mobAnimAttach(im,MOB_CAP);                   // v2.13.11: legs, tails, heads
+    mobAnimAttach(im,MOB_CAP);                   // v2.12.44: legs, tails, heads
     im.frustumCulled=false;im.count=0;
     for(let i=0;i<MOB_CAP;i++)im.setMatrixAt(i,TREE_ZERO);
     im.instanceMatrix.needsUpdate=true;
@@ -21273,7 +21339,7 @@ function updateResidents(dt){
             const hopS=(m.vr>0.2)?0:Math.max(0,Math.sin(m.hopT));
             lift=hopS*0.35;sy=1+hopS*0.12;
             if(aK>0){
-                /* v2.13.11 SQUASH AND STRETCH. The hopper has no limbs to animate:
+                /* v2.12.44 SQUASH AND STRETCH. The hopper has no limbs to animate:
                    it IS the limb. It crouches through the half of the cycle it
                    spends on the ground (which the shipped bounce held rigid) —
                    deepest just before take-off and just after landing — then
@@ -21292,7 +21358,7 @@ function updateResidents(dt){
             m.walkT+=dt*(mult>0?5.0*Math.min(2,mult):0);
             sy=1+Math.sin(m.walkT)*0.035;
             if(rig){
-                /* v2.13.11: the legs do the walking now (CREATURE ANIMATION). The
+                /* v2.12.44: the legs do the walking now (CREATURE ANIMATION). The
                    shipped squash fades out as the gait fades in, and the body
                    dips at each end of the stride instead (rig.bob, the swung
                    leg's own lift, which grows as stride squared) so the planted
@@ -21313,14 +21379,14 @@ function updateResidents(dt){
            landing in different places. Now built from the SAME basis the
            step used, so it is exact by construction. */
         headingPoseQuat(_mUp,m.heading,_mQ,1);
-        if(lean)_mQ.multiply(_mQ2.setFromAxisAngle(_rX,lean));   // v2.13.11: nose-first into the hop
+        if(lean)_mQ.multiply(_mQ2.setFromAxisAngle(_rX,lean));   // v2.12.44: nose-first into the hop
         _mP.copy(m.pos).addScaledVector(_mUp,lift);
         _mS.set(sxz,sy,sxz);
         _mM.compose(_mP,_mQ,_mS);
         body._mobSlot[alive]=m;                       // v2.9.13
         /* ONE SLOT, MANY MESHES: the owner draws, every other species
            zero-scales the same index. (`own` is looked up above, with the
-           pose, since v2.13.11.) */
+           pose, since v2.12.44.) */
         for(const im of body.mobParts)im.setMatrixAt(alive,im===own?_mM:TREE_ZERO);
         /* v2.11.10: the colour is written EVERY frame for the owning mesh
            rather than on a dirty flag. With five meshes sharing one slot
@@ -21329,7 +21395,7 @@ function updateResidents(dt){
            instanceColor buffer is zero-filled on allocation). 36 colour
            writes a frame is not worth a class of bug. */
         if(own)own.setColorAt(alive,mobTint(m,def,_mC));
-        if(rig)mobAnimWrite(own,alive,m);             // v2.13.11: gait phase, stride, swim
+        if(rig)mobAnimWrite(own,alive,m);             // v2.12.44: gait phase, stride, swim
         alive++;
     }
     if(removed)body._mobsDirty=true;                  // slots shifted
@@ -21434,7 +21500,7 @@ const FISH_GEO=(()=>{
             new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI/2,0,0)),
             V3(0.55,-1,1.4)),color:0xffffff}, // V2.10.22: Y=-1 fixes the tail - from Kimi AI
     ];
-    /* v2.13.11: no bones — a fish IS its spine. A side-to-side wave runs from
+    /* v2.12.44: no bones — a fish IS its spine. A side-to-side wave runs from
        just behind the gills to the tip of the tail, about three beats a
        second at cruise and twice that bolting. */
     P.rig=rigNew();P.rig.rate=16;
@@ -21520,7 +21586,7 @@ function dolphinGeo(){
            asserted (X span > Y span) rather than eyeballed. */
         {geo:new THREE.ConeGeometry(0.34,0.50,4),matrix:M(0,0,-1.08,Math.PI/2,0,0,1,1,0.16),color:fin},
     ];
-    /* v2.13.11: a cetacean swims with its flukes, so the body wave is VERTICAL —
+    /* v2.12.44: a cetacean swims with its flukes, so the body wave is VERTICAL —
        the mirror of the fish and shark — and the pectorals trim as it goes. */
     const R=rigNew();R.rate=7;
     R.spine={amp:0.16,k:2.4,s0:0.35,len:1.6,along:_rZ,disp:_rY,freq:1};
@@ -21550,7 +21616,7 @@ function sharkGeo(){
            the dolphin's fluke, which is what makes either test meaningful. */
         {geo:new THREE.ConeGeometry(0.46,0.62,4),matrix:M(0,0.06,-1.46,Math.PI/2,0,0,0.16,1,1),color:fin},
     ];
-    /* v2.13.11: a shark swims side to side — the wave starts behind the gills
+    /* v2.12.44: a shark swims side to side — the wave starts behind the gills
        and is widest at the vertical caudal fin; the stiff pectorals barely
        trim. */
     const R=rigNew();R.rate=6;
@@ -21573,7 +21639,7 @@ function whaleGeo(){
         {geo:_fBox(0.34,0.36,0.90),matrix:M(0,0,-2.62),color:hide},          // peduncle
         {geo:new THREE.ConeGeometry(0.95,1.10,4),matrix:M(0,0,-2.70,Math.PI/2,0,0,1,1,0.14),color:fin},
     ];
-    /* v2.13.11: the slow vertical beat of the biggest animal in the game — a
+    /* v2.12.44: the slow vertical beat of the biggest animal in the game — a
        long wave from the head boss back, the flukes rising and falling most
        — while the long flippers row. */
     const R=rigNew();R.rate=2.6;
@@ -21643,7 +21709,7 @@ function ensureSeaSpecies(body,sp){
     const mat=new THREE.MeshLambertMaterial({color:0xffffff,vertexColors:true,
         flatShading:!def.catch});
     im=new THREE.InstancedMesh(def.geo(),mat,SEA_CAP);
-    mobAnimAttach(im,SEA_CAP);                   // v2.13.11: the body wave, the fins
+    mobAnimAttach(im,SEA_CAP);                   // v2.12.44: the body wave, the fins
     im.frustumCulled=false;im.count=0;
     for(let i=0;i<SEA_CAP;i++)im.setMatrixAt(i,TREE_ZERO);
     im.instanceMatrix.needsUpdate=true;
@@ -21892,7 +21958,7 @@ function updateFish(dt){
                 }
             }
             const spd=def.speed*(want?want.mult:(f.fleeT>0?def.fleeMult:1));
-            f.aV=spd;                                  // v2.13.11: the beat follows the speed
+            f.aV=spd;                                  // v2.12.44: the beat follows the speed
             if(spd<=0){f.pos.normalize().multiplyScalar(f.r);break swim;}
             _mStep.set(0,0,0).addScaledVector(_mT2,Math.cos(f.heading))
                              .addScaledVector(_mT1,Math.sin(f.heading));
@@ -21974,7 +22040,7 @@ function updateFish(dt){
                 headingPoseQuat(_mUp.copy(f.pos).normalize(),f.heading,_mQ,1);   // v2.10.21
                 _mQ2.setFromAxisAngle(_mZfish,f.roll||Math.PI/2);_mQ.multiply(_mQ2);
                 _mM.compose(f.pos,_mQ,_mS.set(1,1,1));
-                if(MOB_ANIM.k>0)seaAnim(body,f,def,dt,true);   // v2.13.11: it flops
+                if(MOB_ANIM.k>0)seaAnim(body,f,def,dt,true);   // v2.12.44: it flops
                 alive=writeSeaSlot(body,f,def,alive,_mM);
                 continue;
             }
@@ -21982,7 +22048,7 @@ function updateFish(dt){
         // pose: EXACT alignment of the nose with the true swim direction (v2.10.21)
         headingPoseQuat(_mUp.copy(f.pos).normalize(),f.heading,_mQ,1);
         _mM.compose(f.pos,_mQ,_mS.set(1,1,1));
-        if(MOB_ANIM.k>0)seaAnim(body,f,def,dt,false);  // v2.13.11: it swims
+        if(MOB_ANIM.k>0)seaAnim(body,f,def,dt,false);  // v2.12.44: it swims
         alive=writeSeaSlot(body,f,def,alive,_mM);
         seaBite(body,f,def,playerWet,dt);               // v2.11.11
     }
@@ -22018,10 +22084,10 @@ function writeSeaSlot(body,f,def,alive,mat){
     const own=body.seaSp.get(f.sp||'fish');
     for(const im of body.seaParts)im.setMatrixAt(alive,im===own?mat:TREE_ZERO);
     if(own)own.setColorAt(alive,mobTint(f,def,_mC));
-    if(own&&MOB_ANIM.k>0)mobAnimWrite(own,alive,f);   // v2.13.11
+    if(own&&MOB_ANIM.k>0)mobAnimWrite(own,alive,f);   // v2.12.44
     return alive+1;
 }
-/* v2.13.11: one swimmer's beat. The rig is looked up through the mesh so a
+/* v2.12.44: one swimmer's beat. The rig is looked up through the mesh so a
    device that failed the gate (no anim attribute) never reaches it. */
 function seaAnim(body,f,def,dt,stranded){
     const rig=mobRigOf(body.seaSp,f.sp||'fish');
@@ -22201,7 +22267,7 @@ function ghostGeo(){
     P.push({geo:new THREE.ConeGeometry(0.46,1.15,7),matrix:M(0,0.15,0),color:0xcfe6ff});
     P.push({geo:_fIco(0.30,1),matrix:M(0,0.62,0),color:0xe6f3ff});   // v2.13.8: was an 8x6 sphere
     P.push({geo:_fBox(0.20,0.16,0.06),matrix:M(0,0.64,0.26),color:0x14283c});   // hollow face
-    /* v2.13.11: the hem ripples — a slow wave down the shroud below the face —
+    /* v2.12.44: the hem ripples — a slow wave down the shroud below the face —
        and the tatters, hung from their broad tops, trail behind and sway out
        of step with each other. */
     const R=rigNew();R.rate=4;
@@ -22222,7 +22288,7 @@ function foxbatGeo(){
     P.push({geo:_fIco(0.30,1),matrix:M(0,0,0,0,0,0,1,0.9,1.35),color:0x5a3324});   // v2.13.8: icosahedrons, were 8x6 spheres
     P.push({geo:_fIco(0.25),matrix:M(0,0.08,0.36),color:0x74432e});                  // head
     P.push({geo:new THREE.ConeGeometry(0.13,0.34,6),matrix:M(0,0.02,0.60,Math.PI/2,0,0),color:0x8a5238}); // snout
-    /* v2.13.11: the wings flap from the shoulder, about the body's long axis,
+    /* v2.12.44: the wings flap from the shoulder, about the body's long axis,
        and the tips follow a beat behind — the whip that makes a flap read as
        a membrane and not a plank. The body rises on each downstroke
        (rig.flapBob, in updateCavers). */
@@ -22309,7 +22375,7 @@ function ensureCaverSpecies(body,sp){
     const mat=new THREE.MeshLambertMaterial({color:0xffffff,vertexColors:true,
         flatShading:true,emissive:def.emissive?new THREE.Color(def.emissive):new THREE.Color(0x000000)});
     im=new THREE.InstancedMesh(def.geo(),mat,CAVER_CAP);
-    mobAnimAttach(im,CAVER_CAP);                 // v2.13.11: wings, the ghost's hem
+    mobAnimAttach(im,CAVER_CAP);                 // v2.12.44: wings, the ghost's hem
     im.frustumCulled=false;im.count=0;
     for(let i=0;i<CAVER_CAP;i++)im.setMatrixAt(i,TREE_ZERO);
     im.instanceMatrix.needsUpdate=true;
@@ -22466,7 +22532,7 @@ function writeCaverSlot(body,c,alive,mat){
     const own=body.caverSp.get(c.sp);
     for(const im of body.caverParts)im.setMatrixAt(alive,im===own?mat:TREE_ZERO);
     if(own)own.setColorAt(alive,mobTint(c,CAVERN[c.sp],_mC));
-    if(own&&MOB_ANIM.k>0)mobAnimWrite(own,alive,c);   // v2.13.11
+    if(own&&MOB_ANIM.k>0)mobAnimWrite(own,alive,c);   // v2.12.44
     return alive+1;
 }
 /* A GHOST STILL DOES NOT DAMAGE — it takes your TEMPO. v2.11.20 shipped this
@@ -22686,7 +22752,7 @@ function updateCavers(dt){
         const rig=MOB_ANIM.k>0?mobRigOf(body.caverSp,c.sp):null;
         if(rig){
             mobAnimSwim(c,rig,dt,spd,def.speed,false);
-            /* v2.13.11: a flier rises on each downstroke, not on a clock of its own */
+            /* v2.12.44: a flier rises on each downstroke, not on a clock of its own */
             if(rig.flapBob)bob+=(-rig.flapBob*Math.sin(c.aPh)-bob)*MOB_ANIM.k;
         }
         _mM.compose(_mP.copy(c.pos).addScaledVector(_mT1,bob),_mQ,_mS.set(1,1,1));
@@ -23870,7 +23936,7 @@ function buildGuardGeometry(faction){
        sits high and BACK and the shin rakes forward to the foot, which is
        the cue that reads as "not a person in armour" at distance. */
     const mantid=D.key==='mantid';
-    /* v2.13.11 THE MARCH. Hips swing the legs — FORWARD IS -Z here, so a positive
+    /* v2.12.44 THE MARCH. Hips swing the legs — FORWARD IS -Z here, so a positive
        turn about X is the forward stroke — and the shin folds on it: back
        and up for a Reptilian knee, forward and up for a Mantid's insect leg.
        Everything above the pelvis — torso, yoke, head, both arms, the rifle —
@@ -23923,7 +23989,7 @@ function ensureGuardMesh(body){
     const geo=buildGuardGeometry(anc.faction);
     const mat=new THREE.MeshLambertMaterial({vertexColors:true,flatShading:true});
     const mesh=new THREE.InstancedMesh(geo,mat,GUARD_CAP);
-    mobAnimAttach(mesh,GUARD_CAP);               // v2.13.11: the march
+    mobAnimAttach(mesh,GUARD_CAP);               // v2.12.44: the march
     mesh.frustumCulled=false;mesh.count=0;
     for(let i=0;i<GUARD_CAP;i++)mesh.setMatrixAt(i,TREE_ZERO);
     body.group.add(mesh);
@@ -24219,7 +24285,7 @@ function updateGroundGuards(dt){
         let gsy=1+Math.sin(g.walkT)*0.03;
         const aK=MOB_ANIM.k;
         if(aK>0&&mesh.userData.anim){
-            /* v2.13.11: the march (buildGuardGeometry). A SIGNED speed, so the
+            /* v2.12.44: the march (buildGuardGeometry). A SIGNED speed, so the
                cycle runs backwards while a trooper backs off to its standoff;
                the patrol amble is its walking pace. */
             const rig=mesh.geometry.userData.rig;
@@ -24230,7 +24296,7 @@ function updateGroundGuards(dt){
         _gM.compose(_gP,_gQ,V3(1,gsy,1));
         body._guardSlot[alive]=g;
         mesh.setMatrixAt(alive,_gM);
-        if(aK>0)mobAnimWrite(mesh,alive,g);          // v2.13.11
+        if(aK>0)mobAnimWrite(mesh,alive,g);          // v2.12.44
         alive++;
     }
     for(let i=alive;i<GUARD_CAP;i++)mesh.setMatrixAt(i,TREE_ZERO);
@@ -35254,7 +35320,7 @@ function chrispiWorldPos(){const p=V3();if(chrispi)chrispi.getWorldPosition(p).a
    carrying once the mech was printed (forcing the fly-follow drone that got
    in the way); she can now be carried at any stage. `quiet` skips the line
    for silent re-mounts (respawn, disembark, wake-up).
-   v2.13.10: the mount is two named constants, read by carryChrispi AND by the
+   v2.12.43: the mount is two named constants, read by carryChrispi AND by the
    opening scene's float-up, so the two can never disagree about where "on
    his back" is. Raised 0.30 (base was -0.75, at his hips): she now rides
    between the shoulder blades like a backpack. */
@@ -35286,7 +35352,7 @@ function setDownChrispi(quiet){
     if(!quiet)showMessage('CHRiSPi set down.');
 }
 
-/* ==================== OPENING SCENE (v2.13.10) ====================
+/* ==================== OPENING SCENE (v2.12.43) ====================
    PLAYER BRIEF, VERBATIM: "CHRiSPi opens up (the top half floats up to
    reveal Bleaux inside), Bleaux jumps forward out of CHRiSPi. CHRiSPi slowly
    closes and gradually shrinks while floating up slightly to attach to
@@ -39409,10 +39475,10 @@ function fillTouchHelp(){
         +'the spawn beacon, the beam-to-rocket verbs and the TILT MOVE toggle.<br><br>'
         +'<span style="color:var(--dim)">No roll control on touch &mdash; Q/E body and ship roll '
         +'and the tractor beam&rsquo;s roll are keyboard-only.</span>'
-        +'<br><br><span id="animstat" style="color:var(--dim)"></span>';   // v2.13.11
+        +'<br><br><span id="animstat" style="color:var(--dim)"></span>';   // v2.12.44
 }
 fillTouchHelp();
-mobAnimShowStatus();   // v2.13.11: the touch card replaced the span the desktop panel carried
+mobAnimShowStatus();   // v2.12.44: the touch card replaced the span the desktop panel carried
 
 /* ============ v2.11.40 CRAFT CAMERA — ROCKET AND STARSHIP ============
    FOUR QA FAULTS, ONE RIG. The old rocket camera was a single hard constant,
@@ -40309,7 +40375,7 @@ function animate(){
     if(fpsNow-fpsWindowStart>=500){
         const ms=(fpsNow-fpsWindowStart)/fpsFrames;
         $('v-fpshud').textContent=Math.round(1000/ms)+' fps';  // perpetual HUD readout — always live, panel or no panel
-        mobAnimGovern(1000/ms,fpsNow-fpsWindowStart);   // v2.13.11: is this device still keeping up?
+        mobAnimGovern(1000/ms,fpsNow-fpsWindowStart);   // v2.12.44: is this device still keeping up?
         if(testMenuOpen){
             $('v-fps').textContent=Math.round(1000/ms)+' fps';
             /* v2.8.9: sim-speed = game seconds advanced per wall second.
@@ -40438,7 +40504,7 @@ function animate(){
     // ambient animation (visual-only from here down: full frame time, no substeps)
     const t=simT;
     introCineStep(rawDt);
-    mobAnimTick(rawDt);        // v2.13.11: the creature-animation fade, once per frame
+    mobAnimTick(rawDt);        // v2.12.44: the creature-animation fade, once per frame
     /* v2.9.2 floating origin: the ONE place ORIGIN and spaceRoot.position
        change (see contract at spaceRoot). Uses the camera's absolute
        position as of last frame's updateCamera() — the one-frame lag is a
@@ -40579,7 +40645,7 @@ function animate(){
             chrispi.quaternion.slerp(q,Math.min(1,rawDt*2));
             chrispiBody=activeBody;              // keep riding the same planet
         }
-        if(!chrispiCarried&&!deathCineActive()&&!introCineActive())   // v2.13.10: not while the opening scene poses her
+        if(!chrispiCarried&&!deathCineActive()&&!introCineActive())   // v2.12.43: not while the opening scene poses her
             chrispi.position.add(V3(0,Math.sin(t*1.5)*0.0015,0)); // gentle UFO hover
     }
     if(laserLine){laserTimer-=rawDt;if(laserTimer<=0){spaceRoot.remove(laserLine);
@@ -40643,7 +40709,7 @@ function startGame(){
     ui.intro.style.display='none';
     gameStarted=true;
     lockPointer();
-    introCineStart();                            // v2.13.10: she opens, he jumps out, she mounts — then the view ease
+    introCineStart();                            // v2.12.43: she opens, he jumps out, she mounts — then the view ease
     updateHotbar();updateStats();updateObjective();
     /* v2.13.6: CHRiSPi's two opening lines now wait for the view ease. There is
        ONE message slot (showMessage overwrites), and the ease ends by posting
@@ -40651,7 +40717,7 @@ function startGame(){
        been stomped mid-read, and the prompt stomped in turn at 6.2s. The whole
        opening is now one queue: ease (0-2.5s), view prompt (2.5-6.1s), then
        her two lines. Only the delays moved; the lines are untouched.
-       v2.13.10: the opening scene grew from 4.0 s to 5.8 s, so both lines
+       v2.12.43: the opening scene grew from 4.0 s to 5.8 s, so both lines
        moved back the same 1.8 s. */
     setTimeout(()=>showMessage('CHRiSPi: "Good morning, Bleaux. Kindly mine me a rocket\'s worth of planet."',5000),12200);
     setTimeout(()=>showMessage('CHRiSPi: "I ride upon your back, beaming in ores as you mine."',5000),17600);   // v2.11.42: [C] no longer sets her down
