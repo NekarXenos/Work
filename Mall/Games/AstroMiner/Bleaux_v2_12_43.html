@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Bleaux AstroMiner — v2.13.10</title>
+<title>Bleaux AstroMiner — v2.12.43</title>
 <style>
     :root{
         --ink:#dff3ff; --dim:#6fa0b8; --accent:#37e0ff; --dark-energy:#b26bff;
@@ -2390,33 +2390,36 @@ import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
            should now read ~100%% at every scale — if it dips, that
            is a REAL stall and worth reporting.
 
-   v2.13.10: THE OPENING SCENE, REBUILT — SHE NO LONGER FLIES OFF.
-            PLAYER REPORT: "CHRiSPi seems to disappear and suddenly return
-            smaller." BRIEF: she opens (the top half floats up to reveal
-            Bleaux inside), he jumps forward out of her, she slowly closes and
-            gradually shrinks while floating up slightly to attach to his back,
-            "a bit higher up like a backpack".
+   v2.12.43: THE OPENING SCENE, FIRST PERSON, AND THE PHONE CONTROLS.
+            PLAYER BRIEF: CHRiSPi "opens up (the top half floats up to reveal
+            Bleaux inside), Bleaux jumps forward out of CHRiSPi. CHRiSPi slowly
+            closes and gradually shrinks while floating up slightly to attach
+            to Bleaux's back (a bit higher up like a backpack please)" — then
+            "make it first person as well" and "make sure they all have the
+            mobile controls".
 
-            ROOT CAUSE, MEASURED. The old scene posed her in SPACE coordinates
-            from a start point captured once at the click, while the planet
-            ORBITS and carries Bleaux ~50 u/s. She was 12.7 u from him during
-            a "hover" that should have held 0.95, and 24.7 u mid-jump, then
-            snapped onto his back at travel size.
+            WHAT THIS FILE IS. v2.12.42 had no intro, no first-person ease and
+            no touch controls. The Demo line had all three (v2.13.5 touch +
+            no roll on a phone, v2.13.6 opening view ease, v2.13.7 ghost stick
+            + tilt move) on top of byte-identical v2.12.42 game code — the two
+            files differed in nothing else. So this build IS that line, carried
+            over verbatim, with its changelog entries kept below as the record
+            of what each piece does, plus the rebuilt opening scene, plus the
+            Demo's v2.13.8/v2.13.9 mob and alien geometry (jointed limbs,
+            icosahedron heads and bodies, curved tusks / horns / fangs, lower-
+            poly sea creatures, the blunt shark snout, jointed guards) — the
+            same builders byte for byte; their two entries follow this one.
 
-            FIX: the whole scene plays in BLEAUX'S LOCAL FRAME. She is parented
-            to `player` from the first frame and only her local position,
-            scale and lid move; carryChrispi() at the end changes nothing in
-            space. The capsule never moves: she starts INTRO_CINE_LEAP behind
-            it with his model inside, and the model leaps forward onto it.
-              open 1.4 s · leap 0.9 s · close+shrink+float 2.4 s · swing 1.1 s
-            The camera stands ~35 deg off dead-ahead (INTRO_CINE_ANGLE): head
-            on, the leap read as a hop on the spot and she vanished behind him
-            while mounting. The per-frame body pose was writing his height
-            back to the floor mid-scene; the scene now re-asserts it each frame.
-
-            BACKPACK: the mount is CHRISPI_BACK_POS / CHRISPI_BACK_SCALE, shared
-            by carryChrispi and the scene, raised 0.30 (base -0.75 -> -0.45).
-            CHRiSPi's two greetings moved back 1.8 s with the longer scene.
+            THE SCENE (see OPENING SCENE above INTERACTION / PROMPTS). The old
+            one posed CHRiSPi in SPACE coordinates while the planet orbits and
+            carries Bleaux ~50 u/s: MEASURED 12.7 u off during the "hover",
+            24.7 u off mid-jump, then a snap onto his back at travel size —
+            "disappears and suddenly returns smaller". Now it plays in BLEAUX'S
+            LOCAL FRAME: open 1.4 s, leap 0.9 s, close+shrink+float 2.4 s,
+            camera swing 1.1 s from a ~35 deg three-quarter view, then the
+            v2.13.6 ease into first person. The back mount is CHRISPI_BACK_POS,
+            raised 0.30 to backpack height and shared with carryChrispi.
+            CHRiSPi's greetings follow the scene, ease and view prompt.
 
    v2.13.9: SHORTER UPPER LIMBS, CATS AND DOGS ON THEIR TOES, JOINTED ALIENS.
             PLAYER BRIEF: "The upper limbs should be shorter on the
@@ -34566,7 +34569,7 @@ function chrispiWorldPos(){const p=V3();if(chrispi)chrispi.getWorldPosition(p).a
    carrying once the mech was printed (forcing the fly-follow drone that got
    in the way); she can now be carried at any stage. `quiet` skips the line
    for silent re-mounts (respawn, disembark, wake-up).
-   v2.13.10: the mount is two named constants, read by carryChrispi AND by the
+   v2.12.43: the mount is two named constants, read by carryChrispi AND by the
    opening scene's float-up, so the two can never disagree about where "on
    his back" is. Raised 0.30 (base was -0.75, at his hips): she now rides
    between the shoulder blades like a backpack. */
@@ -34598,7 +34601,7 @@ function setDownChrispi(quiet){
     if(!quiet)showMessage('CHRiSPi set down.');
 }
 
-/* ==================== OPENING SCENE (v2.13.10) ====================
+/* ==================== OPENING SCENE (v2.12.43) ====================
    PLAYER BRIEF, VERBATIM: "CHRiSPi opens up (the top half floats up to
    reveal Bleaux inside), Bleaux jumps forward out of CHRiSPi. CHRiSPi slowly
    closes and gradually shrinks while floating up slightly to attach to
@@ -39887,7 +39890,7 @@ function animate(){
             chrispi.quaternion.slerp(q,Math.min(1,rawDt*2));
             chrispiBody=activeBody;              // keep riding the same planet
         }
-        if(!chrispiCarried&&!deathCineActive()&&!introCineActive())   // v2.13.10: not while the opening scene poses her
+        if(!chrispiCarried&&!deathCineActive()&&!introCineActive())   // v2.12.43: not while the opening scene poses her
             chrispi.position.add(V3(0,Math.sin(t*1.5)*0.0015,0)); // gentle UFO hover
     }
     if(laserLine){laserTimer-=rawDt;if(laserTimer<=0){spaceRoot.remove(laserLine);
@@ -39951,7 +39954,7 @@ function startGame(){
     ui.intro.style.display='none';
     gameStarted=true;
     lockPointer();
-    introCineStart();                            // v2.13.10: she opens, he jumps out, she mounts — then the view ease
+    introCineStart();                            // v2.12.43: she opens, he jumps out, she mounts — then the view ease
     updateHotbar();updateStats();updateObjective();
     /* v2.13.6: CHRiSPi's two opening lines now wait for the view ease. There is
        ONE message slot (showMessage overwrites), and the ease ends by posting
@@ -39959,7 +39962,7 @@ function startGame(){
        been stomped mid-read, and the prompt stomped in turn at 6.2s. The whole
        opening is now one queue: ease (0-2.5s), view prompt (2.5-6.1s), then
        her two lines. Only the delays moved; the lines are untouched.
-       v2.13.10: the opening scene grew from 4.0 s to 5.8 s, so both lines
+       v2.12.43: the opening scene grew from 4.0 s to 5.8 s, so both lines
        moved back the same 1.8 s. */
     setTimeout(()=>showMessage('CHRiSPi: "Good morning, Bleaux. Kindly mine me a rocket\'s worth of planet."',5000),12200);
     setTimeout(()=>showMessage('CHRiSPi: "I ride upon your back, beaming in ores as you mine."',5000),17600);   // v2.11.42: [C] no longer sets her down
