@@ -1802,8 +1802,8 @@ function resolve(b, cols, axis) {
    - The walk only runs on a device that can afford it (MOB_ANIM below). One
      that cannot gets the same men in a fixed pose, re-posed only when they
      raise or lower the gun, their limb matrices frozen in between.
-   - Death: he goes over backwards and lands on his back with his arms and
-     legs up in the air, on every device. What is left is a body with weight:
+   - Death: he goes over backwards, lands on his back, and his raised arms
+     and legs settle flat, on every device. What is left is a body with weight:
      it rides the car he died in, and drops down the shaft when the car goes
      without it (updateBody).                                                  */
 const MOB_RIG = {
@@ -2315,6 +2315,7 @@ const MOB_DIE = {
                     //    shaft by more than that, and in he goes
   need: 1.35,       // m of clear floor he needs behind him to go straight over
   twists: [0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6],   // rad: else he turns as he goes
+  flatten: 0.85,    // s after impact for the raised limbs to lower and straighten
   settle: 1.4       // s after he lands before the rig is frozen for good
 };
 
@@ -2362,8 +2363,9 @@ function mobDie(e) {
 
 /** Over backwards: the knees give with his feet still planted, the chest snaps
  *  back, the arms fly up, the feet leave the floor, and he lands flat on his
- *  back with his arms and legs up in the air — then a bounce, and a twitch that
- *  dies away. A pure function of t, posed in the frame of his feet. */
+ *  back with his arms and legs up in the air — then a bounce, with the limbs
+ *  lowering and straightening onto the floor. A pure function of t, posed in
+ *  the frame of his feet. */
 function mobDeathPose(m, t) {
   const D = m.die, R = MOB_RIG, C = MOB_DIE;
   const u = clamp(t / C.T, 0, 1), f = u * u;                     // tipping: slow, then fast
@@ -2373,6 +2375,7 @@ function mobDeathPose(m, t) {
   const rest = mobSmooth(clamp((u - 0.45) / 0.55, 0, 1));
   const fling = mobSmooth(clamp(t / 0.16, 0, 1));
   const tau = Math.max(0, t - C.T);
+  const flat = mobSmooth(clamp(tau / C.flatten, 0, 1));
   const bounce = Math.exp(-tau * 8) * Math.sin(tau * 16);
   const wob = Math.exp(-tau * 4) * Math.sin(tau * 21);
 
@@ -2383,24 +2386,33 @@ function mobDeathPose(m, t) {
   m.body.rotation.set(-phi, lerp(D.legYaw, 0, b0), 0);
 
   // legs: planted (sliding forward a touch) and seen from the tipping hips,
-  // then kicked up into the air
+  // then kicked up into the air and lowered with straight knees after impact
   const cph = Math.cos(phi), sph = Math.sin(phi);
   const dz = 0.9 * fh - hz, dy = R.ankleH - hy;                  // foot minus hip, feet frame
+  const legSlope = Math.asin((C.lieH - R.ankleH) / (R.thigh + R.shin));
   for (let i = 0; i < 2; i++) {
     const leg = m.legs[i], S = D.legs[i], sgn = i ? -1 : 1;
     mobSolveLeg(leg, dy * sph + dz * cph, dy * cph - dz * sph, phi);
     leg.thigh.rotation.x = lerp(lerp(S[0], leg.thigh.rotation.x, b0), -1.25 - 0.08 * i + 0.22 * wob * sgn, lift);
     leg.shin.rotation.x  = lerp(lerp(S[1], leg.shin.rotation.x, b0), 0.55 + 0.1 * i - 0.2 * wob, lift);
     leg.foot.rotation.x  = lerp(lerp(S[2], leg.foot.rotation.x, b0), -0.3, lift);
+    // The hips stay slightly propped up; slope the legs down to resting heels.
+    leg.thigh.rotation.x = lerp(leg.thigh.rotation.x, legSlope - C.prop, flat);
+    leg.thigh.rotation.z = sgn * 0.12 * flat;
+    leg.shin.rotation.x = lerp(leg.shin.rotation.x, 0, flat);
+    leg.foot.rotation.x = lerp(leg.foot.rotation.x, -legSlope, flat);
   }
 
-  // arms: flung up at the hit, then up in the air from his back
+  // arms: flung up at the hit, then lowered beside him with relaxed elbows
   for (let i = 0; i < 2; i++) {
     const arm = m.arms[i], S = D.arms[i], s = arm.side;
     arm.upper.rotation.set(
       lerp(lerp(S[0], -2.7, fling), -1.85 + 0.3 * wob * (i ? 0.8 : -1), rest), 0,
       lerp(lerp(S[1], s * 0.6, fling), s * 0.45, rest));
     arm.fore.rotation.x = lerp(lerp(S[2], -0.2, fling), -0.55 - 0.3 * wob, rest);
+    // Slope the hands toward the floor; the gun props its hand a little higher.
+    arm.upper.rotation.x = lerp(arm.upper.rotation.x, s === 1 ? 0.03 : 0.18, flat);
+    arm.fore.rotation.x = lerp(arm.fore.rotation.x, 0, flat);
   }
 
   // torso: the snap back at the hit, then chin to chest once he is down
