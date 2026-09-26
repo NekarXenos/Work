@@ -1,7 +1,8 @@
 'use strict';
 
-// v9: separate mirrored islands, suggested seams, removing seams, and
-// snapping to seams (a crease taken into a drawn seam).
+// v9: separate mirrored islands, removing seams, and snapping to seams (a
+// crease taken into a drawn seam). Suggested seams changed in v11; see
+// v11-seams.test.cjs.
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -9,7 +10,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v10.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v11.html'), 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1])
   .filter(source => !source.includes('/* VectorCore'));
 const core = vm.createContext({});
@@ -164,88 +165,6 @@ function carMesh() {
   return mesh;
 }
 
-function applyPath(mesh, points) {
-  const locator = PC.faceLocator(mesh);
-  const picks = points.map(p => { const h = locator.closest(p); return { tri: h.tri, p: h.p }; });
-  const trace = PC.traceSeam(mesh, PC.buildEdgeMap(mesh), picks, false, null);
-  assert.equal(trace.complete, true);
-  PC.applyCuts(mesh, trace.chords, PC.buildEdgeMap(mesh));
-}
-
-test('suggested seams join the car\'s open crease ends, one mirrored suggestion per end of the car', () => {
-  const mesh = carMesh(), edges = PC.buildEdgeMap(mesh);
-  PC.markCreases(mesh, edges, 35);
-  assert.equal(PC.computePanels(mesh, edges).comps.length, 1, 'The creases alone close no panel');
-  const plane = PC.detectMirror(mesh);
-  const suggestions = PC.suggestSeams(mesh, edges, { plane: { axis: plane.axis, offset: plane.offset } });
-  assert.equal(suggestions.length, 2);
-  for (const s of suggestions) {
-    assert.equal(s.kind, 'ends');
-    assert.ok(s.twin, 'Each side of the car pairs with its reflection');
-    assert.ok(s.length < 0.3 && s.length >= Math.hypot(...s.pa.map((v, i) => v - s.pb[i])) - 1e-9);
-    assert.deepEqual(plain(s.points[0]), plain(s.pa));
-    assert.deepEqual(plain(s.points.at(-1)), plain(s.pb));
-    for (const end of [s.a, s.b, s.twin.a, s.twin.b]) {
-      assert.equal([...mesh.cut].filter(k => k.split(':').map(Number).includes(end)).length, 1, 'Endpoints are crease ends');
-    }
-  }
-  const before = mesh.tris.length;
-  for (const s of suggestions) { applyPath(mesh, s.points); applyPath(mesh, s.twin.points); }
-  assert.ok(mesh.tris.length > before);
-  const panels = PC.computePanels(mesh, PC.buildEdgeMap(mesh));
-  assert.equal(panels.comps.length, 3, 'Nose and tail close into panels');
-  const check = PC.checkManifold(mesh);
-  assert.equal(check.nonManifold, 0);
-  assert.equal(check.boundary, 0);
-  assert.equal(PC.suggestSeams(mesh, PC.buildEdgeMap(mesh), { plane }).length, 0, 'Nothing left to suggest');
-});
-
-test('an L-shaped panel is split from its inner corner to the far corner, and convex panels are left alone', () => {
-  const pos = [], tris = [], id = (x, y) => y * 5 + x;
-  for (let y = 0; y <= 4; y++) for (let x = 0; x <= 4; x++) pos.push(x, y, 0);
-  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
-    if (x >= 2 && y >= 2) continue;
-    tris.push(id(x, y), id(x + 1, y), id(x + 1, y + 1), id(x, y), id(x + 1, y + 1), id(x, y + 1));
-  }
-  const L = PC.makeMesh(pos, tris);
-  const found = PC.suggestSeams(L, PC.buildEdgeMap(L));
-  assert.equal(found.length, 1, JSON.stringify(found.map(s => [s.pa, s.pb])));
-  assert.equal(found[0].kind, 'corners');
-  assert.deepEqual([found[0].a, found[0].b].sort((a, b) => a - b), [id(0, 0), id(2, 2)].sort((a, b) => a - b));
-  near(found[0].length, Math.SQRT2 * 2, 'The split runs straight across the panel', 1e-9);
-
-  assert.equal(PC.suggestSeams(grid(), PC.buildEdgeMap(grid())).length, 0, 'A square panel needs no split');
-});
-
-test('two open creases in a flat panel are joined at their closest ends', () => {
-  const mesh = grid(4);
-  cut(mesh, [-1, 1], [0, 1], [1, 1]);
-  cut(mesh, [-1, -1], [0, -1], [1, -1]);
-  const edges = PC.buildEdgeMap(mesh);
-  const single = PC.suggestSeams(mesh, edges);
-  assert.equal(single.length, 2);
-  for (const s of single) {
-    assert.equal(s.kind, 'ends');
-    near(Math.abs(s.pa[0]), 1, 'Joins ends on the same side');
-    near(s.pa[0], s.pb[0], 'Straight down the side');
-    near(s.length, 2, 'Closest ends');
-  }
-  const paired = PC.suggestSeams(mesh, edges, { plane: { axis: 0, offset: 0 } });
-  assert.equal(paired.length, 1, 'With the mirror, the two sides make one suggestion');
-  assert.ok(paired[0].twin);
-  applyPath(mesh, paired[0].points); applyPath(mesh, paired[0].twin.points);
-  const inside = panelAt(mesh, [0.3, 0.2, 0]), outside = panelAt(mesh, [1.6, 0.2, 0]);
-  assert.equal(inside.count, 2);
-  assert.notEqual(inside.label, outside.label);
-
-  const edge = grid();
-  cut(edge, [-1, 1], [0, 1], [1, 1]);
-  cut(edge, [-1, -1], [0, -1], [1, -1]);
-  const toBorder = PC.suggestSeams(edge, PC.buildEdgeMap(edge));
-  assert.ok(toBorder.every(s => s.kind === 'end' && s.length <= 1 + 1e-9),
-    'On a small open sheet the closest thing to each crease end is the sheet\'s own border');
-});
-
 /* ------------------------------------------------ separate twin islands */
 
 function uvWinding(u, faces) {
@@ -331,7 +250,7 @@ function harness(options = {}) {
     vnCache: new Array(3 * 5000).fill(0).map((_, i) => (i % 3 === 2 ? 1 : 0)),
     window: { addEventListener(name, callback) { keys[name] = callback; } },
     toast: message => messages.push(message), fmt: String,
-    rebuildPath() {}, syncGhostDots() {}, setAtlasEmpty() {}, syncAll() {}, renderSuggestions() {}, showErase() {},
+    rebuildPath() {}, syncGhostDots() {}, setAtlasEmpty() {}, syncAll() {}, renderSuggestions() {}, showErase() {}, buildNodeDots() {},
     recomputePanels() {
       S.edgeMap = PC.buildEdgeMap(S.mesh);
       const regions = PC.computePanels(S.mesh, S.edgeMap);
@@ -341,12 +260,11 @@ function harness(options = {}) {
     }
   });
   for (const name of ['mirrorEnabled', 'activePlane', 'planeOffset', 'mirrorTolerance', 'seamOnPlane',
-    'drawingOutline', 'leadPoint', 'seamNet', 'seamPick', 'seamStretch', 'hasLooseEnds', 'isCreaseEnd', 'withSeamTail',
+    'drawingOutline', 'leadPoint', 'seamNet', 'panelRim', 'seamPick', 'seamStretch', 'hasLooseEnds', 'isCreaseEnd', 'withSeamTail',
     'seamHooks', 'drawingAnchor', 'centerPanelStarted', 'canCloseSeam', 'symmetricPanelReady', 'syncDrawingSegments',
     'stretchPoints', 'liftStretch', 'allJoined', 'closingPreview', 'traceSeg', 'crossPoint', 'segPoints',
     'addPoint', 'clearPoints', 'undoPoint', 'snapshot', 'undoCut', 'doCut', 'updateButtons', 'updateHud',
-    'pruneSuggestions', 'mirrorRun', 'removeSeams', 'findSuggestion', 'applySuggestion', 'afterSuggestedCut',
-    'acceptSuggestion', 'rejectSuggestion', 'acceptAllSuggestions', 'rejectAllSuggestions']) vm.runInContext(appFunction(name), app);
+    'pruneSuggestions', 'mirrorRun', 'removeSeams']) vm.runInContext(appFunction(name), app);
   const keyStart = scripts[1].indexOf("  window.addEventListener('keydown',");
   const keyEnd = scripts[1].indexOf('\n  });', keyStart) + '\n  });'.length;
   vm.runInContext(scripts[1].slice(keyStart, keyEnd), app);
@@ -485,46 +403,4 @@ test('removing a seam takes its mirror image with it, and undo puts both back', 
   assert.match(h.messages.at(-1), /Seam and its mirror removed/);
   h.app.undoCut();
   assert.equal(h.S.mesh.cut.size, 5);
-});
-
-test('suggestions can be accepted, rejected, and brought back by undo', () => {
-  const h = harness({ mirror: true });
-  cut(h.S.mesh, [-1, 1], [0, 1], [1, 1]);
-  cut(h.S.mesh, [-1, -1], [0, -1], [1, -1]);
-  cut(h.S.mesh, [-2, 2], [-1, 2]);
-  h.app.recomputePanels();
-  const list = PC.suggestSeams(h.S.mesh, h.S.edgeMap, { plane: { axis: 0, offset: 0 } });
-  assert.ok(list.length >= 1);
-  list.forEach((s, i) => { s.id = i + 1; });
-  h.S.suggestions = list.slice();
-  const first = list.find(s => s.twin);
-  h.app.acceptSuggestion(first.id);
-  assert.match(h.messages.at(-1), /Seam accepted on both sides/);
-  assert.equal(h.S.suggestions.includes(first), false);
-  assert.equal(panelAt(h.S.mesh, [0, 0, 0]).count >= 2, true);
-  h.app.undoCut();
-  assert.equal(h.S.suggestions.includes(first), true, 'Undo brings the accepted suggestion back');
-  assert.equal(panelAt(h.S.mesh, [0, 0, 0]).count, 1);
-  h.app.rejectSuggestion(first.id);
-  assert.equal(h.S.suggestions.includes(first), false);
-  assert.equal(h.S.history.length, 0, 'Rejecting never touches the mesh');
-  h.S.suggestions = list.slice();
-  h.app.acceptAllSuggestions();
-  assert.equal(h.S.suggestions.length, 0);
-  assert.equal(h.S.history.length, 1, 'Accept all is one undo step');
-  h.S.suggestions = list.slice();
-  h.press('Escape');
-  assert.equal(h.S.suggestions.length, 0, 'Escape dismisses the list');
-});
-
-test('suggestions whose corners are no longer on a seam are dropped', () => {
-  const h = harness({ mesh: grid(4) });
-  cut(h.S.mesh, [-1, 1], [0, 1], [1, 1]);
-  cut(h.S.mesh, [-1, -1], [0, -1], [1, -1]);
-  h.app.recomputePanels();
-  h.S.suggestions = PC.suggestSeams(h.S.mesh, h.S.edgeMap).map((s, i) => Object.assign(s, { id: i + 1 }));
-  assert.equal(h.S.suggestions.length, 2);
-  const net = h.app.seamNet();
-  h.app.removeSeams([net.runOf.get(PC.ekey(at(-1, 1, 4), at(0, 1, 4)))]);
-  assert.equal(h.S.suggestions.length, 0, 'Both suggestions used an end of the removed crease');
 });

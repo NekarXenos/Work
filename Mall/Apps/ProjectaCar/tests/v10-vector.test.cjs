@@ -10,7 +10,7 @@ const vm = require('node:vm');
 const zlib = require('node:zlib');
 const { test } = require('node:test');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v10.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v11.html'), 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1]);
 const coreScript = scripts.find(source => source.includes('/* PanelCore'));
 const vectorScript = scripts.find(source => source.includes('/* VectorCore'));
@@ -409,7 +409,7 @@ test('the PDF is a well-formed CMYK document with clipped artwork and CutContour
 
 test('v10 adds the Vector mode, its palette and outline tools, and PDF export', () => {
   for (const script of scripts) new vm.Script(script);
-  assert.match(html, /<title>WrapaCar v10 /);
+  assert.match(html, /<title>WrapaCar v1\d /);
   assert.match(html, /<button data-mode="vector">Vector/);
   for (const id of ['swatches', 'fillWell', 'strokeWell', 'mixC', 'mixM', 'mixY', 'mixK', 'widthRange', 'widthNum',
     'shapeList', 'vecClose', 'vecFinish', 'realLen', 'pdfScale', 'bleedRange', 'pdfCut', 'pdfBtn']) {

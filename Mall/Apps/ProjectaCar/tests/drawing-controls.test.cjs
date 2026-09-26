@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v10.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v11.html'), 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1])
   .filter(source => !source.includes('/* VectorCore'));
 const coreContext = vm.createContext({});
@@ -35,10 +35,10 @@ function harness() {
   let hit = { faceIndex: 0, point: { x: 0.02, y: 0, z: 0 }, distance: 5 };
   const raycaster = { setFromCamera() {}, intersectObject() { return hit ? [hit] : []; } };
   const ctx = vm.createContext({ $, PC, S, canvas, raycaster, meshObj: {}, DL: null,
-    camera: { fov: 42 }, THREE: { Vector2: class {}, Vector3 }, renderSuggestions() {}, showErase() {} });
+    camera: { fov: 42 }, THREE: { Vector2: class {}, Vector3 }, renderSuggestions() {}, showErase() {}, buildNodeDots() {} });
   for (const name of ['mirrorEnabled', 'activePlane', 'planeOffset', 'mirrorTolerance',
     'symmetricPanelReady', 'drawingOutline', 'drawingAnchor', 'centerPanelStarted', 'canCloseSeam', 'seamOnPlane', 'pick', 'updateButtons', 'updateHud',
-    'leadPoint', 'seamNet', 'seamPick', 'seamStretch', 'hasLooseEnds', 'isCreaseEnd', 'withSeamTail', 'seamHooks',
+    'leadPoint', 'seamNet', 'panelRim', 'seamPick', 'seamStretch', 'hasLooseEnds', 'isCreaseEnd', 'withSeamTail', 'seamHooks',
     'stretchPoints', 'liftStretch', 'allJoined', 'closingPreview', 'pruneSuggestions']) {
     vm.runInContext(appFunction(name), ctx);
   }

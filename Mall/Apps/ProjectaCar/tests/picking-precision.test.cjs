@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const test = require('node:test');
 
 const root = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(root, 'WrapaCar_v10.html'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'WrapaCar_v11.html'), 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1])
   .filter(source => !source.includes('/* VectorCore'));
 const core = vm.createContext({});
