@@ -7,7 +7,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const root = path.join(__dirname, '..');
-const html = fs.readFileSync(path.join(root, 'WrapaCar_v9.html'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'WrapaCar_v10.html'), 'utf8');
 const coreSource = html.match(/<script>\s*(\/\* PanelCore[\s\S]*?)<\/script>/);
 assert.ok(coreSource, 'PanelCore is available');
 const coreContext = { module: { exports: {} } };
