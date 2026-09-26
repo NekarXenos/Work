@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0a0806">
-<title>ESCALATED MAYHEM V22 — 20 floors, 6 documents, one way out</title>
+<title>ESCALATED MAYHEM V23 — 20 floors, 6 documents, one way out</title>
 <style>
   /* ------------------------------------------------------------------
      Visual language: 1983 arcade cabinet meets stakeout surveillance.
@@ -91,6 +91,7 @@
        background:var(--amber);padding:11px 30px;border:0;cursor:pointer;pointer-events:auto}
   .cta:focus-visible{outline:3px solid var(--bone);outline-offset:3px}
   .foot{position:fixed;bottom:14px;left:0;right:0;font-size:10px;letter-spacing:.24em;color:#5a5148}
+  .animstat{margin-top:16px;font-size:10px;letter-spacing:.2em;color:#6e6352}
   #over h1{color:var(--alarm);text-shadow:0 0 30px rgba(216,52,31,.4)}
   #win h1{color:var(--bone);text-shadow:0 0 30px rgba(230,220,200,.3)}
 
@@ -257,7 +258,7 @@
 <div id="rotate">turn the phone sideways for a wider view</div>
 
 <div class="screen" id="start">
-  <h1>Escalated<br>Mayhem<span>V22</span></h1>
+  <h1>Escalated<br>Mayhem<span>V23</span></h1>
   <p>Six safes are sitting behind red doors somewhere in these twenty floors, and the Corvino family has men in every office. No lift runs the whole height &mdash; every hoistway is a stack of short local cars, so you ride one to the end of its run and go hunting for the next. Take the roof elevator down, work your way to the basement, and drive the red roadster up the ramp before they close it. Every shot you fire carries two floors, and the men who hear it come to look &mdash; by lift or by escalator, the same way you have to.</p>
   <div class="keys kb">
     <b>W A S D</b><span>move &middot; hold Shift to run</span>
@@ -292,6 +293,7 @@
     <button id="sensdn">&minus;</button><b id="sensval">4</b><button id="sensup">+</button>
   </div>
   <button class="tog" id="touchtog2">touch controls: on</button>
+  <div class="animstat" id="animstat"></div>
 </div>
 
 <div class="screen hide" id="over">
@@ -319,7 +321,7 @@ if (typeof THREE === 'undefined') {
 (function () {
 if (typeof THREE === 'undefined') return;
 /* ==========================================================================
-   ESCALATED MAYHEM V22
+   ESCALATED MAYHEM V23
    Single-file first-person game built on three.js r128 (UMD build).
    Everything — geometry, textures-by-material, audio — is generated at runtime.
    Sections: 1 config  2 utils  3 engine  4 world build  5 entities
@@ -327,7 +329,7 @@ if (typeof THREE === 'undefined') return;
    ========================================================================== */
 
 /* ------------------------------ 1. CONFIG ------------------------------- */
-const VERSION   = 'V19';
+const VERSION   = 'V23';
 const FH        = 6;                 // floor-to-floor height (corridors are 6 high)
 const FLOORS    = 20;                // 20 procedurally generated floors
 const ROOF_Y    = FLOORS * FH;       // 120
@@ -624,11 +626,8 @@ const MAT = {
   doorR:     lam(0xa9271d),
   lock:      lam(0xd8d2c0),
   wood:      lam(0x6b4a2f),
-  suit:      lam(0x22242c),
   suit2:     lam(0x3a3340),
   shirt:     lam(0xdcdce2),
-  tie:       lam(0x8e2020),
-  skin:      lam(0xc79367),
   hat:       lam(0x121218),
   gunmetal:  lam(0x2c2f36),
   safe:      lam(0x2b3038),
@@ -1060,6 +1059,7 @@ const SFX = {
   safe:   () => { tone(240, 120, 0.16, 0.2, 'square'); noiseBurst(0.2, 900, 0.3); },
   pickup: () => { tone(660, 990, 0.09, 0.18, 'triangle'); setTimeout(() => tone(990, 1320, 0.1, 0.15, 'triangle'), 90); },
   crush:  () => { noiseBurst(0.5, 260, 0.5); tone(120, 40, 0.4, 0.25, 'sawtooth'); },
+  thud:   () => { noiseBurst(0.22, 320, 0.3); tone(95, 42, 0.2, 0.2, 'sine'); },
   bt:     (on) => tone(on ? 900 : 300, on ? 220 : 800, 0.3, 0.16, 'sine'),
   hurt:   () => { tone(200, 90, 0.18, 0.2, 'sawtooth'); },
   elev:   () => tone(90, 90, 0.2, 0.06, 'sine'),
@@ -1785,27 +1785,638 @@ function resolve(b, cols, axis) {
 }
 
 /* ------------------------------- enemies --------------------------------- */
-function enemyMesh() {
-  const g = new THREE.Group();
-  const suit = rnd() < 0.5 ? MAT.suit : MAT.suit2;
-  const h = { group: g };
-  put(h, GEO.box, suit, 0, 1.18, 0, 0.62, 0.78, 0.36);              // torso
-  put(h, GEO.box, MAT.shirt, 0, 1.30, -0.19, 0.22, 0.48, 0.04);     // shirt front
-  put(h, GEO.box, MAT.tie, 0, 1.26, -0.22, 0.09, 0.34, 0.03);       // tie
-  const head = put(h, GEO.ico, MAT.skin, 0, 1.74, 0, 0.46, 0.5, 0.46);
-  put(h, GEO.cyl, MAT.hat, 0, 1.93, 0, 0.86, 0.07, 0.86);           // fedora brim
-  put(h, GEO.cyl, MAT.hat, 0, 2.05, 0, 0.5, 0.26, 0.5);             // crown
-  put(h, GEO.box, MAT.rail, 0, 2.02, -0.24, 0.5, 0.06, 0.06);       // hat band
-  const armL = put(h, GEO.box, suit, -0.40, 1.20, 0, 0.17, 0.66, 0.17);
-  const armR = put(h, GEO.box, suit, 0.40, 1.20, 0, 0.17, 0.66, 0.17);
-  const legL = put(h, GEO.box, MAT.gunmetal, -0.16, 0.40, 0, 0.21, 0.82, 0.23);
-  const legR = put(h, GEO.box, MAT.gunmetal, 0.16, 0.40, 0, 0.21, 0.82, 0.23);
-  put(h, GEO.box, MAT.gunmetal, 0.42, 1.12, -0.28, 0.09, 0.11, 0.34);  // piece
-  return { group: g, head, armL, armR, legL, legR };
+/* The Corvino men are the MafiaWalker character (MafiaWalker.html, beside this
+   file), built here to the same shapes and colours: one shared vertex-coloured
+   Lambert material for every part, the static parts (coat, collar, head, hat)
+   baked into a single torso mesh, only the jointed limbs as separate meshes,
+   all of it built once and shared by every man in the building. Legs are
+   2-bone IK with planted feet. No lights, no shadow maps: the muzzle flash is
+   an unlit mesh and the shadow is a blob decal.
+
+   What the game adds to the file's rig:
+   - The gait blends from the file's stroll into a jog. The file tunes a walk
+     at 1.1 m/s; a man answering a gunshot covers 3.1, and the stroll at that
+     speed skates. The phase moves by DISTANCE, so a planted foot travels back
+     at exactly body speed, and the hips turn toward where he is going while
+     his chest stays on you, so he can side-step or back off on his feet.
+   - The walk only runs on a device that can afford it (MOB_ANIM below). One
+     that cannot gets the same men in a fixed pose, re-posed only when they
+     raise or lower the gun, their limb matrices frozen in between.
+   - Death: he goes over backwards and lands on his back with his arms and
+     legs up in the air, on every device. What is left is a body with weight:
+     it rides the car he died in, and drops down the shaft when the car goes
+     without it (updateBody).                                                  */
+const MOB_RIG = {
+  height: 10.75,       // ground to hat top, model units
+  hipY: 4.4,           // hip joint height when standing
+  shoulderX: 1.55, shoulderY: 3.0,   // relative to the hips
+  hipX: 0.62,
+  thigh: 2, shin: 2,   // leg bone lengths
+  upperArm: 1.6, forearm: 1.5,
+  ankleH: 0.6          // ankle joint above the sole
+};
+const MOB_SCALE = 1.9 / MOB_RIG.height;      // hat top at 1.9 m, his eyes level with yours
+
+// Gait, in model units. duty: share of a cycle a foot is down; half: half the
+// planted stretch; lift: swing-foot height; bob: hip bob; drop: hips lowered
+// for reach (a jog needs the longer stance); lean/arm/elbow: upper body.
+const MOB_GAIT = {
+  walk: { duty: 0.56, half: 1.344, lift: 0.55, bob: 0.12, drop: 0.00, lean: 0.07, arm: 0.45, elbow: 0.00 },
+  jog:  { duty: 0.40, half: 1.70,  lift: 1.05, bob: 0.20, drop: 0.38, lean: 0.20, arm: 0.70, elbow: 0.85 },
+  jog0: 1.2, jog1: 2.6,     // m/s: the stroll below jog0, a full jog from jog1 up
+  cad0: 1.3,                // cycles/s: slower than this and the stride shortens instead
+  cadMax: 2.6               // cycles/s: never faster, whatever the speed says
+};
+
+const MOB_TAU = Math.PI * 2;
+const mobSmooth = (t) => t * t * (3 - 2 * t);
+const mobWrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+const mobTurn = (cur, to, step) => cur + clamp(mobWrap(to - cur), -step, step);
+
+/* ---- geometry baking (as in MafiaWalker.html) ---- */
+const _mobM = new THREE.Matrix4(), _mobQ = new THREE.Quaternion(), _mobE = new THREE.Euler();
+const _mobP = new THREE.Vector3(), _mobS = new THREE.Vector3(), _mobC = new THREE.Color();
+
+// A geometry as a flat-shaded, vertex-coloured chunk ready to bake.
+// flip = reverse winding, for the inside faces of the coat and collar.
+function mobPart(geo, color, pos, rot, scl, flip) {
+  pos = pos || [0, 0, 0]; rot = rot || [0, 0, 0]; scl = scl || [1, 1, 1];
+  const g = geo.index ? geo.toNonIndexed() : geo;
+  g.applyMatrix4(_mobM.compose(_mobP.fromArray(pos), _mobQ.setFromEuler(_mobE.set(rot[0], rot[1], rot[2])), _mobS.fromArray(scl)));
+  const p = g.attributes.position.array.slice();
+  geo.dispose(); g.dispose();
+  if (flip) {
+    for (let i = 0; i < p.length; i += 9) {
+      for (let j = 0; j < 3; j++) { const t = p[i + 3 + j]; p[i + 3 + j] = p[i + 6 + j]; p[i + 6 + j] = t; }
+    }
+  }
+  _mobC.set(color);
+  const c = new Float32Array(p.length);
+  for (let i = 0; i < c.length; i += 3) { c[i] = _mobC.r; c[i + 1] = _mobC.g; c[i + 2] = _mobC.b; }
+  return { p, c };
+}
+function mobTransform(parts, matrix) {
+  for (const pt of parts) new THREE.BufferAttribute(pt.p, 3).applyMatrix4(matrix);
+  return parts;
+}
+function mobBake(parts) {
+  let n = 0;
+  for (const pt of parts) n += pt.p.length;
+  const pos = new Float32Array(n), col = new Float32Array(n);
+  let o = 0;
+  for (const pt of parts) { pos.set(pt.p, o); col.set(pt.c, o); o += pt.p.length; }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.computeVertexNormals();   // non-indexed -> face normals -> flat shading
+  g.computeBoundingSphere();
+  return g;
+}
+// Cylinder with its pivot at the top, hanging down -Y (for limbs).
+function mobLimb(rTop, rBot, len, seg) {
+  const g = new THREE.CylinderGeometry(rTop, rBot, len, seg);
+  g.translate(0, -len / 2, 0);
+  return g;
+}
+// Open cylinder shell with an inside face, optional front opening.
+function mobShell(rTop, rBot, h, seg, gap, thickness, color, pos, scl) {
+  const start = gap / 2, len = MOB_TAU - gap, k = 1 - thickness;
+  return [
+    mobPart(new THREE.CylinderGeometry(rTop, rBot, h, seg, 1, true, start, len), color, pos, [0, 0, 0], scl),
+    mobPart(new THREE.CylinderGeometry(rTop * k, rBot * k, h, seg, 1, true, start, len), color, pos, [0, 0, 0], scl, true)
+  ];
+}
+
+const MOB_COL = {
+  coat: 0x2c2c30, coatDark: 0x1e1e22, pants: 0x1b1b1f, skin: 0xf2c69b,
+  hat: 0x3a3a3a, band: 0xb4b4b4, shades: 0x0c0c0c, shirt: 0xd8d6cc, tie: 0x7a1616,
+  belt: 0x141414, buckle: 0x9a8650, shoe: 0x121212, sole: 0x3b2618, spat: 0xcfcac0,
+  gunMetal: 0x3c3c40, wood: 0x5c3a20
+};
+
+let MOB_ASSETS = null;
+function mobAssets() {
+  if (MOB_ASSETS) return MOB_ASSETS;
+  const R = MOB_RIG, C = MOB_COL;
+  const Y = Math.PI / 8;   // rotates 8-sided cylinders so a flat face points forward
+
+  // --- torso: coat chest, collar, head and hat baked into one mesh (origin = hips) ---
+  const crown = new THREE.CylinderGeometry(0.95, 1.12, 1.05, 8);
+  const cp = crown.attributes.position;
+  for (let i = 0; i < cp.count; i++) {      // pinch the top of the crown
+    if (cp.getY(i) > 0.5 && Math.abs(cp.getX(i)) < 1e-4 && Math.abs(cp.getZ(i)) < 1e-4) cp.setY(i, cp.getY(i) - 0.25);
+  }
+  const hat = mobTransform([
+    mobPart(new THREE.CylinderGeometry(1.75, 1.75, 0.12, 10), C.hat, [0, 5.25, 0], [0, 0, 0], [1, 1, 1.12]),
+    mobPart(crown, C.hat, [0, 5.82, 0], [0, Y, 0], [1, 1, 1.15]),
+    mobPart(new THREE.CylinderGeometry(1.14, 1.13, 0.3, 8), C.band, [0, 5.47, 0], [0, Y, 0], [1, 1, 1.15])
+  ], new THREE.Matrix4().makeTranslation(0, 5.25, 0.05)
+      .multiply(new THREE.Matrix4().makeRotationX(0.08))
+      .multiply(new THREE.Matrix4().makeTranslation(0, -5.25, 0)));
+
+  const torso = mobBake([
+    // coat chest, V-shaped, with sloped shoulders
+    mobPart(new THREE.CylinderGeometry(1.45, 1.15, 3.2, 8), C.coat, [0, 1.6, 0], [0, Y, 0], [1, 1, 0.62]),
+    mobPart(new THREE.CylinderGeometry(0.75, 1.45, 0.45, 8), C.coat, [0, 3.425, 0], [0, Y, 0], [1, 1, 0.62]),
+    // shirt, tie, lapels
+    mobPart(new THREE.BoxGeometry(0.62, 1.2, 0.1), C.shirt, [0, 2.65, 0.76]),
+    mobPart(new THREE.BoxGeometry(0.2, 1.35, 0.08), C.tie, [0, 2.4, 0.83]),
+    mobPart(new THREE.BoxGeometry(0.42, 1.9, 0.12), C.coatDark, [0.42, 2.25, 0.8], [0, 0, -0.3]),
+    mobPart(new THREE.BoxGeometry(0.42, 1.9, 0.12), C.coatDark, [-0.42, 2.25, 0.8], [0, 0, 0.3]),
+    // belt + buckle
+    mobPart(new THREE.CylinderGeometry(1.22, 1.22, 0.3, 8), C.belt, [0, 0.55, 0], [0, Y, 0], [1, 1, 0.66]),
+    mobPart(new THREE.BoxGeometry(0.36, 0.28, 0.08), C.buckle, [0, 0.55, 0.78]),
+    // upturned collar: flared ring open at the front
+    ...mobShell(1.45, 1.12, 1.35, 8, 1.6, 0.1, C.coatDark, [0, 3.95, -0.05], [1, 1, 0.85]),
+    // head, hair, sunglasses
+    mobPart(new THREE.DodecahedronGeometry(1.15, 0), C.skin, [0, 4.35, 0.12], [-0.2, 0, 0]),
+    mobPart(new THREE.BoxGeometry(1.7, 1.1, 0.9), C.pants, [0, 4.6, -0.55]),
+    mobPart(new THREE.CylinderGeometry(0.32, 0.32, 0.14, 6), C.shades, [0.4, 4.48, 1.0], [Math.PI / 2, 0, 0], [1.15, 1, 0.6]),
+    mobPart(new THREE.CylinderGeometry(0.32, 0.32, 0.14, 6), C.shades, [-0.4, 4.48, 1.0], [Math.PI / 2, 0, 0], [1.15, 1, 0.6]),
+    mobPart(new THREE.BoxGeometry(0.4, 0.08, 0.08), C.shades, [0, 4.5, 1.05]),
+    ...hat
+  ]);
+
+  // --- trenchcoat skirt (pivot at the waist so it can sway), open at the front ---
+  const skirt = mobBake(mobShell(1.2, 1.6, 3.0, 8, 0.5, 0.07, C.coat, [0, -1.5, 0], [1, 1, 0.75]));
+
+  // --- arms ---
+  const upperArm = mobBake([mobPart(mobLimb(0.46, 0.4, R.upperArm, 6), C.coat)]);
+  const forearm = mobBake([
+    mobPart(mobLimb(0.4, 0.36, R.forearm, 6), C.coat),
+    mobPart(new THREE.CylinderGeometry(0.35, 0.35, 0.14, 6), C.shirt, [0, -R.forearm, 0]),
+    mobPart(new THREE.DodecahedronGeometry(0.42, 0), C.skin, [0, -R.forearm - 0.35, 0])
+  ]);
+
+  // --- legs ---
+  const thigh = mobBake([mobPart(mobLimb(0.55, 0.45, R.thigh, 6), C.pants)]);
+  const shin = mobBake([mobPart(mobLimb(0.45, 0.36, R.shin, 6), C.pants)]);
+
+  // shoe: a subdivided box with a tapered, pointed, sloped toe + sole + spat
+  const shoe = new THREE.BoxGeometry(0.95, 0.46, 1.7, 2, 1, 2);
+  const sp = shoe.attributes.position;
+  for (let i = 0; i < sp.count; i++) {
+    let x = sp.getX(i), y = sp.getY(i), z = sp.getZ(i);
+    if (z > 0.01) { x *= 0.72; if (y > 0) y -= 0.16; if (Math.abs(x) < 1e-4) z += 0.14; }
+    if (z < -0.01) x *= 0.9;
+    sp.setXYZ(i, x, y, z);
+  }
+  const sole = new THREE.BoxGeometry(1.0, 0.12, 1.8, 2, 1, 2);
+  const lp = sole.attributes.position;
+  for (let i = 0; i < lp.count; i++) {
+    let x = lp.getX(i), z = lp.getZ(i);
+    if (z > 0.01) { x *= 0.74; if (Math.abs(x) < 1e-4) z += 0.14; }
+    if (z < -0.01) x *= 0.9;
+    lp.setX(i, x); lp.setZ(i, z);
+  }
+  const foot = mobBake([
+    mobPart(shoe, C.shoe, [0, -0.25, 0.35]),
+    mobPart(sole, C.sole, [0, -0.54, 0.35]),
+    mobPart(new THREE.CylinderGeometry(0.42, 0.52, 0.42, 6), C.spat, [0, -0.1, 0.02])
+  ]);
+
+  // --- tommy gun, built barrel-forward (+Z) then laid along the forearm (-Y) ---
+  const gun = mobBake(mobTransform([
+    mobPart(new THREE.BoxGeometry(0.34, 0.42, 1.6), C.gunMetal, [0, 0.35, 0.3]),
+    mobPart(new THREE.CylinderGeometry(0.1, 0.1, 1.5, 6), C.gunMetal, [0, 0.4, 1.8], [Math.PI / 2, 0, 0]),
+    mobPart(new THREE.CylinderGeometry(0.17, 0.17, 0.6, 6), C.gunMetal, [0, 0.4, 1.4], [Math.PI / 2, 0, 0]),
+    mobPart(new THREE.CylinderGeometry(0.55, 0.55, 0.32, 8), C.gunMetal, [0, -0.2, 0.6], [0, 0, Math.PI / 2]),
+    mobPart(new THREE.BoxGeometry(0.22, 0.6, 0.3), C.wood, [0, -0.1, -0.05], [0.25, 0, 0]),
+    mobPart(new THREE.BoxGeometry(0.22, 0.5, 0.28), C.wood, [0, 0.0, 1.2]),
+    mobPart(new THREE.BoxGeometry(0.28, 0.48, 1.2), C.wood, [0, 0.2, -1.0], [-0.12, 0, 0])
+  ], new THREE.Matrix4().makeRotationX(Math.PI / 2)));
+  const muzzle = new THREE.Vector3(0, -2.55, 0.4);   // barrel tip in gun space
+
+  const flashGeo = new THREE.OctahedronGeometry(0.45, 0);
+  flashGeo.scale(1, 2.2, 1);
+  flashGeo.translate(0, -0.9, 0);
+
+  const shadowGeo = new THREE.CircleGeometry(2.6, 12);
+  shadowGeo.rotateX(-Math.PI / 2);
+
+  MOB_ASSETS = {
+    torso, skirt, upperArm, forearm, thigh, shin, foot, gun, muzzle, flashGeo, shadowGeo,
+    mat: new THREE.MeshLambertMaterial({ vertexColors: true }),
+    flashMat: new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }),
+    shadowMat: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false })
+  };
+  return MOB_ASSETS;
+}
+
+/** One man. The root stands on the floor at his feet, facing +Z; move and turn
+ *  that, and the rest is posed by mobAnimate / mobStatic / mobDeathPose. */
+function mobRig() {
+  const A = mobAssets(), R = MOB_RIG;
+  const mesh = (geo, parent, x, y, z, mat) => {
+    const m = new THREE.Mesh(geo, mat || A.mat);
+    m.position.set(x || 0, y || 0, z || 0);
+    parent.add(m);
+    return m;
+  };
+  const root = new THREE.Group();
+  root.scale.setScalar(MOB_SCALE);
+
+  const shadow = mesh(A.shadowGeo, root, 0, 0.12, 0, A.shadowMat);
+  shadow.renderOrder = -1;
+
+  const body = new THREE.Group();          // hip level
+  root.add(body);
+  const torso = mesh(A.torso, body);
+  const skirt = mesh(A.skirt, body, 0, 0.7, 0);
+
+  // arms[0] / legs[0] are on +X (the character's left)
+  const arms = [1, -1].map(side => {
+    const upper = mesh(A.upperArm, torso, side * R.shoulderX, R.shoulderY, 0);
+    const fore = mesh(A.forearm, upper, 0, -R.upperArm, 0);
+    return { side, upper, fore };
+  });
+  const legs = [1, -1].map((side, i) => {
+    const thigh = mesh(A.thigh, body, side * R.hipX, 0, 0);
+    const shin = mesh(A.shin, thigh, 0, -R.thigh, 0);
+    const foot = mesh(A.foot, shin, 0, -R.shin, 0);
+    return { thigh, shin, foot, offset: i * 0.5 };
+  });
+
+  const gun = mesh(A.gun, arms[0].fore, 0, -R.forearm - 0.35, 0);
+  gun.updateMatrix(); gun.matrixAutoUpdate = false;           // never moves on the hand
+  const flash = mesh(A.flashGeo, gun, A.muzzle.x, A.muzzle.y, A.muzzle.z, A.flashMat);
+  flash.visible = false;
+
+  const parts = [shadow, body, torso, skirt];
+  for (const a of arms) parts.push(a.upper, a.fore);
+  for (const l of legs) parts.push(l.thigh, l.shin, l.foot);
+
+  const m = {
+    group: root, root, shadow, body, torso, skirt, arms, legs, gun, flash, parts,
+    // one draw from the seeded stream, as the old model's suit pick took, so
+    // every spawn and every goon's temper after it comes out as it always has
+    phase: rnd(),
+    speed: 0, dir: 1, legYaw: 0, yaw: 0,
+    aim: 0, aimTo: 0, recoil: 0, flashT: 0, fall: 0,
+    frozen: false, poseKey: -1, die: null
+  };
+  mobAnimate(m, 0, 0);                     // on his feet from the first frame
+  return m;
+}
+
+/** Stop (or restart) recomposing the limb matrices every frame. */
+function mobFreeze(m, on) {
+  if (m.frozen === on) return;
+  m.frozen = on;
+  for (let i = 0; i < m.parts.length; i++) {
+    const o = m.parts[i];
+    o.matrixAutoUpdate = !on;
+    if (on) o.updateMatrix();
+  }
+}
+
+/** Sagittal-plane 2-bone IK. (z, y) = ankle target relative to the hip joint. */
+function mobSolveLeg(leg, z, y, pitch) {
+  const L1 = MOB_RIG.thigh, L2 = MOB_RIG.shin;
+  let r = Math.hypot(z, y);
+  const maxR = L1 + L2 - 1e-3;
+  if (r > maxR) { z *= maxR / r; y *= maxR / r; r = maxR; }
+  const toTarget = Math.atan2(z, -y);
+  const hipBend = Math.acos(clamp((L1 * L1 + r * r - L2 * L2) / (2 * L1 * r), -1, 1));
+  const kneeBend = Math.PI - Math.acos(clamp((L1 * L1 + L2 * L2 - r * r) / (2 * L1 * L2), -1, 1));
+  leg.thigh.rotation.x = -(toTarget + hipBend);   // knee points forward
+  leg.shin.rotation.x = kneeBend;
+  leg.foot.rotation.x = toTarget + hipBend - kneeBend + pitch;   // keeps the sole level
+}
+
+/** The full rig: gait, aim, recoil, arms up in a fall. `k` is MOB_ANIM's fade —
+ *  1 walks, 0 stands with his feet under him. m.speed is m/s along the heading
+ *  of his hips (m.legYaw off his chest), m.dir is -1 while he backs off. */
+function mobAnimate(m, dt, k) {
+  const R = MOB_RIG, G = MOB_GAIT, W = G.walk, J = G.jog;
+  const s = m.speed;
+  const r = mobSmooth(clamp((s - G.jog0) / (G.jog1 - G.jog0), 0, 1));
+  const duty = lerp(W.duty, J.duty, r);
+  const stride = Math.min(2 * lerp(W.half, J.half, r) / duty, s / (MOB_SCALE * G.cad0));
+  const cad = stride > 1e-3 ? Math.min(G.cadMax, s / (MOB_SCALE * stride)) : 0;
+  m.phase = (m.phase + m.dir * cad * dt + 1) % 1;
+  const w = clamp(s / 0.6, 0, 1) * k;        // how much of a gait shows at all
+  const a = mobSmooth(clamp(m.aim, 0, 1));
+  const ph = m.phase, swing = Math.cos(MOB_TAU * ph);
+
+  // hips: low at heel strike, high at mid-stance; down for reach in a jog, or to aim
+  const drop = Math.max(lerp(W.drop, J.drop, r) * w, 0.3 * a);
+  const hipY = R.hipY - drop + w * lerp(W.bob, J.bob, r) * -Math.cos(2 * MOB_TAU * (ph - 0.03));
+  m.body.position.set(0, hipY, 0);
+  m.body.rotation.set(0, m.legYaw * k, 0);
+
+  // legs: foot target relative to the hip, solved with 2-bone IK
+  const hs = duty * stride / 2, lift = lerp(W.lift, J.lift, r);
+  for (let i = 0; i < 2; i++) {
+    const leg = m.legs[i];
+    const p = (ph + leg.offset) % 1;
+    let z = hs - p * stride, up = 0, pitch = 0;
+    if (p >= duty) {
+      const u = (p - duty) / (1 - duty);
+      z += stride * mobSmooth(u);          // swings forward, zero ground speed at lift-off and landing
+      up = lift * Math.sin(Math.PI * u);
+      pitch = 0.5 * Math.sin(MOB_TAU * u); // toe-off, then toe-up before heel strike
+    }
+    mobSolveLeg(leg, z * k, R.ankleH + up * w - hipY, pitch * w);
+  }
+
+  // coat skirt follows the legs a little
+  m.skirt.rotation.set(0.35 * (m.legs[0].thigh.rotation.x + m.legs[1].thigh.rotation.x), 0,
+                       0.05 * w * Math.sin(MOB_TAU * ph));
+
+  // torso: counter-twist, sway over the stance foot, lean into the run, recoil;
+  // and turned back off the hips, so his chest stays where he is looking
+  m.torso.rotation.set(
+    m.dir * lerp(W.lean, J.lean, r) * w - 0.07 * m.recoil,
+    lerp(0.12 * w * swing, 0.22, a) - m.legYaw * k,
+    -0.03 * w * Math.sin(MOB_TAU * ph));
+  m.torso.position.x = 0.1 * w * Math.sin(MOB_TAU * ph);
+
+  // arms: swing opposite the legs, elbows up in a jog, blend to the aim pose,
+  // and up over his head if the floor has gone from under him
+  const amp = lerp(W.arm, J.arm, r), elbow = lerp(W.elbow, J.elbow, r), fl = mobSmooth(m.fall);
+  for (let i = 0; i < 2; i++) {
+    const arm = m.arms[i], sw = arm.side * swing, gunArm = arm.side === 1;   // sw > 0: swung back
+    arm.upper.rotation.set(
+      lerp(lerp(0.08 + amp * w * sw, gunArm ? -1.4 - 0.15 * m.recoil : -1.25, a), -2.7, fl),
+      0,
+      lerp(lerp(arm.side * 0.1, gunArm ? -0.2 : 0.5, a), arm.side * 0.5, fl));
+    arm.fore.rotation.x = lerp(lerp(-0.25 - elbow * w - 0.45 * w * Math.max(0, -sw), gunArm ? -0.05 : -0.45, a), -0.3, fl);
+  }
+  m.recoil = Math.max(0, m.recoil - dt * 12);
+}
+
+/** The cheap pose: standing, the gun up or down. Posed once per change, then
+ *  every limb matrix is frozen until the next one. */
+function mobStatic(m) {
+  const key = m.aimTo > 0.5 ? 1 : 0;
+  if (m.frozen && m.poseKey === key) return;
+  mobFreeze(m, false);
+  m.aim = key; m.recoil = 0; m.legYaw = 0; m.speed = 0; m.fall = 0;
+  mobAnimate(m, 0, 0);
+  m.poseKey = key;
+  mobFreeze(m, true);
+}
+
+/** He shoots: the flash, and a kick through the arm if the rig is live. */
+function mobFire(m) {
+  m.recoil = 1;
+  m.flashT = 0.05;
+  m.flash.visible = true;
+  m.flash.rotation.y = Math.random() * Math.PI;
+  m.flash.scale.setScalar(0.8 + Math.random() * 0.5);
+}
+const _mobMz = new THREE.Vector3();
+/** Where the tracer starts: the muzzle of the tommy gun, in the world. */
+function mobMuzzle(m) {
+  m.gun.updateWorldMatrix(true, false);
+  return m.gun.localToWorld(_mobMz.copy(mobAssets().muzzle));
+}
+
+/** A living man's rig, after his move for the frame: heading, measured gait,
+ *  aim, then whichever pose this device can afford. (px, pz) is where he stood
+ *  before the move and (wx, wz) the velocity his legs asked for, so a wall or a
+ *  crowd never has him running on the spot and an escalator never has him
+ *  jogging while it does the work. */
+function mobDrive(e, dt, px, pz, wx, wz) {
+  const m = e.mesh;
+  const want = Math.hypot(wx, wz);
+  const spd = dt > 0 ? Math.min(want, Math.hypot(e.pos.x - px, e.pos.z - pz) / dt) : 0;
+  // travel, seen from where his chest should point: forwards, or backing off
+  // (with a margin, so he does not dither between the two). The hips turn
+  // toward it as far as a waist goes; past that the whole man turns the rest,
+  // so his feet always run along the way he is actually going.
+  let hips = 0, dir = m.dir, along = 0;
+  if (spd > 0.05) {
+    const rel = mobWrap(Math.atan2(wx, wz) - e.face);
+    dir = Math.abs(rel) > Math.PI / 2 + (m.dir > 0 ? 0.35 : 0.15) ? -1 : 1;
+    hips = dir > 0 ? rel : mobWrap(rel + Math.PI);
+    along = spd;
+  }
+  const legYaw = clamp(hips, -1.1, 1.1);
+  m.yaw = mobTurn(m.yaw, e.face + hips - legYaw, 10 * dt);   // turns, never snaps
+  e.group.rotation.y = m.yaw;
+  if (dir !== m.dir) {                                // reversing: the old gait stops first
+    if (m.speed < 0.15) m.dir = dir; else along = 0;
+  }
+  m.speed += (along - m.speed) * Math.min(1, dt * 10);
+  m.legYaw += (legYaw - m.legYaw) * Math.min(1, dt * 8);
+  m.aim = m.aimTo > m.aim ? Math.min(m.aimTo, m.aim + dt / 0.3) : Math.max(m.aimTo, m.aim - dt / 0.45);
+  const falling = !e.onGround && e.vel.y < -4;
+  m.fall = clamp(m.fall + (falling ? dt * 5 : -dt * 3), 0, 1);
+  m.shadow.visible = e.onGround;
+
+  if (m.flashT > 0 && (m.flashT -= dt) <= 0) m.flash.visible = false;
+  if (MOB_ANIM.k > 0) { mobFreeze(m, false); mobAnimate(m, dt, MOB_ANIM.k); }
+  else mobStatic(m);
+}
+
+/* ---- "only if the device is powerful enough" (MOB_ANIM) ----
+   Two questions, asked at two different times, the way AstroMiner asks them.
+   1. CAN IT AT ALL — once, at boot. Not on a software rasteriser (SwiftShader,
+      llvmpipe: the "GPU" is the CPU), and not on a device that reports under
+      4 cores (6 on a phone) or under 4 GB. What a browser will not say is not
+      held against it — iOS reports neither honestly — so an iPhone goes on to
+      question 2. A device that fails here never walks a single man: they stand
+      in a fixed pose, and it costs nothing per frame.
+   2. CAN IT RIGHT NOW — every 500 ms of play. Under MOB_ANIM_FLOOR fps for
+      MOB_ANIM_SLOW_N windows in a row and the walk stands down; MOB_ANIM_FAST_N
+      windows over MOB_ANIM_RESUME and it comes back; after MOB_ANIM_TRIPS
+      stand-downs it stays down for the session. Measured, not guessed: a list
+      of GPU names ages badly, a frame rate does not. Nothing is judged in the
+      menus, in a hidden tab, over a window that spans a stall, or for
+      MOB_ANIM_WARMUP s after play starts or resumes.
+   Standing down is a half-second fade: every man eases back onto his feet and
+   his limbs freeze. Dying is not part of the walk and plays everywhere.
+   ?anim=1 / ?anim=0 force either answer; the pause screen shows the state. */
+const MOB_ANIM_FLOOR  = 45;   // fps: under this, sustained, the walk stands down
+const MOB_ANIM_RESUME = 55;   // fps: over this, sustained, it comes back
+const MOB_ANIM_SLOW_N = 6;    // 500 ms windows under the floor before standing down (3 s)
+const MOB_ANIM_FAST_N = 40;   // windows over RESUME before the next try (20 s)
+const MOB_ANIM_TRIPS  = 3;    // stand-downs before it stays down for the session
+const MOB_ANIM_WARMUP = 6;    // s of play before anything is judged
+const MOB_ANIM = { capable: false, forced: null, on: false, k: 0, why: '',
+                   slow: 0, fast: 0, trips: 0, warm: MOB_ANIM_WARMUP, n: 0, t: 0, worst: 0 };
+
+function mobAnimProbe() {
+  const A = MOB_ANIM;
+  let q = null;
+  try { q = new URLSearchParams(location.search).get('anim'); } catch (err) {}
+  if (q === '0' || q === 'false') { A.forced = false; A.why = 'off (?anim=0)'; return false; }
+  if (q === '1' || q === 'true')  { A.forced = true;  A.why = 'on (?anim=1)';  return true; }
+  let gpu = '';
+  try {
+    const gl = renderer.getContext();
+    gpu = String(gl.getParameter(gl.RENDERER) || '');
+    if (!gpu || /^webkit webgl$/i.test(gpu)) {        // masked: ask the debug extension
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      if (ext) gpu = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '');
+    }
+  } catch (err) {}
+  if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(gpu)) { A.why = 'off — software rendering'; return false; }
+  const nav = navigator, ua = nav.userAgent || '';
+  const iOS = /iPhone|iPad|iPod/i.test(ua) || (nav.platform === 'MacIntel' && nav.maxTouchPoints > 1);
+  const phone = iOS || /Android|Mobile/i.test(ua);
+  const cores = nav.hardwareConcurrency, mem = nav.deviceMemory;
+  if (!iOS && cores > 0 && cores < (phone ? 6 : 4)) { A.why = 'off — ' + cores + ' CPU cores'; return false; }
+  if (mem > 0 && mem < 4) { A.why = 'off — ' + mem + ' GB of memory'; return false; }
+  A.why = 'on (auto)';
+  return true;
+}
+function mobAnimShow() {
+  const el = document.getElementById('animstat');
+  if (el) el.textContent = 'mobster walk: ' + MOB_ANIM.why;
+}
+/** Once per frame, with the raw (unclamped) frame time. */
+function mobAnimGovern(raw) {
+  const A = MOB_ANIM;
+  if (game.state !== 'play' || document.hidden) { A.warm = MOB_ANIM_WARMUP; A.n = A.t = A.worst = 0; return; }
+  if (A.warm > 0) { A.warm -= raw; return; }
+  A.n++; A.t += raw; if (raw > A.worst) A.worst = raw;
+  if (A.t < 0.5) return;
+  const fps = A.n / A.t, stall = A.worst > 0.25 || A.t > 1;
+  A.n = A.t = A.worst = 0;
+  if (stall || !A.capable || A.forced !== null) return;
+  if (A.on) {
+    if (fps < MOB_ANIM_FLOOR) {
+      if (++A.slow >= MOB_ANIM_SLOW_N) {
+        A.on = false; A.slow = A.fast = 0; A.trips++;
+        A.why = (A.trips >= MOB_ANIM_TRIPS ? 'off' : 'paused') + ' — running under ' + MOB_ANIM_FLOOR + ' fps';
+        mobAnimShow();
+      }
+    } else A.slow = 0;
+  } else if (A.trips < MOB_ANIM_TRIPS) {
+    if (fps >= MOB_ANIM_RESUME) {
+      if (++A.fast >= MOB_ANIM_FAST_N) { A.on = true; A.fast = A.slow = 0; A.why = 'on (auto)'; mobAnimShow(); }
+    } else A.fast = 0;
+  }
+}
+/** Once per frame of play: the half-second fade between walking and standing. */
+function mobAnimTick(dt) {
+  const A = MOB_ANIM, t = A.on ? 1 : 0;
+  if (A.k !== t) A.k = t > A.k ? Math.min(t, A.k + dt * 2) : Math.max(t, A.k - dt * 2);
+}
+MOB_ANIM.capable = mobAnimProbe();
+MOB_ANIM.on = MOB_ANIM.capable;
+MOB_ANIM.k = MOB_ANIM.on ? 1 : 0;
+mobAnimShow();
+
+/* ---- dying ---- */
+const MOB_DIE = {
+  T: 0.55,          // s from the hit to his back on the floor
+  prop: 0.06,       // rad: he never lies quite flat, shoulders a touch up
+  curl: 0.18,       // rad: chin toward his chest, which keeps the hat out of the floor
+  lieH: 1.05,       // model units: hip joint above the floor once he is down
+  hipBack: 1.0,     // model units the hips travel back past his heels
+  B: 0.45,          // m: the middle of the body, behind where his feet were
+  shiftT: 0.3,      // s: when his weight goes over, and the body's box moves to it
+  h: 0.5,           // m: a body on the floor is this tall
+  r: 0.15,          // m: and this narrow at the middle — past the lip of a
+                    //    shaft by more than that, and in he goes
+  need: 1.35,       // m of clear floor he needs behind him to go straight over
+  twists: [0, 0.5, -0.5, 1.0, -1.0, 1.6, -1.6],   // rad: else he turns as he goes
+  settle: 1.4       // s after he lands before the rig is frozen for good
+};
+
+/** Clear floor behind a man facing `yaw`, at knee and waist height, in metres.
+ *  An open shaft is not a wall — he goes over backwards into it. */
+function mobFreeBehind(e, yaw, cols) {
+  const bx = -Math.sin(yaw), bz = -Math.cos(yaw);
+  let best = 2.0;
+  for (let k = 0; k < 2; k++) {
+    const oy = e.pos.y + (k ? 0.9 : 0.3);
+    for (let i = 0; i < cols.length; i++) {
+      const c = cols[i];
+      if (c.disabled) continue;
+      const t = rayBox(e.pos.x, oy, e.pos.z, bx, 0, bz, c);
+      if (t < best) best = t;
+    }
+  }
+  return best;
+}
+
+/** The moment he is hit: pick the way down, and keep the pose he was in so
+ *  the fall starts from it rather than snapping out of it. */
+function mobDie(e) {
+  const m = e.mesh, C = MOB_DIE, cols = colsFor(e.level);
+  let yaw1 = m.yaw, bestFree = -1;
+  for (let i = 0; i < C.twists.length; i++) {
+    const y = m.yaw + C.twists[i], free = mobFreeBehind(e, y, cols);
+    if (free >= C.need) { yaw1 = y; break; }
+    if (free > bestFree + 0.05) { yaw1 = y; bestFree = free; }
+  }
+  m.die = {
+    yaw0: m.yaw, yaw1, s: 0, shifted: false, done: false,
+    hipY: m.body.position.y, legYaw: m.body.rotation.y,
+    tx: m.torso.rotation.x, ty: m.torso.rotation.y, tz: m.torso.rotation.z, tpx: m.torso.position.x,
+    skirt: m.skirt.rotation.x,
+    legs: m.legs.map(l => [l.thigh.rotation.x, l.shin.rotation.x, l.foot.rotation.x]),
+    arms: m.arms.map(a => [a.upper.rotation.x, a.upper.rotation.z, a.fore.rotation.x])
+  };
+  m.flash.visible = false; m.flashT = 0; m.recoil = 0; m.fall = 0;
+  m.shadow.visible = true;
+  mobFreeze(m, false);
+  e.h = C.h;
+  e.vel.x = 0; e.vel.z = 0;
+}
+
+/** Over backwards: the knees give with his feet still planted, the chest snaps
+ *  back, the arms fly up, the feet leave the floor, and he lands flat on his
+ *  back with his arms and legs up in the air — then a bounce, and a twitch that
+ *  dies away. A pure function of t, posed in the frame of his feet. */
+function mobDeathPose(m, t) {
+  const D = m.die, R = MOB_RIG, C = MOB_DIE;
+  const u = clamp(t / C.T, 0, 1), f = u * u;                     // tipping: slow, then fast
+  const fh = Math.pow(Math.min(1, u / 0.8), 2);                  // the knees go first: seat down,
+  const b0 = mobSmooth(clamp(t / 0.12, 0, 1));                   // then the back slams flat
+  const lift = mobSmooth(clamp((u - 0.55) / 0.45, 0, 1));        // and that throws the feet up
+  const rest = mobSmooth(clamp((u - 0.45) / 0.55, 0, 1));
+  const fling = mobSmooth(clamp(t / 0.16, 0, 1));
+  const tau = Math.max(0, t - C.T);
+  const bounce = Math.exp(-tau * 8) * Math.sin(tau * 16);
+  const wob = Math.exp(-tau * 4) * Math.sin(tau * 21);
+
+  const phi = f * (Math.PI / 2 - C.prop);
+  const hy = lerp(D.hipY, C.lieH, fh) + 0.35 * Math.max(0, bounce);
+  const hz = -C.hipBack * fh;
+  m.body.position.set(0, hy, hz);
+  m.body.rotation.set(-phi, lerp(D.legYaw, 0, b0), 0);
+
+  // legs: planted (sliding forward a touch) and seen from the tipping hips,
+  // then kicked up into the air
+  const cph = Math.cos(phi), sph = Math.sin(phi);
+  const dz = 0.9 * fh - hz, dy = R.ankleH - hy;                  // foot minus hip, feet frame
+  for (let i = 0; i < 2; i++) {
+    const leg = m.legs[i], S = D.legs[i], sgn = i ? -1 : 1;
+    mobSolveLeg(leg, dy * sph + dz * cph, dy * cph - dz * sph, phi);
+    leg.thigh.rotation.x = lerp(lerp(S[0], leg.thigh.rotation.x, b0), -1.25 - 0.08 * i + 0.22 * wob * sgn, lift);
+    leg.shin.rotation.x  = lerp(lerp(S[1], leg.shin.rotation.x, b0), 0.55 + 0.1 * i - 0.2 * wob, lift);
+    leg.foot.rotation.x  = lerp(lerp(S[2], leg.foot.rotation.x, b0), -0.3, lift);
+  }
+
+  // arms: flung up at the hit, then up in the air from his back
+  for (let i = 0; i < 2; i++) {
+    const arm = m.arms[i], S = D.arms[i], s = arm.side;
+    arm.upper.rotation.set(
+      lerp(lerp(S[0], -2.7, fling), -1.85 + 0.3 * wob * (i ? 0.8 : -1), rest), 0,
+      lerp(lerp(S[1], s * 0.6, fling), s * 0.45, rest));
+    arm.fore.rotation.x = lerp(lerp(S[2], -0.2, fling), -0.55 - 0.3 * wob, rest);
+  }
+
+  // torso: the snap back at the hit, then chin to chest once he is down
+  const whip = Math.sin(Math.PI * clamp(t / 0.3, 0, 1));
+  m.torso.rotation.set(lerp(D.tx, 0, b0) - 0.28 * whip * (1 - f) + C.curl * rest - 0.08 * bounce,
+                       lerp(D.ty, 0, b0), lerp(D.tz, 0, b0));
+  m.torso.position.x = lerp(D.tpx, 0, b0);
+  m.skirt.rotation.set(lerp(D.skirt, -0.45, lift), 0, 0);
+
+  // the shadow slides under the middle of him and stretches along him
+  m.shadow.position.z = -C.B / MOB_SCALE * f;
+  m.shadow.scale.set(1, 1, lerp(1, 1.55, f));
 }
 
 function spawnEnemy(F, x, y, z, room) {
-  const m = enemyMesh();
+  const m = mobRig();
   m.group.position.set(x, y, z);
   scene.add(m.group);
   const e = {
@@ -1815,7 +2426,9 @@ function spawnEnemy(F, x, y, z, room) {
     hp: 40, hpMax: 40, fireCd: rr(0.6, 2.2), walk: 0, face: 0, stuck: 0,
     // what he is going to look at, and how he means to get there
     hunt: null, act: null, seenT: 0, searchT: 0, huntT: 0, casting: false, castT: 0,
-    viaLift: rnd() < 0.55, moving: false, sideT: 0, side: 1, los: false, losT: 0, retry: 0
+    viaLift: rnd() < 0.55, moving: false, sideT: 0, side: 1, los: false, losT: 0, retry: 0,
+    falling: false,    // nothing under him at the end of his last step
+    drop: false        // ammo he will leave where his body comes to rest
   };
   world.enemies.push(e);
   return e;
@@ -2172,7 +2785,96 @@ function killEnemy(e, silent) {
   if (e.dead) return;
   e.dead = true; e.deadT = 0;
   if (!silent) SFX.hit();
-  if (rnd() < 0.4) spawnPickup(world.levels[e.level] || world.levels[player.level], 'ammo', e.pos.x, e.pos.y + 0.4, e.pos.z);
+  // his ammo goes down with him, and turns up where the body comes to rest —
+  // not in mid-air where a lift he died in used to be
+  e.drop = rnd() < 0.4;
+  mobDie(e);
+}
+
+/* ---------------------------- falling bodies ------------------------------
+   Anything with nothing under it falls, watched or not: a man who stepped
+   into an open hoistway, and every body. A shaft is a hole through every slab
+   of its run, so the fall ends on whatever the car is doing — its roof, its
+   deck — or in the pit at the run's bottom landing. Most of a storey of that
+   and he does not get up.                                                   */
+const FALL_KILL_V = Math.sqrt(2 * GRAV * (FH - 1.5));   // m/s: a drop of most of a storey
+
+/** Where a body dropping from (x, y, z) comes to rest, from the plan alone —
+ *  for the stretch of a fall through floors nobody has built yet, which have
+ *  no colliders to stop it. */
+function landingY(x, y, z) {
+  for (let i = 0; i < world.elevators.length; i++) {
+    const el = world.elevators[i];
+    if (Math.abs(x - el.x) >= 2 || Math.abs(z) >= 2) continue;
+    if (y < el.lo - 0.5 || y > el.hi + CAR_TOP + 0.5) continue;
+    if (y >= el.y + CAR_TOP - 0.3) return el.y + CAR_TOP;       // the car roof
+    if (y >= el.y - 0.3) return el.y;                            // inside the car
+    return el.lo;                                                // the pit
+  }
+  return levelY(levelOfY(y));
+}
+
+/** Gravity, collision, and whatever car is underneath, for a body that is not
+ *  walking. Returns the speed it came down at when it landed this step (0 if
+ *  it did not), or -1 when it was squeezed flat. */
+function bodyStep(e, dt) {
+  const y0 = e.pos.y;
+  if (e.riding) { e.pos.y += e.riding.dy; if (e.riding.dy) e.vel.y = 0; }
+  const vy = e.vel.y, air = !e.onGround;
+  if (stepBody(e, dt, colsFor(e.level), rampsFor(e.level))) return -1;
+  if (!world.levels[e.level] || !world.levels[levelOfY(e.pos.y)]) {
+    const fy = landingY(e.pos.x, y0, e.pos.z);
+    if (e.pos.y < fy) { e.pos.y = fy; e.vel.y = 0; e.onGround = true; }
+  }
+  e.riding = carUnder(e);
+  e.level = levelOfY(e.pos.y);
+  e.falling = !e.onGround;
+  return air && e.onGround ? -vy : 0;
+}
+
+/** A body is a weight like any other: it goes down with the car it died in,
+ *  down the shaft when the car leaves without it, and flat under a car that
+ *  comes down on top of it. Returns true when it is time to clear it away. */
+function updateBody(e, dt, near) {
+  const m = e.mesh, D = m.die, C = MOB_DIE;
+  e.deadT += dt;
+  // his weight goes over: the body's box moves back to the middle of him, as
+  // far as the floor behind allows — over the lip of a shaft, if that is there
+  if (!D.shifted && e.deadT >= C.shiftT) {
+    D.shifted = true;
+    D.s = clamp(mobFreeBehind(e, D.yaw1, colsFor(e.level)) - C.r - 0.05, 0, C.B);
+    e.pos.x -= Math.sin(D.yaw1) * D.s; e.pos.z -= Math.cos(D.yaw1) * D.s;
+    e.r = C.r;
+  }
+  // a car coming down on top of him: flat, and gone under the deck. Asked
+  // before the step, as crushUnderCar does for the living, because the step's
+  // resolver would only shove him sideways through the side of the car.
+  for (let i = 0; i < world.elevators.length; i++) {
+    const el = world.elevators[i];
+    if (el.dy < -1e-4 && Math.abs(e.pos.x - el.x) < 1.95 && Math.abs(e.pos.z) < 1.95 &&
+        e.pos.y < el.y - 0.1 && el.y - 0.25 < e.pos.y + e.h + 0.05) return true;
+  }
+  const hit = bodyStep(e, dt);
+  if (hit < 0) return true;                               // under a car or into the housing
+  if (hit > 9 && near) SFX.thud();
+  if (e.drop && e.deadT > C.T + 0.2 && e.onGround && !e.riding && world.levels[e.level]) {
+    e.drop = false;
+    spawnPickup(world.levels[e.level], 'ammo', e.pos.x, e.pos.y + 0.4, e.pos.z);
+  }
+
+  // the rig stands on his feet; the box sits under the middle of him, so the
+  // feet frame is the box pushed forward again by however far it moved back
+  const t = e.deadT, u = clamp(t / C.T, 0, 1);
+  const yaw = lerp(D.yaw0, D.yaw1, mobSmooth(u));
+  const off = D.shifted ? D.s + (C.B - D.s) * mobSmooth(clamp((t - C.shiftT) / (C.T + 0.25 - C.shiftT), 0, 1)) : 0;
+  e.group.position.set(e.pos.x + Math.sin(D.yaw1) * off, e.pos.y, e.pos.z + Math.cos(D.yaw1) * off);
+  e.group.rotation.y = yaw;
+  m.shadow.visible = e.onGround;
+  if (!D.done && (near || t > C.T + C.settle)) {
+    mobDeathPose(m, t);
+    if (t > C.T + C.settle) { D.done = true; mobFreeze(m, true); }
+  }
+  return e.deadT > 12 || e.pos.y < BASE_Y - 6;
 }
 
 function updateEnemies(dt) {
@@ -2181,15 +2883,16 @@ function updateEnemies(dt) {
     const near = Math.abs(e.level - player.level) <= 1;
     e.group.visible = near;
     if (e.dead) {
-      e.deadT += dt;
-      e.group.rotation.x = Math.min(Math.PI / 2, e.deadT * 5);
-      e.group.position.y = e.pos.y - Math.min(0.55, e.deadT * 1.6);
-      if (e.deadT > 12) { scene.remove(e.group); world.enemies.splice(i, 1); i--; }
+      if (updateBody(e, dt, near)) { scene.remove(e.group); world.enemies.splice(i, 1); i--; }
       continue;
     }
     if (!near) {
-      // too far off to draw, but a man who heard something is still walking
-      if (e.alert && e.hunt) updateRemote(e, dt);
+      if (e.falling) {
+        // nothing under him, and nobody watching is no reason to stop falling
+        const hit = bodyStep(e, dt);
+        if (hit < 0 || hit > FALL_KILL_V) killEnemy(e, true);
+        e.group.position.copy(e.pos);
+      } else if (e.alert && e.hunt) updateRemote(e, dt);   // too far off to draw, but still walking
       continue;
     }
 
@@ -2247,12 +2950,15 @@ function updateEnemies(dt) {
 
       // shooting
       e.fireCd -= dt;
+      e.mesh.aimTo = sees && dist < 28 ? 1 : 0;
       if (sees && dist < 28 && dist > 1.2) {
         if (e.fireCd <= 0) {
           e.fireCd = rr(1.0, 1.9);
           const spread = clamp(dist / 60, 0.02, 0.22);
           const hit = rnd() > spread * 2.6;
-          tracer(e.pos.x + 0.4, e.pos.y + 1.25, e.pos.z, player.pos.x + rr(-0.5, 0.5), player.pos.y + 1.1, player.pos.z + rr(-0.5, 0.5), MAT.tracerE);
+          const mz = mobMuzzle(e.mesh);
+          tracer(mz.x, mz.y, mz.z, player.pos.x + rr(-0.5, 0.5), player.pos.y + 1.1, player.pos.z + rr(-0.5, 0.5), MAT.tracerE);
+          mobFire(e.mesh);
           SFX.eshot();
           if (hit) hurtPlayer(7 + rnd() * 5);
         }
@@ -2261,14 +2967,18 @@ function updateEnemies(dt) {
       }
     } else {
       e.moving = false;
+      e.mesh.aimTo = 0;
       e.walk += dt * 1.2;
       e.face = Math.sin(e.walk * 0.3) * 0.6;
     }
 
-    const px = e.pos.x, pz = e.pos.z;
+    const px = e.pos.x, pz = e.pos.z, wx = e.vel.x, wz = e.vel.z;
     if (e.riding) { e.pos.y += e.riding.dy; if (e.riding.dy) e.vel.y = 0; }
+    const vy = e.vel.y, air = !e.onGround;
     const squeezed = stepBody(e, dt, cols, ramps);
     if (squeezed) { killEnemy(e); SFX.crush(); }
+    else if (air && e.onGround && -vy > FALL_KILL_V) { killEnemy(e); SFX.thud(); }
+    e.falling = !e.onGround;
     // wedged on a corner: note how long for, and the steering takes a way round
     if (e.moving) {
       if (Math.hypot(e.pos.x - px, e.pos.z - pz) < 3.1 * dt * 0.4) {
@@ -2281,10 +2991,7 @@ function updateEnemies(dt) {
     e.level = levelOfY(e.pos.y);
 
     e.group.position.copy(e.pos);
-    e.group.rotation.y = e.face;
-    const sw = Math.sin(e.walk) * 0.55;
-    e.mesh.legL.rotation.x = sw; e.mesh.legR.rotation.x = -sw;
-    e.mesh.armL.rotation.x = -sw * 0.7; e.mesh.armR.rotation.x = sw * 0.7;
+    if (!e.dead) mobDrive(e, dt, px, pz, wx, wz);   // a man killed this step starts falling next
   }
 }
 
@@ -3644,9 +4351,11 @@ function frame(now) {
   requestAnimationFrame(frame);
   let dt = (now - last) / 1000;
   last = now;
+  mobAnimGovern(dt);                           // judged on the real frame time
   if (dt > 0.06) dt = 0.06;
 
   if (game.state === 'play') {
+    mobAnimTick(dt);
     updateBulletTime(dt);
     const ts = game.btOn ? 0.30 : 1;
     const dtW = dt * ts;                       // the world slows down
