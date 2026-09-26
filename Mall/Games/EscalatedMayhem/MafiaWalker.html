@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Low-Poly Mafia Enemy</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #222; font-family: 'Inter', sans-serif; color: white; }
+        canvas { display: block; touch-action: none; }
+        #info { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 10px 15px; border-radius: 8px; font-size: 14px; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="info">Drag to rotate view. Add ?n=10 to the URL to spawn more enemies.</div>
+    <script>
+        // =====================================================================
+        //  MafiaEnemy - mobile-friendly low-poly enemy
+        //  - One shared vertex-colour Lambert material for every body part
+        //    (one shader program, no texture lookups, cheap per-vertex lighting).
+        //  - Static parts are baked into a single mesh; only jointed limbs are
+        //    separate meshes. All geometry is built once and shared by every enemy.
+        //  - Legs are driven by 2-bone IK with planted feet, so they don't slide.
+        //  - No dynamic lights and no shadow maps: muzzle flash is an unlit mesh,
+        //    shadow is a blob decal.
+        // =====================================================================
+
+        // Rig dimensions in model units (feet on the ground at y = 0, facing +Z).
+        const RIG = {
+            height: 10.75,       // ground to hat top
+            hipY: 4.4,           // hip joint height when standing
+            shoulderX: 1.55, shoulderY: 3.0,   // relative to the hips
+            hipX: 0.62,
+            thigh: 2, shin: 2,   // leg bone lengths
+            upperArm: 1.6, forearm: 1.5,
+            ankleH: 0.6,         // ankle joint above the sole
+        };
+        const SCALE = 1.7 / RIG.height;      // 1.7 m tall in world units
+
+        // Gait. The foot travels backwards along the ground at exactly body speed
+        // during stance, and stride length scales with speed, so feet stay planted
+        // at any speed.
+        const GAIT = {
+            maxSpeed: 1.1,       // world units / sec at full stride
+            stride: 4.8,         // model units travelled per full cycle (two steps)
+            duty: 0.56,          // fraction of the cycle a foot is on the ground
+            lift: 0.55,          // swing foot height
+            bob: 0.12,           // hip bob
+        };
+        GAIT.cadence = GAIT.maxSpeed / (SCALE * GAIT.stride);   // cycles / sec
+        GAIT.halfStep = GAIT.duty * GAIT.stride / 2;
+
+        const TAU = Math.PI * 2;
+        const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+        const lerp = (a, b, t) => a + (b - a) * t;
+        const smooth = t => t * t * (3 - 2 * t);
+        const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
+
+        // ---------------------------------------------------------------------
+        //  Geometry baking helpers
+        // ---------------------------------------------------------------------
+        const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
+        const _p = new THREE.Vector3(), _s = new THREE.Vector3(), _c = new THREE.Color();
+
+        // Converts a geometry to a flat-shaded, vertex-coloured chunk ready to bake.
+        // flip = reverse winding, used for the inside faces of the coat and collar.
+        function part(geo, color, pos = [0, 0, 0], rot = [0, 0, 0], scl = [1, 1, 1], flip = false) {
+            const g = geo.index ? geo.toNonIndexed() : geo;
+            g.applyMatrix4(_m.compose(_p.fromArray(pos), _q.setFromEuler(_e.set(rot[0], rot[1], rot[2])), _s.fromArray(scl)));
+            const p = g.attributes.position.array.slice();
+            geo.dispose(); g.dispose();
+            if (flip) {
+                for (let i = 0; i < p.length; i += 9) {
+                    for (let j = 0; j < 3; j++) { const t = p[i + 3 + j]; p[i + 3 + j] = p[i + 6 + j]; p[i + 6 + j] = t; }
+                }
+            }
+            _c.set(color);
+            const c = new Float32Array(p.length);
+            for (let i = 0; i < c.length; i += 3) { c[i] = _c.r; c[i + 1] = _c.g; c[i + 2] = _c.b; }
+            return { p, c };
+        }
+
+        function transformParts(parts, matrix) {
+            for (const pt of parts) new THREE.BufferAttribute(pt.p, 3).applyMatrix4(matrix);
+            return parts;
+        }
+
+        function bake(parts) {
+            let n = 0;
+            for (const pt of parts) n += pt.p.length;
+            const pos = new Float32Array(n), col = new Float32Array(n);
+            let o = 0;
+            for (const pt of parts) { pos.set(pt.p, o); col.set(pt.c, o); o += pt.p.length; }
+            const g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+            g.computeVertexNormals();   // non-indexed -> face normals -> flat shading
+            g.computeBoundingSphere();
+            return g;
+        }
+
+        // Cylinder with its pivot at the top, hanging down -Y (for limbs).
+        function limbCyl(rTop, rBot, len, seg) {
+            const g = new THREE.CylinderGeometry(rTop, rBot, len, seg);
+            g.translate(0, -len / 2, 0);
+            return g;
+        }
+
+        // Open cylinder shell with an inside face, optional front opening.
+        function shell(rTop, rBot, h, seg, gap, thickness, color, pos, scl) {
+            const start = gap / 2, len = TAU - gap;
+            const k = 1 - thickness;
+            return [
+                part(new THREE.CylinderGeometry(rTop, rBot, h, seg, 1, true, start, len), color, pos, [0, 0, 0], scl),
+                part(new THREE.CylinderGeometry(rTop * k, rBot * k, h, seg, 1, true, start, len), color, pos, [0, 0, 0], scl, true),
+            ];
+        }
+
+        // ---------------------------------------------------------------------
+        //  MafiaEnemy
+        // ---------------------------------------------------------------------
+        const COL = {
+            coat: 0x2c2c30, coatDark: 0x1e1e22, pants: 0x1b1b1f, skin: 0xf2c69b,
+            hat: 0x3a3a3a, band: 0xb4b4b4, shades: 0x0c0c0c, shirt: 0xd8d6cc, tie: 0x7a1616,
+            belt: 0x141414, buckle: 0x9a8650, shoe: 0x121212, sole: 0x3b2618, spat: 0xcfcac0,
+            gunMetal: 0x3c3c40, wood: 0x5c3a20,
+        };
+
+        class MafiaEnemy {
+            static assets() {
+                if (MafiaEnemy._assets) return MafiaEnemy._assets;
+                const Y = Math.PI / 8;   // rotates 8-sided cylinders so a flat face points forward
+
+                // --- Torso: coat chest, collar, head and hat baked into one mesh (origin = hips) ---
+                const crown = new THREE.CylinderGeometry(0.95, 1.12, 1.05, 8);
+                const cp = crown.attributes.position;
+                for (let i = 0; i < cp.count; i++) {      // pinch the top of the crown
+                    if (cp.getY(i) > 0.5 && Math.abs(cp.getX(i)) < 1e-4 && Math.abs(cp.getZ(i)) < 1e-4) cp.setY(i, cp.getY(i) - 0.25);
+                }
+                const hat = transformParts([
+                    part(new THREE.CylinderGeometry(1.75, 1.75, 0.12, 10), COL.hat, [0, 5.25, 0], [0, 0, 0], [1, 1, 1.12]),
+                    part(crown, COL.hat, [0, 5.82, 0], [0, Y, 0], [1, 1, 1.15]),
+                    part(new THREE.CylinderGeometry(1.14, 1.13, 0.3, 8), COL.band, [0, 5.47, 0], [0, Y, 0], [1, 1, 1.15]),
+                ], new THREE.Matrix4().makeTranslation(0, 5.25, 0.05)
+                    .multiply(new THREE.Matrix4().makeRotationX(0.08))
+                    .multiply(new THREE.Matrix4().makeTranslation(0, -5.25, 0)));
+
+                const torso = bake([
+                    // coat chest, V-shaped, with sloped shoulders
+                    part(new THREE.CylinderGeometry(1.45, 1.15, 3.2, 8), COL.coat, [0, 1.6, 0], [0, Y, 0], [1, 1, 0.62]),
+                    part(new THREE.CylinderGeometry(0.75, 1.45, 0.45, 8), COL.coat, [0, 3.425, 0], [0, Y, 0], [1, 1, 0.62]),
+                    // shirt, tie, lapels
+                    part(new THREE.BoxGeometry(0.62, 1.2, 0.1), COL.shirt, [0, 2.65, 0.76]),
+                    part(new THREE.BoxGeometry(0.2, 1.35, 0.08), COL.tie, [0, 2.4, 0.83]),
+                    part(new THREE.BoxGeometry(0.42, 1.9, 0.12), COL.coatDark, [0.42, 2.25, 0.8], [0, 0, -0.3]),
+                    part(new THREE.BoxGeometry(0.42, 1.9, 0.12), COL.coatDark, [-0.42, 2.25, 0.8], [0, 0, 0.3]),
+                    // belt + buckle
+                    part(new THREE.CylinderGeometry(1.22, 1.22, 0.3, 8), COL.belt, [0, 0.55, 0], [0, Y, 0], [1, 1, 0.66]),
+                    part(new THREE.BoxGeometry(0.36, 0.28, 0.08), COL.buckle, [0, 0.55, 0.78]),
+                    // upturned collar: flared ring open at the front
+                    ...shell(1.45, 1.12, 1.35, 8, 1.6, 0.1, COL.coatDark, [0, 3.95, -0.05], [1, 1, 0.85]),
+                    // head, hair, sunglasses
+                    part(new THREE.DodecahedronGeometry(1.15, 0), COL.skin, [0, 4.35, 0.12], [-0.2, 0, 0]),
+                    part(new THREE.BoxGeometry(1.7, 1.1, 0.9), COL.pants, [0, 4.6, -0.55]),
+                    part(new THREE.CylinderGeometry(0.32, 0.32, 0.14, 6), COL.shades, [0.4, 4.48, 1.0], [Math.PI / 2, 0, 0], [1.15, 1, 0.6]),
+                    part(new THREE.CylinderGeometry(0.32, 0.32, 0.14, 6), COL.shades, [-0.4, 4.48, 1.0], [Math.PI / 2, 0, 0], [1.15, 1, 0.6]),
+                    part(new THREE.BoxGeometry(0.4, 0.08, 0.08), COL.shades, [0, 4.5, 1.05]),
+                    ...hat,
+                ]);
+
+                // --- Trenchcoat skirt (pivot at the waist so it can sway), open at the front ---
+                const skirt = bake(shell(1.2, 1.6, 3.0, 8, 0.5, 0.07, COL.coat, [0, -1.5, 0], [1, 1, 0.75]));
+
+                // --- Arms ---
+                const upperArm = bake([part(limbCyl(0.46, 0.4, RIG.upperArm, 6), COL.coat)]);
+                const forearm = bake([
+                    part(limbCyl(0.4, 0.36, RIG.forearm, 6), COL.coat),
+                    part(new THREE.CylinderGeometry(0.35, 0.35, 0.14, 6), COL.shirt, [0, -RIG.forearm, 0]),
+                    part(new THREE.DodecahedronGeometry(0.42, 0), COL.skin, [0, -RIG.forearm - 0.35, 0]),
+                ]);
+
+                // --- Legs ---
+                const thigh = bake([part(limbCyl(0.55, 0.45, RIG.thigh, 6), COL.pants)]);
+                const shin = bake([part(limbCyl(0.45, 0.36, RIG.shin, 6), COL.pants)]);
+
+                // Shoe: a subdivided box with a tapered, pointed, sloped toe + sole + spat.
+                const shoe = new THREE.BoxGeometry(0.95, 0.46, 1.7, 2, 1, 2);
+                const sp = shoe.attributes.position;
+                for (let i = 0; i < sp.count; i++) {
+                    let x = sp.getX(i), y = sp.getY(i), z = sp.getZ(i);
+                    if (z > 0.01) { x *= 0.72; if (y > 0) y -= 0.16; if (Math.abs(x) < 1e-4) z += 0.14; }
+                    if (z < -0.01) x *= 0.9;
+                    sp.setXYZ(i, x, y, z);
+                }
+                const sole = new THREE.BoxGeometry(1.0, 0.12, 1.8, 2, 1, 2);
+                const lp = sole.attributes.position;
+                for (let i = 0; i < lp.count; i++) {
+                    let x = lp.getX(i), z = lp.getZ(i);
+                    if (z > 0.01) { x *= 0.74; if (Math.abs(x) < 1e-4) z += 0.14; }
+                    if (z < -0.01) x *= 0.9;
+                    lp.setX(i, x); lp.setZ(i, z);
+                }
+                const foot = bake([
+                    part(shoe, COL.shoe, [0, -0.25, 0.35]),
+                    part(sole, COL.sole, [0, -0.54, 0.35]),
+                    part(new THREE.CylinderGeometry(0.42, 0.52, 0.42, 6), COL.spat, [0, -0.1, 0.02]),
+                ]);
+
+                // --- Tommy gun, built barrel-forward (+Z) then laid along the forearm (-Y) ---
+                const gun = bake(transformParts([
+                    part(new THREE.BoxGeometry(0.34, 0.42, 1.6), COL.gunMetal, [0, 0.35, 0.3]),
+                    part(new THREE.CylinderGeometry(0.1, 0.1, 1.5, 6), COL.gunMetal, [0, 0.4, 1.8], [Math.PI / 2, 0, 0]),
+                    part(new THREE.CylinderGeometry(0.17, 0.17, 0.6, 6), COL.gunMetal, [0, 0.4, 1.4], [Math.PI / 2, 0, 0]),
+                    part(new THREE.CylinderGeometry(0.55, 0.55, 0.32, 8), COL.gunMetal, [0, -0.2, 0.6], [0, 0, Math.PI / 2]),
+                    part(new THREE.BoxGeometry(0.22, 0.6, 0.3), COL.wood, [0, -0.1, -0.05], [0.25, 0, 0]),
+                    part(new THREE.BoxGeometry(0.22, 0.5, 0.28), COL.wood, [0, 0.0, 1.2]),
+                    part(new THREE.BoxGeometry(0.28, 0.48, 1.2), COL.wood, [0, 0.2, -1.0], [-0.12, 0, 0]),
+                ], new THREE.Matrix4().makeRotationX(Math.PI / 2)));
+                const muzzle = new THREE.Vector3(0, -2.55, 0.4);   // barrel tip in gun space
+
+                const flashGeo = new THREE.OctahedronGeometry(0.45, 0);
+                flashGeo.scale(1, 2.2, 1);
+                flashGeo.translate(0, -0.9, 0);
+
+                const shadowGeo = new THREE.CircleGeometry(2.6, 12);
+                shadowGeo.rotateX(-Math.PI / 2);
+
+                MafiaEnemy._assets = {
+                    torso, skirt, upperArm, forearm, thigh, shin, foot, gun, muzzle, flashGeo, shadowGeo,
+                    mat: new THREE.MeshLambertMaterial({ vertexColors: true }),
+                    flashMat: new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }),
+                    shadowMat: new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }),
+                };
+                return MafiaEnemy._assets;
+            }
+
+            constructor() {
+                const A = MafiaEnemy.assets();
+                const mesh = (geo, parent, x = 0, y = 0, z = 0, mat = A.mat) => {
+                    const m = new THREE.Mesh(geo, mat);
+                    m.position.set(x, y, z);
+                    parent.add(m);
+                    return m;
+                };
+
+                this.root = new THREE.Group();          // sits on the ground; move/rotate this
+                this.root.scale.setScalar(SCALE);
+
+                const shadow = mesh(A.shadowGeo, this.root, 0, 0.05, 0, A.shadowMat);
+                shadow.renderOrder = -1;
+
+                this.body = new THREE.Group();          // hip level
+                this.root.add(this.body);
+                this.torso = mesh(A.torso, this.body);
+                this.skirt = mesh(A.skirt, this.body, 0, 0.7, 0);
+
+                // arms[0] / legs[0] are on +X (the character's left)
+                this.arms = [1, -1].map(side => {
+                    const upper = mesh(A.upperArm, this.torso, side * RIG.shoulderX, RIG.shoulderY, 0);
+                    const fore = mesh(A.forearm, upper, 0, -RIG.upperArm, 0);
+                    return { side, upper, fore };
+                });
+                this.legs = [1, -1].map((side, i) => {
+                    const thigh = mesh(A.thigh, this.body, side * RIG.hipX, 0, 0);
+                    const shin = mesh(A.shin, thigh, 0, -RIG.thigh, 0);
+                    const foot = mesh(A.foot, shin, 0, -RIG.shin, 0);
+                    return { thigh, shin, foot, offset: i * 0.5 };
+                });
+
+                this.gun = mesh(A.gun, this.arms[0].fore, 0, -RIG.forearm - 0.35, 0);
+                this.flash = mesh(A.flashGeo, this.gun, A.muzzle.x, A.muzzle.y, A.muzzle.z, A.flashMat);
+                this.flash.visible = false;
+
+                // Inputs (set by AI / game code every frame)
+                this.speed = 0;      // actual ground speed in world units/sec - drives the gait
+                this.aim = 0;        // 0 = walking pose, 1 = aiming pose
+
+                this.phase = Math.random();
+                this.recoil = 0;
+                this.flashTime = 0;
+            }
+
+            fire() {
+                this.recoil = 1;
+                this.flashTime = 0.05;
+                this.flash.visible = true;
+                this.flash.rotation.y = Math.random() * Math.PI;
+                this.flash.scale.setScalar(0.8 + Math.random() * 0.5);
+            }
+
+            update(dt) {
+                const w = clamp(this.speed / GAIT.maxSpeed, 0, 1);   // stride weight
+                const a = smooth(clamp(this.aim, 0, 1));
+                this.phase = (this.phase + dt * GAIT.cadence) % 1;
+                const ph = this.phase;
+                const swing = Math.cos(TAU * ph);
+
+                // Hips: low at heel strike, high at mid-stance; crouch a little when aiming
+                const hipY = RIG.hipY + w * GAIT.bob * -Math.cos(2 * TAU * (ph - 0.03)) - a * 0.3;
+                this.body.position.y = hipY;
+
+                // Legs: foot target relative to the hip, solved with 2-bone IK
+                for (const leg of this.legs) {
+                    const p = (ph + leg.offset) % 1;
+                    let z = GAIT.halfStep - p * GAIT.stride, lift = 0, pitch = 0;
+                    if (p >= GAIT.duty) {
+                        const s = (p - GAIT.duty) / (1 - GAIT.duty);
+                        z += GAIT.stride * smooth(s);        // foot swings forward, zero ground speed at lift-off/landing
+                        lift = GAIT.lift * Math.sin(Math.PI * s);
+                        pitch = 0.5 * Math.sin(TAU * s);      // toe-off, then toe-up before heel strike
+                    }
+                    this.solveLeg(leg, z * w, RIG.ankleH + lift * w - hipY, pitch * w);
+                }
+
+                // Coat skirt follows the legs a little
+                this.skirt.rotation.x = 0.35 * (this.legs[0].thigh.rotation.x + this.legs[1].thigh.rotation.x);
+                this.skirt.rotation.z = 0.05 * w * Math.sin(TAU * ph);
+
+                // Torso: counter-twist, sway over the stance foot, forward lean, recoil
+                this.torso.rotation.set(
+                    0.07 * w - 0.07 * this.recoil,
+                    lerp(0.12 * w * swing, 0.22, a),
+                    -0.03 * w * Math.sin(TAU * ph));
+                this.torso.position.x = 0.1 * w * Math.sin(TAU * ph);
+
+                // Arms: swing opposite the legs, blend to the aim pose
+                for (const arm of this.arms) {
+                    const s = arm.side * swing;              // >0 = arm swung back
+                    const gunArm = arm.side === 1;
+                    arm.upper.rotation.set(
+                        lerp(0.08 + 0.45 * w * s, gunArm ? -1.4 - 0.15 * this.recoil : -1.25, a),
+                        0,
+                        lerp(arm.side * 0.1, gunArm ? -0.2 : 0.5, a));
+                    arm.fore.rotation.x = lerp(-0.25 - 0.45 * w * Math.max(0, -s), gunArm ? -0.05 : -0.45, a);
+                }
+
+                this.recoil = Math.max(0, this.recoil - dt * 12);
+                if (this.flashTime > 0 && (this.flashTime -= dt) <= 0) this.flash.visible = false;
+            }
+
+            // Sagittal-plane 2-bone IK. (z, y) = ankle target relative to the hip joint.
+            solveLeg(leg, z, y, pitch) {
+                const L1 = RIG.thigh, L2 = RIG.shin;
+                let r = Math.hypot(z, y);
+                const maxR = L1 + L2 - 1e-3;
+                if (r > maxR) { z *= maxR / r; y *= maxR / r; r = maxR; }
+                const toTarget = Math.atan2(z, -y);
+                const hipBend = Math.acos(clamp((L1 * L1 + r * r - L2 * L2) / (2 * L1 * r), -1, 1));
+                const kneeBend = Math.PI - Math.acos(clamp((L1 * L1 + L2 * L2 - r * r) / (2 * L1 * L2), -1, 1));
+                leg.thigh.rotation.x = -(toTarget + hipBend);   // knee points forward
+                leg.shin.rotation.x = kneeBend;
+                leg.foot.rotation.x = toTarget + hipBend - kneeBend + pitch;   // keeps the sole level
+            }
+        }
+
+        // =====================================================================
+        //  Demo scene + simple AI (walk a figure eight, stop, fire a burst)
+        // =====================================================================
+        const GROUND_SIZE = 20;
+        const WALL_HEIGHT = 3;
+        const PATH_RADIUS = 5;
+        let scene, camera, renderer, controls, clock, info;
+        const agents = [];
+
+        window.onload = function () {
+            init();
+            animate();
+        };
+
+        function init() {
+            clock = new THREE.Clock();
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x222222);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 7, 10);
+
+            const dpr = window.devicePixelRatio || 1;
+            renderer = new THREE.WebGLRenderer({ antialias: dpr < 2, powerPreference: 'high-performance' });
+            renderer.setPixelRatio(Math.min(dpr, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2;
+
+            scene.add(new THREE.HemisphereLight(0xb8c4d8, 0x6a6058, 0.8));
+            const sun = new THREE.DirectionalLight(0xffffff, 0.75);
+            sun.position.set(5, 10, 7);
+            scene.add(sun);
+
+            const floorMat = new THREE.MeshLambertMaterial({ color: 0x4a4a4a });
+            const wallMat = new THREE.MeshLambertMaterial({ color: 0x5a5a5a });
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE), floorMat);
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+            const T = 1, half = GROUND_SIZE / 2 + T / 2;
+            const ns = new THREE.BoxGeometry(GROUND_SIZE + T * 2, WALL_HEIGHT, T);
+            const ew = new THREE.BoxGeometry(T, WALL_HEIGHT, GROUND_SIZE);
+            [[ns, 0, -half], [ns, 0, half], [ew, half, 0], [ew, -half, 0]].forEach(([g, x, z]) => {
+                const wall = new THREE.Mesh(g, wallMat);
+                wall.position.set(x, WALL_HEIGHT / 2, z);
+                scene.add(wall);
+            });
+            scene.traverse(o => { if (o.isMesh) { o.updateMatrix(); o.matrixAutoUpdate = false; } });
+
+            const count = clamp(parseInt(new URLSearchParams(location.search).get('n')) || 1, 1, 100);
+            for (let i = 0; i < count; i++) {
+                const enemy = new MafiaEnemy();
+                scene.add(enemy.root);
+                agents.push({
+                    enemy,
+                    t: i / count * TAU,          // position along the path
+                    heading: 0,
+                    state: 'walk',
+                    timer: 4 + Math.random() * 6,
+                    shots: 0,
+                    targetHeading: 0,
+                });
+            }
+
+            info = document.getElementById('info');
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function turnTowards(current, target, maxStep) {
+            const d = wrapAngle(target - current);
+            return current + clamp(d, -maxStep, maxStep);
+        }
+
+        function updateAgent(ag, dt) {
+            const e = ag.enemy;
+            ag.timer -= dt;
+
+            // Speed ramps rather than snapping, so the gait eases in and out
+            const wantSpeed = ag.state === 'walk' ? GAIT.maxSpeed : 0;
+            e.speed = wantSpeed > e.speed ? Math.min(wantSpeed, e.speed + 2.5 * dt) : Math.max(wantSpeed, e.speed - 3.5 * dt);
+
+            // Figure-eight path, advanced by arc length so ground speed == e.speed
+            const dx = PATH_RADIUS * Math.cos(ag.t), dz = PATH_RADIUS * Math.cos(2 * ag.t);
+            ag.t += e.speed * dt / Math.hypot(dx, dz);
+            e.root.position.set(PATH_RADIUS * Math.sin(ag.t), 0, PATH_RADIUS / 2 * Math.sin(2 * ag.t));
+            const pathHeading = Math.atan2(dx, dz);
+
+            switch (ag.state) {
+                case 'walk':
+                    ag.heading = turnTowards(ag.heading, pathHeading, 4 * dt);
+                    e.aim = Math.max(0, e.aim - dt / 0.35);
+                    if (ag.timer <= 0) {
+                        ag.state = 'aim';
+                        const tx = (Math.random() - 0.5) * GROUND_SIZE, tz = (Math.random() - 0.5) * GROUND_SIZE;
+                        ag.targetHeading = Math.atan2(tx - e.root.position.x, tz - e.root.position.z);
+                    }
+                    break;
+                case 'aim':
+                    ag.heading = turnTowards(ag.heading, ag.targetHeading, 5 * dt);
+                    e.aim = Math.min(1, e.aim + dt / 0.45);
+                    if (e.aim >= 1 && e.speed === 0 && Math.abs(wrapAngle(ag.heading - ag.targetHeading)) < 0.01) {
+                        ag.state = 'shoot';
+                        ag.shots = 6;
+                        ag.timer = 0;
+                    }
+                    break;
+                case 'shoot':
+                    if (ag.timer <= 0) {
+                        e.fire();
+                        ag.timer = 0.09;
+                        if (--ag.shots === 0) { ag.state = 'recover'; ag.timer = 0.3; }
+                    }
+                    break;
+                case 'recover':
+                    if (ag.timer <= 0) { ag.state = 'walk'; ag.timer = 6 + Math.random() * 6; }
+                    break;
+            }
+
+            e.root.rotation.y = ag.heading;
+            e.update(dt);
+        }
+
+        let statTimer = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.05);
+            for (const ag of agents) updateAgent(ag, dt);
+            controls.update();
+            renderer.render(scene, camera);
+
+            if ((statTimer -= dt) <= 0) {
+                statTimer = 0.5;
+                const r = renderer.info.render;
+                info.textContent = `${agents.length} enemy · ${r.calls} draw calls · ${r.triangles} tris · drag to rotate · ?n=10 for more`;
+            }
+        }
+    </script>
+</body>
+</html>
