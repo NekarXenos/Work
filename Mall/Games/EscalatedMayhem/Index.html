@@ -341,7 +341,7 @@ const RAMP_Z0   = 14, RAMP_Z1 = 38, RAMP_TOP_Y = 0.4;   // garage exit ramp
 const WIN_Z     = 44;                // drive past this and you are out
 
 const P = { r: 0.34, h: 1.75, eye: 1.58 };   // player capsule (as an AABB)
-const E = { r: 0.30, h: 1.80 };              // enemy capsule
+const E = { r: 0.30, h: 1.80, eye: 1.58, sight: 30 };   // enemy capsule and vision
 
 // --- thrown lampshade ---------------------------------------------------
 // Shoot a lamp down, walk over the wreckage, and the shade comes with you.
@@ -2925,7 +2925,33 @@ function updateBody(e, dt, near) {
   return e.deadT > 12 || e.pos.y < BASE_Y - 6;
 }
 
+/** A quiet enemy notices being aimed at only when it can see the player. */
+function alertReticleEnemy() {
+  const o = camera.getWorldPosition(_v1), d = camera.getWorldDirection(_v2);
+  let best = E.sight, target = null;
+  for (const e of world.enemies) {
+    if (e.dead || Math.abs(e.level - player.level) > 1) continue;
+    const t = rayBox(o.x, o.y, o.z, d.x, d.y, d.z, bodyBox(e));
+    if (t < best) { best = t; target = e; }
+  }
+  if (!target || target.alert) return;
+  const e = target, eyeY = e.pos.y + E.eye;
+  if (Math.hypot(o.x - e.pos.x, o.y - eyeY, o.z - e.pos.z) >= E.sight) return;
+  // A wall under the reticle takes precedence over an enemy behind it.
+  for (const c of colsFor(player.level)) {
+    if (!c.disabled && rayBox(o.x, o.y, o.z, d.x, d.y, d.z, c) < best) return;
+  }
+  // Trace back from the enemy's eyes; doors and walls must not hide the player.
+  if (losBlocked(e.pos.x, eyeY, e.pos.z, o.x, o.y, o.z, colsFor(e.level), 0.01)) return;
+  e.alert = true; e.los = true; e.losT = 0.15;
+  e.seenT = e.level === player.level ? 2.4 : 0;
+  e.searchT = 0; e.huntT = 0; e.casting = false; e.retry = 0;
+  e.hunt = { level: player.level, x: player.pos.x, z: player.pos.z };
+  if (e.act && e.act.ph < 2) e.act = null;
+}
+
 function updateEnemies(dt) {
+  alertReticleEnemy();
   for (let i = 0; i < world.enemies.length; i++) {
     const e = world.enemies[i];
     const near = Math.abs(e.level - player.level) <= 1;
@@ -2947,17 +2973,6 @@ function updateEnemies(dt) {
     const cols = colsFor(e.level), ramps = rampsFor(e.level);
     e.vel.x = 0; e.vel.z = 0;
 
-    // A quiet hallway guard can spot you without waiting for a gunshot.
-    if (!e.alert && e.patrol && e.level === player.level) {
-      e.losT -= dt;
-      if (e.losT <= 0) {
-        e.losT = rr(0.09, 0.16);
-        e.los = Math.hypot(player.pos.x - e.pos.x, player.pos.z - e.pos.z) < 30 &&
-          !losBlocked(e.pos.x, e.pos.y + 1.3, e.pos.z, player.pos.x, player.pos.y + 1.2, player.pos.z, cols);
-        if (e.los) e.alert = true;
-      }
-    }
-
     if (e.alert) {
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const sameFloor = e.level === player.level;
@@ -2966,12 +2981,12 @@ function updateEnemies(dt) {
       // for a couple of seconds after you break the line; the rest of the time
       // he is working from the last thing he heard.
       e.losT -= dt;
-      if (e.losT <= 0 || !sameFloor || dist >= 30) {
+      if (e.losT <= 0 || !sameFloor || dist >= E.sight) {
         e.losT = rr(0.09, 0.16);
-        e.los = sameFloor && dist < 30 &&
-          !losBlocked(e.pos.x, e.pos.y + 1.3, e.pos.z, player.pos.x, player.pos.y + 1.2, player.pos.z, cols);
+        e.los = sameFloor && dist < E.sight &&
+          !losBlocked(e.pos.x, e.pos.y + E.eye, e.pos.z, player.pos.x, player.pos.y + P.eye, player.pos.z, cols);
       }
-      const sees = e.los && sameFloor && dist < 30;
+      const sees = e.los && sameFloor && dist < E.sight;
       if (sees) {
         e.seenT = 2.4; e.searchT = 0; e.huntT = 0; e.casting = false;
         e.hunt = { level: player.level, x: player.pos.x, z: player.pos.z };
@@ -3075,7 +3090,7 @@ function doorAt(level, room) {
   for (let i = 0; i < F.doors.length; i++) if (F.doors[i].room === room) return F.doors[i];
   return null;
 }
-function losBlocked(ax, ay, az, bx, by, bz, cols) {
+function losBlocked(ax, ay, az, bx, by, bz, cols, endMargin = 0.4) {
   const dx = bx - ax, dy = by - ay, dz = bz - az;
   const len = Math.hypot(dx, dy, dz) || 1;
   const nx = dx / len, ny = dy / len, nz = dz / len;
@@ -3083,7 +3098,7 @@ function losBlocked(ax, ay, az, bx, by, bz, cols) {
     const c = cols[i];
     if (c.disabled || c.elev) continue;
     const t = rayBox(ax, ay, az, nx, ny, nz, c);
-    if (t < len - 0.4) return true;
+    if (t < len - endMargin) return true;
   }
   return false;
 }

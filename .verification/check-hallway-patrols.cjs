@@ -1,4 +1,4 @@
-// Run from any directory: node .verification/check-hallway-patrols.cjs
+// Run from the repository root: node .verification/check-hallway-patrols.cjs
 // Exercise production AI functions with real THREE vectors/collision and a
 // minimal world. Rendering, audio, elevators, and built floor meshes are omitted.
 const assert = require('node:assert/strict');
@@ -13,7 +13,7 @@ const names = [
   'stepBody', 'resolve', 'rampY', 'safeSpot', 'nextWaypoint', 'inOffice',
   'escRoute', 'liftHeldBy', 'liftRoute', 'planTransit', 'enemyCallLift',
   'escStep', 'liftStep', 'huntTarget', 'updateRemote', 'alertNoise',
-  'updateEnemies', 'doorAt'
+  'updateEnemies', 'doorAt', 'alertReticleEnemy'
 ];
 function extract(name) {
   const match = html.match(new RegExp(`^function ${name}\\([^]*?^\\}`, 'm'));
@@ -24,14 +24,17 @@ const config = html.slice(html.indexOf('const VERSION '), html.indexOf('/* -----
 const utils = html.slice(html.indexOf('const rnd = mulberry32'), html.indexOf('function shuffled'));
 const floorPlan = html.slice(html.indexOf('const ROOMS = [];'), html.indexOf('/** Patrol the clear corridor'));
 const gates = html.slice(html.indexOf('const GATES = ['), html.indexOf('/** Nobody stands in an open hoistway'));
+const bodyBox = html.match(/^const bodyBox = [^]*?^\}\);/m)[0];
 const context = vm.createContext({ THREE });
 vm.runInContext([
-  config, utils, floorPlan, gates, ...names.map(extract),
+  config, utils, floorPlan, gates, bodyBox, ...names.map(extract),
   `
   const world = { enemies: [], elevators: [], levels: {} };
   const player = { level: 21, pos: new THREE.Vector3(0, ROOF_Y, 0), riding: null, inCar: false };
   const game = { state: 'play' };
   const scene = { add() {}, remove() {} };
+  const camera = new THREE.PerspectiveCamera();
+  const _v1 = new THREE.Vector3(), _v2 = new THREE.Vector3();
   const FALL_KILL_V = Math.sqrt(2 * GRAV * (FH - 1.5));
   let extraCols = [];
   function colsFor(f) {
@@ -50,13 +53,19 @@ vm.runInContext([
   function reset(floor, x = 20, playerFloor = 21) {
     world.enemies.length = 0; world.elevators.length = 0; extraCols = [];
     player.level = playerFloor; player.pos.set(-40, levelY(playerFloor), 0);
+    camera.position.copy(player.pos); camera.position.y += P.eye;
+    camera.rotation.set(0, 0, 0);
     const p = { lo: 12, hi: 28, x, dir: 1 };
     const e = spawnEnemy({ idx: floor }, x, levelY(floor), 0, null, p);
     e.fireCd = 1e6;
     return e;
   }
   globalThis.api = {
-    ${names.join(', ')}, world, player, reset, levelY, PATROL_SPEED,
+    ${names.join(', ')}, world, player, camera, reset, levelY, PATROL_SPEED,
+    aimAt(e, height = E.eye) {
+      camera.position.copy(player.pos); camera.position.y += P.eye;
+      camera.lookAt(e.pos.x, e.pos.y + height, e.pos.z);
+    },
     setCols(cols) { extraCols = cols; }
   };`
 ].join('\n'), context, { filename: 'extracted-hallway-patrols.js' });
@@ -121,26 +130,88 @@ for (const mode of ['near', 'remote']) check(`${mode} guards walk at patrol spee
   assert.equal(e.group.visible, mode === 'near');
 });
 
-check('quiet patrol detects a visible player on its own floor', () => {
+check('aiming at a quiet patrol alerts it and immediately starts pursuit', () => {
   const e = a.reset(8, 20, 8);
   a.player.pos.set(24, a.levelY(8), 0);
+  a.aimAt(e);
   a.updateEnemies(1 / 60);
   assert.equal(e.alert, true); assert.equal(e.los, true);
   assert.equal(e.hunt.level, 8); assert.equal(e.hunt.x, 24);
   assert.ok(e.seenT > 0);
+  assert.ok(e.moving && e.vel.x > 0);
 });
 
 check('walls, distance, and other floors prevent quiet patrol detection', () => {
   let e = a.reset(8, 20, 8);
   a.player.pos.set(24, a.levelY(8), 0);
+  a.aimAt(e);
   a.setCols([{ x0: 21.9, x1: 22.1, y0: a.levelY(8), y1: a.levelY(8) + 6, z0: -2, z1: 2 }]);
   a.updateEnemies(0.1);
   assert.equal(e.alert, false); assert.equal(e.los, false);
   e = a.reset(8, 20, 8);
+  a.aimAt(e);
   a.updateEnemies(0.1); assert.equal(e.alert, false);
   e = a.reset(8, 20, 9);
   a.player.pos.set(21, a.levelY(9), 0);
+  a.aimAt(e);
   a.updateEnemies(0.1); assert.equal(e.alert, false);
+});
+
+check('quiet guards stay unaware when the reticle points away, including nearby patrols', () => {
+  const e = a.reset(8, 20, 8);
+  a.player.pos.set(24, a.levelY(8), 0);
+  a.aimAt(e);
+  a.camera.rotation.y += Math.PI;
+  a.updateEnemies(0.1);
+  assert.equal(e.alert, false);
+});
+
+check('reticle detection also works for stationary office guards without any noise', () => {
+  const e = a.reset(8, 20, 8);
+  e.patrol = null;
+  a.player.pos.set(24, a.levelY(8), 0);
+  a.aimAt(e);
+  a.updateEnemies(0.1);
+  assert.equal(e.alert, true);
+  assert.ok(e.moving && e.vel.x > 0);
+});
+
+check('eye-height wall blocks detection even when the reticle can hit the enemy below it', () => {
+  const e = a.reset(8, 20, 8), y = a.levelY(8);
+  a.player.pos.set(24, y, 0);
+  a.aimAt(e, 0.3);
+  a.setCols([{ x0: 21.9, x1: 22.1, y0: y + 1.45, y1: y + 1.8, z0: -2, z1: 2 }]);
+  a.alertReticleEnemy();
+  assert.equal(e.alert, false);
+  a.setCols([]);
+  a.alertReticleEnemy();
+  assert.equal(e.alert, true);
+});
+
+check('a wall under the reticle takes precedence even with a clear eye-level view', () => {
+  const e = a.reset(8, 20, 8), y = a.levelY(8);
+  a.player.pos.set(24, y, 0);
+  a.aimAt(e, 0.3);
+  a.setCols([{ x0: 21.9, x1: 22.1, y0: y, y1: y + 1.2, z0: -2, z1: 2 }]);
+  a.alertReticleEnemy();
+  assert.equal(e.alert, false);
+  a.aimAt(e);
+  a.alertReticleEnemy();
+  assert.equal(e.alert, true);
+});
+
+check('only the nearest living enemy under the reticle gets the visual alert', () => {
+  const e = a.reset(8, 20, 8);
+  const behind = a.spawnEnemy({ idx: 8 }, 16, a.levelY(8), 0, null);
+  a.player.pos.set(24, a.levelY(8), 0);
+  a.aimAt(e);
+  a.alertReticleEnemy();
+  assert.equal(e.alert, true); assert.equal(behind.alert, false);
+  a.alertReticleEnemy();
+  assert.equal(behind.alert, false);
+  e.dead = true;
+  a.alertReticleEnemy();
+  assert.equal(behind.alert, true);
 });
 
 check('noise interrupts patrol, uses pursuit speed, and search expiry resumes it', () => {
