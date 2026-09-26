@@ -6,7 +6,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { test } = require('node:test');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v10.html'), 'utf8');
+const html = fs.readFileSync(path.join(__dirname, '..', 'WrapaCar_v11.html'), 'utf8');
 const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1])
   .filter(source => !source.includes('/* VectorCore'));
 const core = vm.createContext({});
@@ -55,19 +55,20 @@ function harness() {
     window: { addEventListener(name, callback) { keys[name] = callback; } },
     toast: message => messages.push(message), fmt: String,
     // Keep the real drawing, keyboard, geometry, and control logic; only omit rendering.
-    rebuildPath() {}, syncGhostDots() {}, setAtlasEmpty() {}, syncAll() {}, renderSuggestions() {}, showErase() {},
+    rebuildPath() {}, syncGhostDots() {}, setAtlasEmpty() {}, syncAll() {}, renderSuggestions() {}, showErase() {}, buildNodeDots() {},
     recomputePanels() {
       S.edgeMap = PC.buildEdgeMap(S.mesh);
       const regions = PC.computePanels(S.mesh, S.edgeMap);
       S.mesh.panel = Array.from(regions.label);
       S.panels = regions.comps.map((faces, id) => ({ faces, id }));
+      S.seams = null; S.rim = null; S.graph = null;
     }
   });
   for (const name of ['mirrorEnabled', 'activePlane', 'planeOffset', 'mirrorTolerance',
     'seamOnPlane', 'drawingOutline', 'drawingAnchor', 'syncDrawingSegments',
     'symmetricPanelReady', 'centerPanelStarted', 'canCloseSeam',
     'traceSeg', 'crossPoint', 'segPoints', 'addPoint', 'clearPoints', 'undoPoint', 'snapshot',
-    'doCut', 'updateButtons', 'updateHud', 'leadPoint', 'seamNet', 'seamPick', 'seamStretch', 'hasLooseEnds', 'isCreaseEnd', 'withSeamTail', 'seamHooks',
+    'doCut', 'updateButtons', 'updateHud', 'leadPoint', 'seamNet', 'panelRim', 'seamPick', 'seamStretch', 'hasLooseEnds', 'isCreaseEnd', 'withSeamTail', 'seamHooks',
     'stretchPoints', 'liftStretch', 'allJoined', 'closingPreview', 'pruneSuggestions']) vm.runInContext(appFunction(name), app);
   const keyStart = scripts[1].indexOf("  window.addEventListener('keydown',");
   const keyEnd = scripts[1].indexOf('\n  });', keyStart) + '\n  });'.length;
