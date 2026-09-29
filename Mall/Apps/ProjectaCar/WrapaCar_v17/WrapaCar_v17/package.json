@@ -1,0 +1,15 @@
+{
+  "name": "wrapacar-v17-validation",
+  "version": "17.0.0",
+  "private": true,
+  "description": "Validation suite for WrapaCar v17 — run: bash tests/validate.sh",
+  "scripts": {
+    "validate": "bash tests/validate.sh"
+  },
+  "devDependencies": {
+    "three": "0.147.0"
+  },
+  "optionalDependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

@@ -1,0 +1,127 @@
+
+== 1. the patch rebuilds v17 from v16
+   byte for byte (ea3668cd0c1797c5)
+
+== 2. node --check
+   PanelCore, VectorCore and the app parse
+
+== 3. one state object
+   var S = { once
+
+== 4. version stamps
+   title, brand and banner say v17; no v16, Seamwork or WrapaCar v14 left
+
+== 5. functions against the shipped v16
+   none removed; 73 added:
+     acceptAllIntakes, acceptIntake, acceptIntakes, areaNormals, ballProbe, bumperBody, 
+     clearIntakes, coveredIntakes, cr, describe, earClip2, edgeLoops, faceLists, facing, 
+     findIntake, findIntakes, fitLid, flattenFilled, floorOf, focusIntake, holes, holesIn, 
+     incircle, inside, intakeAtTap, intakeDetail, intakeGroup, intakeHud, intakeMM, 
+     intakeName, intakeOn, intakeOptions, intakeOverlay, intakeRecord, intakeRecords, 
+     intakeRing, intakeRows, intakeSize, intakeTap, intakesByPanel, intakesMirror, kill, 
+     legalize, lidCoords, lidHeight, lidLayer, lidLocate, lidMesh, lines, make, on, pair, 
+     polylineField, projectedFaces, projecting, pruneIntakes, range, rejectAllIntakes, 
+     rejectIntake, removeIntakes, renderIntakes, resolveIntake, rest, rimGap, samePlace, scan, 
+     selfCrossing, shape, solveSmall, touchDepths, triDist2, uvOf, vid
+
+== 6. geometry tier
+geometry tier: 112 passed, 0 failed
+
+== 7. DOM-stub tier
+DOM tier: 74 passed, 0 failed
+
+== 8. regression tier
+regression tier: 61 passed, 0 failed
+
+== 9. mutation suite
+  caught openings wider than the ball kept  (geometry, 23 s)
+           FAIL a hole wider than the ball: not found
+  caught dents shallower than 5 mm taken for intakes  (geometry, 23 s)
+           FAIL a dimple the ball bridges, shallower than 5 mm: nothing
+  caught a tap does not try a wider ball  (geometry, 21 s)
+           FAIL wide pocket: a tap in it finds it with a wider ball — 0
+  caught a rough surface: balls may not press into it  (geometry, 23 s)
+           FAIL a scan noisy by ±1 mm: the vent found, and only the vent, true to size — 0
+  caught a rough surface: its noise taken for dents  (geometry, 23 s)
+           FAIL a scan noisy by ±1.5 mm: the vent found, and only the vent, true to size — 1 120.0×220.0/31.6
+  caught the lid fitted over the next intake  (geometry, 23 s)
+           FAIL a dimple beside a vent: only the vent, its lid true to the plate — 1 0.23584297413916394
+  caught the lid fitted round a fold  (geometry, 23 s)
+           FAIL a vent 20 mm from a sharp fold: found — 1
+  caught the lid fitted across a crease  (geometry, 24 s)
+           FAIL the bend creased: the lid stops at the crease, true to the plate — 4.008009826613773
+  caught mirror images not paired  (geometry, 23 s)
+           FAIL mirror: the two side pockets pair up
+  caught an intake a seam parts from its panel still found  (geometry, 22 s)
+           FAIL a seam through it: no longer an intake
+  caught lid triangles left as clipped, slivers and all  (geometry, 23 s)
+           FAIL lid: no sliver inside it — 0.00°
+  caught a point beside the lid not held to its rim  (geometry, 23 s)
+           FAIL undercut: the floor under the rim is held inside the opening
+  caught intake faces not projected from the lid  (geometry, 24 s)
+           FAIL filled, vertical walls: the plate lies flat, true to size — got 610.3277807866847, want 0 ± 1e-8
+  caught a separate twin leaves its lids unflipped  (geometry, 22 s)
+           FAIL separate twin: the lids are flipped with it — [0.5,0.25,1.5,0.25,1,0.75]
+  caught a mirrored twin drops its lids  (geometry, 23 s)
+           FAIL mirror twin: laid out as its partner, lids and all — 0
+  caught the topology check counts projected faces  (geometry, 24 s)
+           FAIL topology: not counted when projected — 4
+  caught suggested seams ignore the intakes  (geometry, 24 s)
+           FAIL long lip, covered: no seam round it — turn
+  caught suggested seams notch what an intake leaves open  (geometry, 24 s)
+           FAIL an L, a lip by its corner, covered (as found): split along the L's own corner — width -750.0,213.3,0.0
+  caught the line snaps on to the walls beside it  (geometry, 25 s)
+           FAIL line 1: prints as one straight line — 23
+  caught the line does not drop to the face under the lid  (geometry, 26 s)
+           FAIL line 1: prints as one straight line — 22
+  caught an island region without its lids  (geometry, 25 s)
+           FAIL island region: lids added as triangles, anticlockwise
+  caught the cut line runs round what an intake leaves open  (geometry, 24 s)
+           FAIL cut line: covered, the hole is skipped
+  caught the PDF names no version  (rest, 50 s)
+           FAIL same bytes: #0 wrap-artwork.pdf
+  caught a separate twin flipped the other way  (rest, 50 s)
+           FAIL same bytes: #0 wrap-artwork.pdf
+  caught a mirrored twin no longer shares its partner's island  (rest, 50 s)
+  caught twins with no intakes not mirrored  (rest, 50 s)
+           FAIL same: unwrap: Unwrapped 8 panels — 2 mirrored twins on their own island —
+  caught stale version in the title  (dom, 47 s)
+           FAIL title says v17 — WrapaCar v16 — Intakes
+  caught the .obj still says Seamwork  (dom, 48 s)
+           FAIL no v16 left in the page
+  caught intake sizes taken in model units, not mm  (dom, 6 s)
+           FAIL find: three found — No intakes found — nothing narrower than 300 mm and deeper than 5 mm, ringed by the panel
+  caught accepting leaves the rim uncreased  (dom, 49 s)
+           FAIL accept all: each rim a crease — 0
+  caught clearing leaves the rim creases  (dom, 48 s)
+           FAIL clear: none projected, rim creases gone — 3 lines | 3 intakes cleared — the panels are flattened as they are. Undo cut brings them back.
+  caught undo forgets the intakes  (dom, 20 s)
+           FAIL undo: back again, creases and all
+  caught a seam through an intake leaves it projected  (dom, 47 s)
+           FAIL seam through the vents: no longer projected, and says so — 3 |
+  caught Esc leaves the intakes found  (dom, 7 s)
+           FAIL Esc: all dismissed — 3 intakes found — accept or reject each
+  caught undo leaves the lost-intake note up  (dom, 47 s)
+           FAIL undo cut: the vents projected again, the note gone — 3 | 2 intakes are no longer projected: a seam now parts them from the panel, or a rebuild mo
+  caught a tap in Intake mode does nothing  (dom, 30 s)
+           FAIL tap on plain bumper: no intake there — Bumper with intakes loaded — 12,496 triangles, mirror plane found (100% symmetric)
+  caught a tap leaves the mirror image out  (dom, 42 s)
+           FAIL tap on a vent: it and its mirror image added — Intake added, 272 × 103 mm — its lid is laid over the opening. Unwrap again to project the artwork
+  caught Project artwork across intakes ignored  (dom, 44 s)
+           FAIL projection off: unwrapped again at once — Unwrapped 1 panel — 3 intakes projected from their lids
+  caught the unwrap leaves the intakes out  (dom, 43 s)
+           FAIL unwrap: projected — Unwrapped 1 panel
+  caught the atlas leaves the lids out  (dom, 43 s)
+           FAIL atlas: the lids painted across the openings — 12496 = 12496 faces + 2114 lid triangles?
+  caught the atlas clips the artwork off the lids  (dom, 45 s)
+           FAIL atlas: the artwork painted through the lids too — {"triangles":12496,"paths":13524}
+  caught the PDF clips the artwork off the lids  (dom, 44 s)
+           FAIL pdf: the artwork runs across the lids — {"cutPaths":1,"clipTriangles":12496,"clipPaths":12496}
+  caught the line on the model not told what is projected  (dom, 42 s)
+           FAIL pocket plate: the line runs straight on the plate — {"stray":0.10838311922765761,"floor":52,"n":178}
+mutation suite: 43 of 43 caught
+
+== 10. browser tier
+browser tier: 8 passed, 0 failed
+
+all checks passed
