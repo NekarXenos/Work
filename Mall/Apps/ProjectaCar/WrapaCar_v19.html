@@ -6616,48 +6616,139 @@ details.more > summary:hover{color:var(--ink)}
     return [w[0] * uv[o] + w[1] * uv[o + 2] + w[2] * uv[o + 4], w[0] * uv[o + 1] + w[1] * uv[o + 3] + w[2] * uv[o + 5]];
   }
 
-  // Follow a flattened line through its flat map, sample by sample, back on
-  // to the surface. Where the map overlaps itself each sample takes the face
-  // that carries on from the previous sample on the surface, never one from
-  // another part of the model that happens to lie under it; where it cracks,
-  // the nearest face. `start` is the first sample's surface point; a jump of
-  // more than `gap` across the surface breaks the track there. A face in
-  // `hold` (an intake's, projected from its lid) only takes a sample it
-  // holds: its walls are all but edge-on in the layout, and the nearest
-  // point of one is not where the line runs.
-  function track(fr, pos, tris, flat, start, gap, hold) {
-    var pts = flat.pts, n = pts.length >> 1, uv = fr.uv, grid = gridOf(fr), r = grid.cell * 0.5;
-    var faces = new Int32Array(n).fill(-1), bary = new Float64Array(3 * n), p3 = new Float64Array(3 * n).fill(NaN);
-    var prev = start, tol = fr.step;
-    for (var i = 0; i < n; i++) {
-      var x = pts[2 * i], y = pts[2 * i + 1], best = -1, bestS = Infinity, bw = null, bq = null;
-      grid.query(x - r, y - r, x + r, y + r, function (s) {
-        var o = 6 * s, w = bary2(uv[o], uv[o + 1], uv[o + 2], uv[o + 3], uv[o + 4], uv[o + 5], x, y), off = 0;
-        if (!w) return;
-        if (w[0] < -1e-9 || w[1] < -1e-9 || w[2] < -1e-9) {
-          if (hold && hold[fr.faces[s]]) return;
-          var c = closest2(uv, o, x, y);
-          if (c.d > tol) return;
-          w = c.w; off = c.d;
+  // Walk the line through shared mesh edges. A chart gap is a failed trace,
+  // never permission to snap to an edge or jump to a nearby pocket wall.
+  // Every span owns one face and exact barycentric ends; all artwork uses it.
+  function track(fr, pos, tris, flat, start, gap, hold, anchors) {
+    var pts = flat.pts, n = pts.length >> 1, uv = fr.uv, faces = [], bary = [], p3 = [], ts = [], xy = [], spans = [];
+    var eps = 1e-9, mapTol = Math.max(1e-12, fr.typical * 1e-8), face = -1, complete = true;
+    var links = fr.links, visited = new Set();
+    if (!links) {
+      links = fr.links = new Map();
+      fr.faces.forEach(function (f, s) {
+        if (!(fr.dist[s] < Infinity)) return;
+        for (var k = 0; k < 3; k++) {
+          var key = ekey(tris[3 * f + k], tris[3 * f + (k + 1) % 3]), list = links.get(key);
+          if (!list) links.set(key, list = []);
+          list.push(f);
         }
-        var f = fr.faces[s], a = 3 * tris[3 * f], b = 3 * tris[3 * f + 1], d = 3 * tris[3 * f + 2];
-        var q = [w[0] * pos[a] + w[1] * pos[b] + w[2] * pos[d], w[0] * pos[a + 1] + w[1] * pos[b + 1] + w[2] * pos[d + 1],
-          w[0] * pos[a + 2] + w[1] * pos[b + 2] + w[2] * pos[d + 2]];
-        // a face that holds the sample beats one it only lies beside; under a
-        // lid, the intake face holding it is where the line runs, however far
-        // down it lies
-        var sc = (prev ? Math.hypot(q[0] - prev[0], q[1] - prev[1], q[2] - prev[2]) : 0) + (off ? gap + off : 0);
-        if (hold && hold[f] && !off) sc = -1;
-        if (sc < bestS) { bestS = sc; best = f; bw = w; bq = q; }
       });
-      if (best < 0 || (prev && Math.hypot(bq[0] - prev[0], bq[1] - prev[1], bq[2] - prev[2]) > gap)) { prev = null; continue; }
-      faces[i] = best;
-      bary[3 * i] = bw[0]; bary[3 * i + 1] = bw[1]; bary[3 * i + 2] = bw[2];
-      p3[3 * i] = bq[0]; p3[3 * i + 1] = bq[1]; p3[3 * i + 2] = bq[2];
-      prev = bq;
     }
-    return { faces: faces, bary: bary, pts: p3 };
+    function parameter(i) { return flat.t ? flat.t[i] : n > 1 ? i / (n - 1) : 0; }
+    function weights(f, x, y) {
+      var s = fr.at.get(f);
+      if (s === undefined || !(fr.dist[s] < Infinity)) return null;
+      var o = 6 * s;
+      return bary2(uv[o], uv[o + 1], uv[o + 2], uv[o + 3], uv[o + 4], uv[o + 5], x, y);
+    }
+    function clean(w) {
+      // Remove roundoff only; points outside the triangle are never clamped.
+      var a = w.map(function (v) { return Math.abs(v) <= eps ? 0 : Math.abs(v - 1) <= eps ? 1 : v; });
+      var sum = a[0] + a[1] + a[2];
+      return a.map(function (v) { return v / sum; });
+    }
+    function point(f, w) {
+      var q = [0, 0, 0];
+      for (var k = 0; k < 3; k++) for (var j = 0; j < 3; j++) q[j] += w[k] * pos[3 * tris[3 * f + k] + j];
+      return q;
+    }
+    function append(f, w, x, y, t) {
+      faces.push(f); ts.push(t); xy.push(x, y);
+      if (f < 0) { bary.push(NaN, NaN, NaN); p3.push(NaN, NaN, NaN); return; }
+      visited.add(f);
+      var q = point(f, w);
+      bary.push(w[0], w[1], w[2]); p3.push(q[0], q[1], q[2]);
+    }
+    function shared(f, g, a, b) {
+      var sf = fr.at.get(f), sg = fr.at.get(g);
+      if (sg === undefined || !(fr.dist[sg] < Infinity)) return false;
+      return [a, b].every(function (v) {
+        var i = -1, j = -1;
+        for (var c = 0; c < 3; c++) { if (tris[3 * f + c] === v) i = c; if (tris[3 * g + c] === v) j = c; }
+        return i >= 0 && j >= 0 && Math.hypot(uv[6 * sf + 2 * i] - uv[6 * sg + 2 * j],
+          uv[6 * sf + 2 * i + 1] - uv[6 * sg + 2 * j + 1]) <= mapTol;
+      });
+    }
+    // At a vertex, several zero-length face transitions may be needed before
+    // the line enters a face. Search only the incident shared-edge fan.
+    function entering(from, x, y, tx, ty) {
+      var queue = [from], seen = new Set(queue);
+      while (queue.length) {
+        var f = queue.shift(), w = weights(f, x, y), end = weights(f, tx, ty);
+        if (!w || !end || w.some(function (v) { return v < -eps; })) continue;
+        if (w.every(function (v, k) { return v > eps || end[k] - v >= -eps; })) return { face: f, w: clean(w) };
+        for (var k = 0; k < 3; k++) if (w[k] <= eps) {
+          var a = tris[3 * f + (k + 1) % 3], b = tris[3 * f + (k + 2) % 3];
+          (links.get(ekey(a, b)) || []).forEach(function (g) {
+            // An intrinsic map is unfolded along the actual crossing order,
+            // rather than a spanning tree that can leave cracks across it.
+            // Never move a face already used by this trace.
+            if (fr.followSurface && !seen.has(g) && !visited.has(g))
+              unfoldFace(pos, tris, uv, f, fr.at.get(f), g, fr.at.get(g));
+            if (!seen.has(g) && shared(f, g, a, b)) { seen.add(g); queue.push(g); }
+          });
+        }
+      }
+      return null;
+    }
+    function fail(i) {
+      complete = false;
+      for (; i < n; i++) append(-1, null, pts[2 * i], pts[2 * i + 1], parameter(i));
+    }
+    if (!n) return { faces: new Int32Array(0), bary: new Float64Array(0), pts: new Float64Array(0),
+      t: new Float64Array(0), flatPts: new Float64Array(0), spans: [], complete: true };
+    var w = null;
+    if (anchors && anchors.startFace >= 0) {
+      face = anchors.startFace; w = weights(face, pts[0], pts[1]);
+      if (w && anchors.startBary && Math.hypot.apply(null, w.map(function (v, k) { return v - anchors.startBary[k]; })) > 1e-7) w = null;
+    } else {
+      var grid = gridOf(fr), best = Infinity;
+      grid.query(pts[0], pts[1], pts[0], pts[1], function (s) {
+        var f = fr.faces[s], test = weights(f, pts[0], pts[1]);
+        if (!test || test.some(function (v) { return v < -eps; })) return;
+        var d = start ? dist3(point(f, test), start) : 0;
+        if (d < best) { best = d; face = f; w = test; }
+      });
+      if (start && best > Math.max(1e-10, (gap || 1) * 1e-7)) w = null;
+    }
+    if (!w || w.some(function (v) { return v < -eps; })) fail(0);
+    else {
+      w = clean(w); append(face, w, pts[0], pts[1], parameter(0));
+      for (var i = 1; i < n && complete; i++) {
+        var x = pts[2 * i - 2], y = pts[2 * i - 1], tx = pts[2 * i], ty = pts[2 * i + 1];
+        var progress = 0, t0 = parameter(i - 1), t1 = parameter(i), guard = 0;
+        while (progress < 1 && complete) {
+          if (++guard > fr.faces.length + 3) { fail(i); break; }
+          var next = entering(face, x, y, tx, ty);
+          if (!next) { fail(i); break; }
+          if (next.face !== face) { face = next.face; w = next.w; append(face, w, x, y, t0 + (t1 - t0) * progress); }
+          else w = next.w;
+          var end = weights(face, tx, ty), u = 1;
+          for (var k = 0; k < 3; k++) if (end[k] < -eps) u = Math.min(u, w[k] / (w[k] - end[k]));
+          if (!(u > 1e-12)) { fail(i); break; }
+          if (u > 1 - 1e-12) u = 1;
+          var nx = x + (tx - x) * u, ny = y + (ty - y) * u;
+          var nw = clean(w.map(function (v, k) { return v + (end[k] - v) * u; }));
+          var finish = progress + (1 - progress) * u, ta = t0 + (t1 - t0) * progress, tb = t0 + (t1 - t0) * finish;
+          if (dist3(point(face, w), point(face, nw)) > 1e-14) spans.push({ face: face, a: w.slice(), b: nw.slice(), t0: ta, t1: tb });
+          append(face, nw, nx, ny, tb);
+          progress = finish; x = nx; y = ny; w = nw;
+          if (u === 1) break;
+        }
+      }
+      if (complete && anchors && anchors.endFace >= 0 && anchors.endBary) {
+        var wanted = point(anchors.endFace, anchors.endBary), got = point(face, w);
+        var last = frameAt(fr, anchors.endFace, anchors.endBary);
+        if (!last || Math.hypot(last[0] - pts[2 * n - 2], last[1] - pts[2 * n - 1]) > mapTol ||
+          dist3(wanted, got) > Math.max(1e-10, (gap || 1) * 1e-7)) {
+          complete = false; append(-1, null, pts[2 * n - 2], pts[2 * n - 1], parameter(n - 1));
+        } else if (face !== anchors.endFace) append(anchors.endFace, anchors.endBary, last[0], last[1], parameter(n - 1));
+      }
+    }
+    return { faces: Int32Array.from(faces), bary: Float64Array.from(bary), pts: Float64Array.from(p3),
+      t: Float64Array.from(ts), flatPts: Float64Array.from(xy), spans: spans, complete: complete };
   }
+
 
   /* ----------------------------------------------------------------- paths */
   // How a face carries a tangent vector on the surface into a flat map: its
@@ -6716,16 +6807,31 @@ details.more > summary:hover{color:var(--ink)}
 
   // Sample a path finely enough to follow the surface face by face.
   function flatten(segs, step) {
-    if (!segs.length) return { pts: new Float64Array(0), starts: [] };
-    var pts = [segs[0].c[0], segs[0].c[1]], starts = [];
+    if (!segs.length) return { pts: new Float64Array(0), starts: [], t: new Float64Array(0) };
+    var pts = [segs[0].c[0], segs[0].c[1]], starts = [], parameters = [0];
+    var tolerance = Math.max(1e-12, step * 1e-3);
+    function sample(c, t0, t1, index, depth) {
+        var length = Math.hypot(c[2] - c[0], c[3] - c[1]) + Math.hypot(c[4] - c[2], c[5] - c[3]) + Math.hypot(c[6] - c[4], c[7] - c[5]);
+      function deviation(x, y) {
+        var dx = c[6] - c[0], dy = c[7] - c[1], den = dx * dx + dy * dy;
+        var u = den ? Math.max(0, Math.min(1, ((x - c[0]) * dx + (y - c[1]) * dy) / den)) : 0;
+        return Math.hypot(x - c[0] - u * dx, y - c[1] - u * dy);
+      }
+      if (depth >= 16 || (length <= step && Math.max(deviation(c[2], c[3]), deviation(c[4], c[5])) <= tolerance)) {
+        pts.push(c[6], c[7]); parameters.push((index + t1) / segs.length); return;
+      }
+      var ax = (c[0] + c[2]) / 2, ay = (c[1] + c[3]) / 2, bx = (c[2] + c[4]) / 2, by = (c[3] + c[5]) / 2;
+      var cx = (c[4] + c[6]) / 2, cy = (c[5] + c[7]) / 2, dx = (ax + bx) / 2, dy = (ay + by) / 2;
+      var ex = (bx + cx) / 2, ey = (by + cy) / 2, mx = (dx + ex) / 2, my = (dy + ey) / 2, tm = (t0 + t1) / 2;
+      sample([c[0], c[1], ax, ay, dx, dy, mx, my], t0, tm, index, depth + 1);
+      sample([mx, my, ex, ey, cx, cy, c[6], c[7]], tm, t1, index, depth + 1);
+    }
     for (var i = 0; i < segs.length; i++) {
       var c = segs[i].c;
-      var L = Math.hypot(c[2] - c[0], c[3] - c[1]) + Math.hypot(c[4] - c[2], c[5] - c[3]) + Math.hypot(c[6] - c[4], c[7] - c[5]);
-      var n = Math.max(1, Math.min(512, Math.ceil(L / step) || 1));
       starts.push(pts.length / 2 - 1);
-      for (var k = 1; k <= n; k++) { var p = bezierAt(c, k / n); pts.push(p[0], p[1]); }
+      sample(c, 0, 1, i, 0);
     }
-    return { pts: Float64Array.from(pts), starts: starts };
+    return { pts: Float64Array.from(pts), starts: starts, t: Float64Array.from(parameters) };
   }
 
   function unit(v) {
@@ -6800,7 +6906,7 @@ details.more > summary:hover{color:var(--ink)}
   // A step on to or off a face in `held` (an intake's, projected from its
   // lid, so edge-on in the layout by design) is left out.
   function jumpiness(tr, flat, scale, held) {
-    var n = tr.faces.length, r = [], worst = 0, pts = flat.pts;
+    var n = tr.faces.length, r = [], worst = 0, pts = tr.flatPts || flat.pts;
     for (var k = 1; k < n; k++) {
       if (tr.faces[k] < 0 || tr.faces[k - 1] < 0 || (held && (held[tr.faces[k]] || held[tr.faces[k - 1]]))) { r.push(NaN); continue; }
       var d3 = Math.hypot(tr.pts[3 * k] - tr.pts[3 * k - 3], tr.pts[3 * k + 1] - tr.pts[3 * k - 2], tr.pts[3 * k + 2] - tr.pts[3 * k - 1]);
@@ -6823,7 +6929,7 @@ details.more > summary:hover{color:var(--ink)}
   // that doubles back or wanders off on the surface runs further there than
   // in the map. Steps on or off faces in `held` are left out, as above.
   function straying(tr, flat, scale, held) {
-    var n = tr.faces.length, pts = flat.pts, d3 = 0, d2 = 0;
+    var n = tr.faces.length, pts = tr.flatPts || flat.pts, d3 = 0, d2 = 0;
     for (var k = 1; k < n; k++) {
       if (tr.faces[k] < 0 || tr.faces[k - 1] < 0 || (held && (held[tr.faces[k]] || held[tr.faces[k - 1]]))) continue;
       d3 += Math.hypot(tr.pts[3 * k] - tr.pts[3 * k - 3], tr.pts[3 * k + 1] - tr.pts[3 * k - 2], tr.pts[3 * k + 2] - tr.pts[3 * k - 1]);
@@ -6943,11 +7049,22 @@ details.more > summary:hover{color:var(--ink)}
           return 1 + 8 * Math.min(4, Math.max(0, d) / edge);
         };
         var fr = flatMap(surf, map.uv, map.seeds, allow, bias, map.typical);
+        if (map.uv === own) fr.followSurface = true;
+        for (var refine = 0; refine < (fr.followSurface ? 8 : 1); refine++) {
         var placed = placeNodes(fr, pos, tris, [
           { face: a.face, bary: a.bary, hin: null, hout: a.hout }, { face: b.face, bary: b.bary, hin: b.hin, hout: null }]);
-        if (!placed) { width *= 2.5; continue; }
+        if (!placed) { width *= 2.5; break; }
         var seg = segments(placed, false)[0], flat = flatten([seg], fr.step);
-        var tr = track(fr, pos, tris, flat, a.p, 2 * fr.step / model.scale + edge, model.projected);
+        var tr = track(fr, pos, tris, flat, a.p, 2 * fr.step / model.scale + edge, model.projected,
+          { startFace: a.face, startBary: a.bary, endFace: b.face, endBary: b.bary });
+        if (tr.complete || !fr.followSurface) break;
+        // Bring the destination into the chart reached by this trace. Its
+        // next cubic then targets the same surface anchor in the repaired map.
+        var lastFace = -1;
+        for (var li = tr.faces.length - 1; li >= 0; li--) if (tr.faces[li] >= 0) { lastFace = tr.faces[li]; break; }
+        if (lastFace < 0 || !continueFrame(model, fr, lastFace, b.face)) break;
+        }
+        if (!placed) continue;
         var breaks = 0, drawn = [];
         for (var i = 0; i < tr.faces.length; i++) {
           if (tr.faces[i] < 0) breaks++;
@@ -6962,8 +7079,113 @@ details.more > summary:hover{color:var(--ink)}
         if (!breaks && !result.stray && drawn.length > 3) { line = drawn; width = 1.5 * edge; } else width *= 2.5;
       }
     }
-    return best;
+    if (best && best.tr.complete && !best.breaks && !best.stray) return best;
+    // A doubly curved pocket cannot always be unfolded isometrically into
+    // one strip. Relax that local patch as one connected chart, just as an
+    // atlas island is relaxed, instead of clamping a broken trace to edges.
+    if (model.flatten) {
+      var faceList = patchFaces(surf, near), indices = [];
+      faceList.forEach(function (f) { indices.push(tris[3*f], tris[3*f+1], tris[3*f+2]); });
+      var relaxed = model.flatten(pos, indices), localUV = new Float64Array(6*faceList.length);
+      faceList.forEach(function (f, s) { for (var k=0;k<3;k++) {
+        var v=relaxed.F[3*s+k];
+        localUV[6*s+2*k]=relaxed.U[2*v]*model.scale; localUV[6*s+2*k+1]=relaxed.U[2*v+1]*model.scale;
+      } });
+      var local = {faces:faceList, at:new Map(faceList.map(function(f,s){return [f,s];})), uv:localUV,
+        dist:new Float64Array(faceList.length), typical:edge*model.scale, step:edge*model.scale/2};
+      for (var chartPass=0;chartPass<2;chartPass++) {
+      if (chartPass && !convexFrame(model,local)) break;
+      var nodes = placeNodes(local,pos,tris,[a,b]);
+      if (nodes) {
+        var curve=segments(nodes,false)[0], samples=flatten([curve],local.step);
+        var trace=track(local,pos,tris,samples,a.p,edge,null,{startFace:a.face,startBary:a.bary,endFace:b.face,endBary:b.bary});
+        var strain=straying(trace,samples,model.scale,null);
+        if (trace.complete && strain>1/1.2 && strain<1.2)
+          return {seg:curve,flat:samples,tr:trace,breaks:0,jump:jumpiness(trace,samples,model.scale,null),stray:false,unfolded:true};
+      }
+      }
+    }
+    return null;
   }
+
+  // Unfold a connected route from a traced face to the endpoint. Only the
+  // endpoint chart changes here; no point of the artwork is snapped or moved.
+  function continueFrame(model, fr, from, to) {
+    if (from === to) return true;
+    var surf = model.surf, cost = new Map([[from, 0]]), prev = new Map(), heap = [[0, from]], found = false;
+    while (heap.length) {
+      var item = heapPop(heap), f = item[1], d = item[0];
+      if (d !== cost.get(f)) continue;
+      if (f === to) { found = true; break; }
+      neighbours(surf, f, function (g) {
+        if (!fr.at.has(g) || !(fr.dist[fr.at.get(g)] < Infinity)) return;
+        var nd = d + Math.hypot(surf.cen[3*g]-surf.cen[3*f], surf.cen[3*g+1]-surf.cen[3*f+1], surf.cen[3*g+2]-surf.cen[3*f+2]);
+        if (!cost.has(g) || nd < cost.get(g)) { cost.set(g, nd); prev.set(g, f); heapPush(heap, [nd, g]); }
+      });
+    }
+    if (!found) return false;
+    var route = [to];
+    while (route[route.length-1] !== from) route.push(prev.get(route[route.length-1]));
+    for (var i = route.length-1; i > 0; i--)
+      if (!unfoldFace(model.pos, model.tris, fr.uv, route[i], fr.at.get(route[i]), route[i-1], fr.at.get(route[i-1]))) return false;
+    return true;
+  }
+
+  // A distance strip may leave small holes in the patch around a folded lip.
+  // Include enclosed surface components before flattening it; retain the
+  // largest outside component and any genuinely open borders of the model.
+  function patchFaces(surf, near) {
+    var seen=new Set(near),regions=[];
+    near.forEach(function(f){neighbours(surf,f,function(g){
+      if(seen.has(g))return;
+      var faces=[],queue=[g];seen.add(g);
+      while(queue.length){var h=queue.pop();faces.push(h);neighbours(surf,h,function(j){if(!seen.has(j)){seen.add(j);queue.push(j);}});}
+      regions.push(faces);
+    });});
+    regions.sort(function(a,b){return b.length-a.length;});
+    var result=Array.from(near);
+    for(var i=1;i<regions.length;i++)if(regions[i].length<=near.size)result=result.concat(regions[i]);
+    return result;
+  }
+
+  // A pocket with an undercut can fold even a relaxed chart over itself.
+  // For a disk-shaped patch, a convex boundary and positive neighbour
+  // weights give a single connected chart without overlapping triangles.
+  function convexFrame(model, fr) {
+    var tris=model.tris,pos=model.pos,edges=new Map(),adj=new Map(),rim=new Map(),where=new Map(),fixed=new Set();
+    fr.faces.forEach(function(f,s){for(var k=0;k<3;k++){
+      var a=tris[3*f+k],b=tris[3*f+(k+1)%3],key=ekey(a,b),e=edges.get(key);
+      if(e)e.n++;else edges.set(key,{a:a,b:b,n:1});
+      if(!adj.has(a))adj.set(a,new Set());adj.get(a).add(b);
+      if(!adj.has(b))adj.set(b,new Set());adj.get(b).add(a);
+      where.set(a,[fr.uv[6*s+2*k],fr.uv[6*s+2*k+1]]);
+    }});
+    var valid=true,count=0;
+    edges.forEach(function(e){if(e.n===1){if(rim.has(e.a))valid=false;rim.set(e.a,e.b);count++;}else if(e.n!==2)valid=false;});
+    if(!valid||count<3)return false;
+    var start=rim.keys().next().value,loop=[start],cur=rim.get(start);
+    while(cur!==start&&cur!==undefined&&loop.length<=count){loop.push(cur);cur=rim.get(cur);}
+    if(cur!==start||loop.length!==count)return false;
+    var lengths=[],perimeter=0;
+    for(var i=0;i<loop.length;i++){var a=3*loop[i],b=3*loop[(i+1)%loop.length],l=Math.hypot(pos[a]-pos[b],pos[a+1]-pos[b+1],pos[a+2]-pos[b+2]);lengths.push(l);perimeter+=l;}
+    var lo=[Infinity,Infinity],hi=[-Infinity,-Infinity];
+    where.forEach(function(p){for(var k=0;k<2;k++){lo[k]=Math.min(lo[k],p[k]);hi[k]=Math.max(hi[k],p[k]);}});
+    var rx=Math.max(hi[0]-lo[0],fr.typical),ry=Math.max(hi[1]-lo[1],fr.typical),distance=0;
+    loop.forEach(function(v,i){var angle=2*Math.PI*distance/perimeter;where.set(v,[rx*Math.cos(angle),ry*Math.sin(angle)]);fixed.add(v);distance+=lengths[i];});
+    adj.forEach(function(ns,v){if(!fixed.has(v))where.set(v,[0,0]);});
+    for(var iteration=0;iteration<2000;iteration++){
+      var change=0;
+      adj.forEach(function(ns,v){if(fixed.has(v))return;var x=0,y=0,p=where.get(v);ns.forEach(function(w){var q=where.get(w);x+=q[0];y+=q[1];});x/=ns.size;y/=ns.size;change=Math.max(change,Math.hypot(x-p[0],y-p[1]));where.set(v,[x,y]);});
+      if(change<fr.typical*1e-8)break;
+    }
+    var area2=0,area3=0;
+    fr.faces.forEach(function(f){var a=where.get(tris[3*f]),b=where.get(tris[3*f+1]),c=where.get(tris[3*f+2]);area2+=Math.abs((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]))/2;area3+=faceArea(pos,tris,f);});
+    if(!(area2>0))return false;
+    var scale=Math.sqrt(area3/area2)*model.scale;
+    fr.faces.forEach(function(f,s){for(var k=0;k<3;k++){var p=where.get(tris[3*f+k]);fr.uv[6*s+2*k]=p[0]*scale;fr.uv[6*s+2*k+1]=p[1]*scale;}});
+    return true;
+  }
+
   // fewer breaks first, then a line that kept to its map, then the steadier
   function better(r, than) {
     if (r.breaks !== than.breaks) return r.breaks < than.breaks;
@@ -7097,19 +7319,15 @@ details.more > summary:hover{color:var(--ink)}
   //   an intake's: laid out from its lid; or null) }
   // path: { nodes: [{ p, hin, hout }], closed, fill } — handles are tangent
   //   vectors on the surface, null for none
-  // opts: { reach: how far ink spreads from the line (atlas units), tol:
-  //   how closely the refitted curves follow it, cache: Map for stretches,
-  //   live: only follow the line on to the surface }
+  // opts: { reach: how far ink spreads from the line (atlas units),
+  //   cache: Map for stretches, live: only follow the line on to the surface }
   //
   // Each stretch between nodes is a cubic in a flat map of its own: the
   // surface unfolded from the face it starts on, so straight on the car (see
   // stretch). Followed back on to the surface the stretches make one
-  // continuous line. Every island that line or the fill reaches then gets
-  // the path refitted in its own layout from exact points, so the pieces meet
-  // across every seam: { panel, segs }, or { panel, full } for an island
-  // wholly inside the fill. Where an island's outline does not enclose what
-  // the line does on the surface, its piece also has `faces`, those inside,
-  // and `edge`, the parts of the faces along the line inside it (edgePieces).
+  // continuous line. Exact per-face spans are the shared boundary for the
+  // fill, stroke and selection overlay. Atlas pieces carry filled faces,
+  // clipped polygons and face-clipped stroke runs, without curve refitting.
   function derive(model, path, opts) {
     opts = opts || {};
     var pos = model.pos, tris = model.tris, nodes = path.nodes, n = nodes.length;
@@ -7128,80 +7346,191 @@ details.more > summary:hover{color:var(--ink)}
       var a = at[i], b = at[(i + 1) % n], key = cache ? stretchKey(a, b) : null;
       var part = key ? cache.get(key) : null;
       if (!part) { part = stretch(model, a, b); if (key && part) cache.set(key, part); }
-      if (!part) return null;
+      if (!part || part.tr.complete === false || part.breaks) return null;
       parts.push(part);
     }
     // the whole line, sample by sample: stretch index and parameter too
-    var sp = [], sf = [], sb = [], ss = [], st = [], breaks = 0;
+    var sp = [], sf = [], sb = [], ss = [], st = [], spans = [], breaks = 0;
     parts.forEach(function (p, pi) {
       var tr = p.tr, k0 = pi ? 1 : 0, cnt = tr.faces.length;
       for (var k = k0; k < cnt; k++) {
         sp.push(tr.pts[3 * k], tr.pts[3 * k + 1], tr.pts[3 * k + 2]); sf.push(tr.faces[k]);
-        sb.push(tr.bary[3 * k], tr.bary[3 * k + 1], tr.bary[3 * k + 2]); ss.push(pi); st.push(k / (cnt - 1));
+        sb.push(tr.bary[3 * k], tr.bary[3 * k + 1], tr.bary[3 * k + 2]); ss.push(pi); st.push(tr.t ? tr.t[k] : k / (cnt - 1));
         if (tr.faces[k] < 0) breaks++;
       }
+      (tr.spans || []).forEach(function (span) {
+        spans.push({ face: span.face, a: span.a, b: span.b, t0: span.t0, t1: span.t1, seg: pi });
+      });
     });
     var samples = { pts: Float64Array.from(sp), faces: Int32Array.from(sf), bary: Float64Array.from(sb),
       seg: Int32Array.from(ss), t: Float64Array.from(st), breaks: breaks };
+    if (breaks || !spans.length) return null;
     // while the pointer moves, the line on the surface is all that is wanted
-    if (opts.live) return { samples: samples, band: null, inside: null, islands: [], stretches: parts };
+    if (opts.live) return { samples: samples, spans: spans, band: null, inside: null, islands: [], stretches: parts };
     var line = [], on = [];
     for (i = 0; i < sf.length; i++) if (sf[i] >= 0) { line.push(sp[3 * i], sp[3 * i + 1], sp[3 * i + 2]); on.push(sf[i]); }
 
     // 2. the faces the ink reaches, and for a filled shape those inside it
     var reach3 = (opts.reach || 0) / model.scale, edge = model.edge;
-    var band = strip(model.surf, on, lineField(line, reach3 + 3 * edge), reach3);
-    var sideAt = closed && path.fill ? lineSides(model, samples.pts, samples.faces, closed) : null;
-    var enclosed = sideAt ? insideOf(model, band, sideAt) : null, inside = enclosed ? enclosed.faces : null;
-    var steps = inside ? lineSteps(model, samples) : null;
+    var inkReach = path.stroke ? 10 * reach3 : reach3;
+    var band = strip(model.surf, on, lineField(line, inkReach + 3 * edge), inkReach);
+    var boundary = new Set();
+    spans.forEach(function (span) { boundary.add(span.face); });
+    var fill = closed && path.fill ? canonicalFill(model, spans, boundary) : null;
+    if (closed && path.fill && !fill) return null;
+    var inside = fill ? fill.inside : new Set(), ref = fill ? fill.ref : null;
 
-    // 3. each island reached, with the path refitted in its own layout
+    // 3. each island reached, using the same exact boundary spans
     var reached = new Map();
     band.forEach(function (f) { var p = model.panel[f]; reached.set(p, (reached.get(p) || 0) | 1); });
-    if (inside) inside.forEach(function (f) { var p = model.panel[f]; reached.set(p, (reached.get(p) || 0) | 2); });
-    var corridor = null, islands = [];
+    inside.forEach(function (f) { var p = model.panel[f]; reached.set(p, (reached.get(p) || 0) | 2); });
+    var stroke = path.stroke ? strokeSpans(model, spans, band, inkReach, closed) : new Map(), islands = [];
     reached.forEach(function (how, panel) {
       if (!model.islands.has(panel)) return;
       if (!(how & 1)) { islands.push({ panel: panel, full: true }); return; }
-      if (!corridor) corridor = strip(model.surf, on, lineField(line, 4 * edge), 2 * edge);
       var own = model.islands.get(panel) || [];
-      var fr = flatMap(model.surf, model.uv, own, corridor);
-      var segs = [];
-      for (var s = 0; s < m; s++) {
-        var na = at[s], nb = at[(s + 1) % n];
-        var p0 = frameAt(fr, na.face, na.bary), p3 = frameAt(fr, nb.face, nb.bary);
-        var d0 = na.hout ? faceMap(pos, tris, fr, na.face)(na.hout) : null;
-        var d3 = nb.hin ? faceMap(pos, tris, fr, nb.face)(nb.hin) : null;
-        var ts = [0], qs = [], ex = [model.panel[na.face] === panel ? 1 : 0];
-        for (var k = 0; k < samples.faces.length; k++) {
-          if (samples.seg[k] !== s || samples.faces[k] < 0 || !(samples.t[k] > 0 && samples.t[k] < 1)) continue;
-          var q = frameAt(fr, samples.faces[k], [samples.bary[3 * k], samples.bary[3 * k + 1], samples.bary[3 * k + 2]]);
-          if (!q) continue;
-          ts.push(samples.t[k]); qs.push(q[0], q[1]); ex.push(model.panel[samples.faces[k]] === panel ? 1 : 0);
-        }
-        if (!p0 && qs.length) p0 = [qs[0], qs[1]];
-        if (!p3 && qs.length) p3 = [qs[qs.length - 2], qs[qs.length - 1]];
-        if (!p0 || !p3) { segs = null; break; }
-        ts.push(1); ex.push(model.panel[nb.face] === panel ? 1 : 0);
-        qs = [p0[0], p0[1]].concat(qs, [p3[0], p3[1]]);
-        var pieces = fitStretch(ts, qs, ex, d0, d3 && [d3[0], d3[1]], opts.tol || 0, parts[s].seg.line);
-        for (var pi = 0; pi < pieces.length; pi++) segs.push(pieces[pi]);
-      }
-      if (!segs) return;
-      var entry = { panel: panel, full: false, segs: segs };
-      // a closed shape's outline, refitted here, has to enclose the same faces
-      // the surface says it does; if not, fill those faces instead, and the
-      // faces along the line up to the line, as the outline is stroked
-      if (inside) {
-        var poly = outlinePoly(segs), ref = cutFaces(model, own, band, inside, steps, closed, sideAt, enclosed.side);
-        if (disagrees(model, own, band, inside, poly, ref, steps, samples, enclosed.side)) {
-          entry.faces = own.filter(function (f) { return inside.has(f); });
-          entry.edge = edgePieces(model, ref);
-        }
-      }
+      var entry = { panel: panel, full: false, segs: [], faces: own.filter(function (f) { return inside.has(f); }), edge: [], strokePieces: [] };
+      if (ref) entry.edge = edgePieces(model, ref).filter(function (pc) { return model.panel[pc.face] === panel; });
+      own.forEach(function (f) { if (stroke.has(f)) entry.strokePieces.push({ face: f, runs: stroke.get(f) }); });
       islands.push(entry);
     });
-    return { samples: samples, band: band, inside: inside, islands: islands, stretches: parts };
+    return { samples: samples, spans: spans, band: band, boundary: boundary, inside: inside, fillCuts: ref,
+      islands: islands, stretches: parts };
+  }
+
+  // Exact portions of the canonical boundary, owned by the triangle they
+  // traverse. No nearby 3D segment is projected into an unrelated face.
+  function cutSpans(model, spans, inside, closed, side) {
+    var byFace = new Map(), cut = new Map(), whole = new Map(), pos = model.pos, tris = model.tris;
+    spans.forEach(function (span, k) {
+      var list = byFace.get(span.face);
+      if (!list) byFace.set(span.face, list = []);
+      list.push({ span: span, k: k });
+    });
+    byFace.forEach(function (list, f) {
+      var fr = faceFrame(pos, 3 * tris[3 * f], 3 * tris[3 * f + 1], 3 * tris[3 * f + 2]);
+      if (!fr) return;
+      function point(w) { return [w[1] * fr.T[1][0] + w[2] * fr.T[2][0], w[2] * fr.T[2][1]]; }
+      var pieces = list.map(function (it) { return { k: it.k, t0: 0, t1: 1, a: point(it.span.a), b: point(it.span.b) }; });
+      var chains = chainUp(pieces, closed ? spans.length - 1 : -1, 1e-10 * fr.size);
+      var loops = [], through = [];
+      chains.forEach(function (chain) {
+        var a = chain[0], b = chain[chain.length - 1];
+        if (Math.hypot(a[0] - b[0], a[1] - b[1]) <= 1e-8 * fr.size) loops.push(chain);
+        else through.push(chain);
+      });
+      var polygons = through.length ? fr.cut(through, side === 0) : [];
+      if (!polygons) return;
+      loops.forEach(function (loop) {
+        var ws = loop.slice(0, -1).map(function (p) { var c = p[1] / fr.T[2][1]; return [(p[0] - c * fr.T[2][0]) / fr.T[1][0], c]; });
+        if (ws.length < 3) return;
+        var flat = []; ws.forEach(function (w) { flat.push(w[0], w[1]); });
+        var inner = (polyArea(flat) >= 0) === (side === 0);
+        if (!inner) { if (!through.length) polygons.push([[0, 0], [1, 0], [0, 1]]); ws.hole = true; }
+        polygons.push(ws);
+      });
+      cut.set(f, polygons);
+    });
+    return { cut: cut, whole: whole };
+  }
+
+  // Label untouched regions through their shared edges with exactly cut
+  // faces. This remains well-defined when a small shape crosses every face
+  // of a coarse patch; stroke width, nearest samples, and UV islands do not
+  // participate. Of the two closed surface sides, keep the smaller one.
+  function canonicalFill(model, spans, boundary) {
+    var left = cutSpans(model, spans, null, true, 0), surf = model.surf, tris = model.tris;
+    var byFace = new Map(), region = new Map(), regions = [], invalid = false, area = [0, 0];
+    spans.forEach(function (s) { var list = byFace.get(s.face); if (!list) byFace.set(s.face, list = []); list.push(s); });
+    function includes(parts, w) {
+      var winding = 0;
+      (parts || []).forEach(function (poly) {
+        var flat = []; poly.forEach(function (q) { flat.push(q[0], q[1]); });
+        if (pointInPoly(flat, w[1], w[2])) winding += poly.hole ? -1 : 1;
+      });
+      return winding > 0;
+    }
+    function label(f, g) {
+      var shared = [];
+      for (var c = 0; c < 3; c++) {
+        var v = tris[3 * f + c];
+        if (tris[3 * g] === v || tris[3 * g + 1] === v || tris[3 * g + 2] === v) shared.push(c);
+      }
+      if (shared.length !== 2) return null;
+      var missing = 3 - shared[0] - shared[1], t = 0.3819660112501051, w = [0, 0, 0];
+      w[shared[0]] = 1 - t; w[shared[1]] = t;
+      var on = (byFace.get(f) || []).some(function (s) {
+        return Math.abs(s.a[missing]) < 1e-8 && Math.abs(s.b[missing]) < 1e-8 &&
+          t > Math.min(s.a[shared[1]], s.b[shared[1]]) - 1e-8 && t < Math.max(s.a[shared[1]], s.b[shared[1]]) + 1e-8;
+      });
+      for (var j = 0; j < 3; j++) w[j] = w[j] * (1 - 1e-7) + 1e-7 / 3;
+      var isLeft = includes(left.cut.get(f), w);
+      return on ? !isLeft : isLeft;
+    }
+    function flood(start) {
+      var r = { faces: [], area: 0, left: null }, queue = [start]; region.set(start, r);
+      while (queue.length) {
+        var f = queue.pop(); r.faces.push(f); r.area += faceArea(model.pos, tris, f);
+        neighbours(surf, f, function (g) {
+          if (boundary.has(g)) {
+            var vote = label(g, f);
+            if (vote !== null) { if (r.left !== null && r.left !== vote) invalid = true; r.left = vote; }
+          } else if (!region.has(g)) { region.set(g, r); queue.push(g); }
+        });
+      }
+      if (r.left === null) invalid = true;
+      regions.push(r); area[r.left ? 0 : 1] += r.area;
+    }
+    boundary.forEach(function (f) {
+      var fraction = 0;
+      (left.cut.get(f) || []).forEach(function (poly) {
+        var flat = []; poly.forEach(function (w) { flat.push(w[0], w[1]); });
+        fraction += (poly.hole ? -1 : 1) * 2 * Math.abs(polyArea(flat));
+      });
+      fraction = Math.max(0, Math.min(1, fraction));
+      var fullArea = faceArea(model.pos, tris, f); area[0] += fraction * fullArea; area[1] += (1 - fraction) * fullArea;
+      neighbours(surf, f, function (g) { if (!boundary.has(g) && !region.has(g)) flood(g); });
+    });
+    if (invalid) return null;
+    var side = area[0] <= area[1] ? 0 : 1, inside = new Set();
+    regions.forEach(function (r) { if (r.left === (side === 0)) r.faces.forEach(function (f) { inside.add(f); }); });
+    return { inside: inside, ref: side === 0 ? left : cutSpans(model, spans, inside, true, 1), side: side };
+  }
+
+  function lineSegment(a, b) { return { c: [a[0], a[1], a[0], a[1], b[0], b[1], b[0], b[1]], line: true }; }
+
+  // Stroke the same boundary, face by face. A local unfolding carries only
+  // nearby continuation into the face, so a seam is not a cap and a true
+  // artwork node retains its join. The target face clips the resulting ink;
+  // the edges of fill fragments are never stroked.
+  function strokeSpans(model, spans, band, reach, closed) {
+    var result = new Map(), surf = model.surf, tolerance = Math.max(1e-12, model.edge * model.scale * 1e-7);
+    band.forEach(function (f) {
+      var center = [surf.cen[3 * f], surf.cen[3 * f + 1], surf.cen[3 * f + 2]], radius = reach + surf.size[f] + 2 * model.edge;
+      var allow = strip(surf, [f], function (x, y, z) { return Math.hypot(x - center[0], y - center[1], z - center[2]); }, radius);
+      var fr = flatMap(surf, model.uv, [f], allow, null, model.edge * model.scale), runs = [], run = null, previous = -2;
+      spans.forEach(function (span, k) {
+        var slot = fr.at.get(span.face);
+        if (slot === undefined || fr.dist[slot] > 2 * radius) { run = null; return; }
+        var a = frameAt(fr, span.face, span.a), b = frameAt(fr, span.face, span.b);
+        if (!a || !b) { run = null; return; }
+        if (Math.hypot(a[0] - b[0], a[1] - b[1]) <= tolerance * 1e-3) return;
+        var end = run && run.segs[run.segs.length - 1].c;
+        if (!run || previous + 1 !== k || Math.hypot(end[6] - a[0], end[7] - a[1]) > tolerance) {
+          run = { segs: [], closed: false, first: k, last: k }; runs.push(run);
+        }
+        run.segs.push(lineSegment(a, b)); run.last = k; previous = k;
+      });
+      if (closed && runs.length) {
+        var first = runs[0], last = runs[runs.length - 1], a = first.segs[0].c, b = last.segs[last.segs.length - 1].c;
+        if (first.first === 0 && last.last === spans.length - 1 && Math.hypot(a[0] - b[6], a[1] - b[7]) <= tolerance) {
+          if (first === last) first.closed = true;
+          else { first.segs = last.segs.concat(first.segs); runs.pop(); }
+        }
+      }
+      if (runs.length) result.set(f, runs);
+    });
+    return result;
   }
 
   function outlinePoly(segs) {
@@ -7312,12 +7641,12 @@ details.more > summary:hover{color:var(--ink)}
       // nothing, where the line runs along a side of the face
       var area = polyArea(poly);
       if (!(Math.abs(area) > 0)) return;
-      if (area < 0) {
+      if ((area < 0) !== !!ws.hole) {
         var back = [];
         for (var x = poly.length - 2; x >= 0; x -= 2) back.push(poly[x], poly[x + 1]);
         poly = back;
       }
-      out.push({ face: f, poly: poly });
+      out.push({ face: f, poly: poly, hole: !!ws.hole });
     }
     ref.cut.forEach(function (parts, f) { parts.forEach(function (ws) { put(f, ws); }); });
     ref.whole.forEach(function (isIn, f) { if (isIn) put(f, [[0, 0], [1, 0], [0, 1]]); });
@@ -7555,6 +7884,52 @@ details.more > summary:hover{color:var(--ink)}
     return a / 2;
   }
 
+  // Offset only panel-rim edges. Artwork edges keep their supporting line,
+  // so bleed extends the existing shape beyond the cut without enlarging
+  // its boundary on the model. A subpixel overlap is used for raster stroke
+  // clips only; PDF clips keep internal mesh edges exact.
+  function padRim(poly, rim, grow, overlap) {
+    var n=poly.length/2, lines=[], sign=polyArea(poly)>=0?1:-1;
+    for(var i=0;i<n;i++) {
+      var j=(i+1)%n, ax=poly[2*i], ay=poly[2*i+1], bx=poly[2*j], by=poly[2*j+1];
+      var dx=bx-ax,dy=by-ay,l=Math.hypot(dx,dy),amount=overlap||0;
+      if (!(l>1e-15)) return poly.slice();
+      rim.forEach(function(e){
+        var ex=e[2]-e[0],ey=e[3]-e[1],el=Math.hypot(ex,ey),tol=Math.max(1e-12,el*1e-7);
+        if(el>0 && Math.abs((ax-e[0])*ey-(ay-e[1])*ex)/el<tol &&
+          Math.abs((bx-e[0])*ey-(by-e[1])*ex)/el<tol) amount=Math.max(amount,grow);
+      });
+      lines.push([ax+sign*dy/l*amount,ay-sign*dx/l*amount,dx,dy]);
+    }
+    var out=[];
+    for(var i=0;i<n;i++) {
+      var a=lines[(i+n-1)%n],b=lines[i],den=a[2]*b[3]-a[3]*b[2];
+      if(Math.abs(den)<=1e-12*Math.hypot(a[2],a[3])*Math.hypot(b[2],b[3])) out.push(b[0],b[1]);
+      else {var t=((b[0]-a[0])*b[3]-(b[1]-a[1])*b[2])/den;out.push(a[0]+t*a[2],a[1]+t*a[3]);}
+    }
+    return out;
+  }
+
+  function pieceInk(model, it, grow, overlap) {
+    var uv=model.uv,tris=model.tris,rims=model.inkRims||(model.inkRims=new Map());
+    function triangle(f) {return Array.from(uv.slice(6*f,6*f+6));}
+    function rim(f) {
+      if(rims.has(f)) return rims.get(f);
+      var edges=[],o=6*f;
+      for(var k=0;k<3;k++) {
+        var j=(k+1)%3,fs=model.edgeMap.get(ekey(tris[3*f+k],tris[3*f+j]))||[];
+        if(!fs.some(function(g){return g!==f && model.panel[g]===model.panel[f];}))
+          edges.push([uv[o+2*k],uv[o+2*k+1],uv[o+2*j],uv[o+2*j+1]]);
+      }
+      rims.set(f,edges);return edges;
+    }
+    var fill=[],clips=new Map();
+    (it.faces||[]).forEach(function(f){var p=triangle(f);if(polyArea(p)<0)p=[p[0],p[1],p[4],p[5],p[2],p[3]];fill.push({face:f,poly:padRim(p,rim(f),grow,0)});});
+    (it.edge||[]).forEach(function(pc){fill.push({face:pc.face,poly:padRim(pc.poly,rim(pc.face),grow,0)});});
+    (it.strokePieces||[]).forEach(function(pc){clips.set(pc.face,padRim(triangle(pc.face),rim(pc.face),grow,overlap));});
+    return {fill:fill,clips:clips};
+  }
+
   /* --------------------------------------------------------- island shapes */
   // What an island covers in the atlas, grown by `grow` past its rim: its
   // faces, a band along each open edge and a disc at each rim corner — all
@@ -7674,17 +8049,26 @@ details.more > summary:hover{color:var(--ink)}
   function pdfContent(doc) {
     var out = ['0 J 0 j 10 M', '/OC /Art BDC'];
     doc.groups.forEach(function (g) {
-      var shapes = g.shapes.filter(function (s) { return s.segs.length && ((s.closed && s.fill) || (s.stroke && s.width > 0)); });
+      var shapes = g.shapes.filter(function (s) { return (s.segs.length || s.rings && s.rings.length) && ((s.closed && s.fill) || (s.stroke && s.width > 0)); });
       if (!shapes.length) return;
       out.push('q');
       g.clip.forEach(function (p) { pdfPoly(p, true, out); });
       out.push('W n');
+      // Clip bleed against the complement of every island triangle. Using
+      // one exclusion at a time also handles overlapping/folded atlas faces.
+      (g.exclude || []).forEach(function(p) {
+        out.push(pdfNum(-doc.size) + ' ' + pdfNum(-doc.size) + ' ' + pdfNum(3*doc.size) + ' ' + pdfNum(3*doc.size) + ' re');
+        pdfPoly(p, true, out); out.push('W* n');
+      });
       shapes.forEach(function (s) {
+        if (s.clip) { out.push('q'); s.clip.forEach(function (p) { pdfPoly(p, true, out); }); out.push('W n'); }
         var fill = !!(s.closed && s.fill), stroke = !!(s.stroke && s.width > 0);
         if (fill) out.push(pdfColour(s.fill) + ' k');
         if (stroke) out.push(pdfColour(s.stroke) + ' K', pdfNum(s.width, 4) + ' w');
-        pdfPath(s.segs, s.closed, out);
+        if (s.rings) s.rings.forEach(function (ring) { pdfPoly(ring, true, out); });
+        else pdfPath(s.segs, s.closed, out);
         out.push(fill && stroke ? 'B*' : fill ? 'f*' : 'S');
+        if (s.clip) out.push('Q');
       });
       out.push('Q');
     });
@@ -7753,7 +8137,7 @@ details.more > summary:hover{color:var(--ink)}
     faceMap: faceMap, placeNodes: placeNodes, segments: segments, bezierAt: bezierAt, flatten: flatten,
     fitStretch: fitStretch, derive: derive, layoutFit: layoutFit,
     IDENTITY: IDENTITY, apply: apply, transformSegs: transformSegs, pointInPoly: pointInPoly, polyArea: polyArea,
-    islandRegion: islandRegion, islandOutline: islandOutline,
+    islandRegion: islandRegion, islandOutline: islandOutline, pieceInk: pieceInk,
     pdfNum: pdfNum, pdfContent: pdfContent, pdfDocument: pdfDocument
   };
 }));
@@ -11446,7 +11830,7 @@ details.more > summary:hover{color:var(--ink)}
     S.unwrap.islands.forEach(function (is, i) { islands.set(is.panel, is.faceList); index.set(is.panel, i); });
     V.model = { pos: S.mesh.pos, tris: S.mesh.tris, edgeMap: S.edgeMap, uv: S.unwrap.uv, panel: S.mesh.panel,
       islands: islands, index: index, locate: vecLocator().closest, scale: S.unwrap.scale, edge: typicalEdge(),
-      projected: S.unwrap.projected };
+      projected: S.unwrap.projected, flatten: PC.flattenIsland };
     return V.model;
   }
 
@@ -11652,11 +12036,28 @@ details.more > summary:hover{color:var(--ink)}
       });
     });
     var grow = texBleed();
+    var padCanvas = document.createElement('canvas');
+    padCanvas.width = padCanvas.height = size;
+    var pad = padCanvas.getContext('2d');
+    var surfaceMask = new Path2D();
+    S.unwrap.islands.forEach(function(is, i) { surfaceMask.addPath(regionPath(i, 0)); });
     byIsland.forEach(function (list, i) {
       ctx.save();
+      // Keep padding outside the actual island. Extrapolated polygons on
+      // a narrow or concave panel must never paint back into its surface.
+      if (grow > 0) {
+        pad.clearRect(0, 0, size, size);
+        pad.save(); pad.setTransform(size, 0, 0, -size, 0, size);
+        pad.clip(regionPath(i, grow));
+        list.forEach(function (e) { drawPiece(pad, e.path, e.it, e.d.width, grow, 0.5/size); });
+        pad.globalCompositeOperation = 'destination-out';
+        pad.fill(surfaceMask);
+        pad.restore();
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(padCanvas, 0, 0);
+      }
       ctx.setTransform(size, 0, 0, -size, 0, size);
-      ctx.clip(regionPath(i, grow));
-      list.forEach(function (e) { drawPiece(ctx, e.path, e.it, e.d.width); });
+      ctx.clip(regionPath(i, 0));
+      list.forEach(function (e) { drawPiece(ctx, e.path, e.it, e.d.width, 0, 0.5/size); });
       ctx.restore();
     });
   }
@@ -11694,21 +12095,25 @@ details.more > summary:hover{color:var(--ink)}
   // One path's piece in one island: a whole island inside a filled shape,
   // or the path laid into that island's layout. Filled face by face, it is
   // filled up to the line through the faces along it (it.edge).
-  function drawPiece(ctx, path, it, width) {
+  function drawPiece(ctx, path, it, width, grow, overlap) {
     var fill = path.closed && path.fill ? VC.cmykHex(path.fill) : null;
     if (it.full) {
       if (fill) { ctx.fillStyle = fill; ctx.fillRect(-1, -1, 3, 3); }
       return;
     }
-    var p = piecePath(it.segs, path.closed);
+    var ink = VC.pieceInk(vecModel(), it, grow || 0, overlap || 0);
     if (fill) {
       ctx.fillStyle = fill;
-      if (it.faces) ctx.fill(facesPath(it.faces, it.edge)); else ctx.fill(p, 'evenodd');
+      ctx.fill(facesPath([], ink.fill));
     }
     if (path.stroke && width > 0) {
       ctx.strokeStyle = VC.cmykHex(path.stroke);
       ctx.lineWidth = width; ctx.lineJoin = 'miter'; ctx.miterLimit = 10; ctx.lineCap = 'butt';
-      ctx.stroke(p);
+      (it.strokePieces || []).forEach(function (piece) {
+        ctx.save(); ctx.clip(facesPath([], [{poly:ink.clips.get(piece.face)}]));
+        piece.runs.forEach(function (run) { ctx.stroke(piecePath(run.segs, run.closed)); });
+        ctx.restore();
+      });
     }
   }
 
@@ -11997,7 +12402,10 @@ details.more > summary:hover{color:var(--ink)}
     else if (g.kind === 'close') { if (g.dragged) V.draft.nodes[0] = g.node; finishDraft(true); }
     else if (g.kind === 'finish') finishDraft(false);
     else if (g.kind === 'xform') finishTransform(g);
-    else if (g.dragged) { V.editing = null; V.derived.delete(g.path); commitArt(); }
+    else if (g.dragged) {
+      V.editing = null; V.derived.delete(g.path); commitArt();
+      if (!derived(g.path)) toast(shapeName(g.path) + ' could not follow the surface there — Undo puts it back.', true);
+    }
     scheduleVec();
   }
 
@@ -12404,7 +12812,7 @@ details.more > summary:hover{color:var(--ink)}
       vecSnapshot();
       p[which] = cmyk ? cmyk.slice() : null;
       // how far the ink reaches decides which panels a path touches
-      if (which === 'stroke') V.derived.delete(p);
+      V.derived.delete(p);
       commitArt();
     } else if (V.draft) draftChanged();
     else { refreshVecUI(); scheduleVec(); }
@@ -12684,6 +13092,15 @@ details.more > summary:hover{color:var(--ink)}
     var T = S.mesh.tris, P = S.mesh.pos, f = hit.tri, c = [], uv = S.unwrap.uv, o = 6 * f;
     for (i = 0; i < 3; i++) c.push(P.slice(3 * T[3 * f + i], 3 * T[3 * f + i] + 3));
     var w = PC.closestOnTri(hit.p, c[0], c[1], c[2]).bary;
+    if (d.fillCuts) {
+      var parts = d.fillCuts.cut.get(f) || [];
+      var winding = 0;
+      parts.forEach(function (poly) {
+        var points = []; poly.forEach(function (q) { points.push(q[0], q[1]); });
+        if (VC.pointInPoly(points, w[1], w[2])) winding += poly.hole ? -1 : 1;
+      });
+      return winding > 0;
+    }
     var x = w[0] * uv[o] + w[1] * uv[o + 2] + w[2] * uv[o + 4], y = w[0] * uv[o + 1] + w[1] * uv[o + 3] + w[2] * uv[o + 5];
     // filled face by face: in the face's part inside the line
     if (it.faces) return (it.edge || []).some(function (pc) { return pc.face === f && VC.pointInPoly(pc.poly, x, y); });
@@ -12708,21 +13125,39 @@ details.more > summary:hover{color:var(--ink)}
         var i = model.index.get(it.panel), g;
         if (i == null) return;
         if (!(g = groups.get(i))) {
-          groups.set(i, g = { clip: VC.islandRegion(S.unwrap.uv, S.mesh.tris, S.unwrap.islands[i].faceList, grow, S.unwrap.islands[i].coverUV)
-            .map(function (poly) { return poly.map(function (v) { return v * k; }); }), shapes: [] });
+          var island = S.unwrap.islands[i];
+          var exact = VC.islandRegion(S.unwrap.uv, S.mesh.tris, island.faceList, 0, island.coverUV)
+            .map(function (poly) { return poly.map(function (v) { return v * k; }); });
+          groups.set(i, g = { clip: exact, shapes: [] });
+          if (grow > 0) g.bleed = {
+            clip: VC.islandRegion(S.unwrap.uv, S.mesh.tris, island.faceList, grow, island.coverUV)
+              .map(function(poly){return poly.map(function(v){return v*k;});}),
+            exclude: exact, shapes: []
+          };
         }
-        var fill = path.closed && path.fill ? path.fill : null;
-        if (it.full) {
-          if (fill) g.shapes.push({ segs: VC.transformSegs(squareSegs(), scale), closed: true, fill: fill, stroke: null, width: 0 });
-          return;
+        function addInk(target, amount) {
+          var fill = path.closed && path.fill ? path.fill : null;
+          if (it.full) {
+            if (fill) target.shapes.push({ segs: VC.transformSegs(squareSegs(), scale), closed: true, fill: fill, stroke: null, width: 0 });
+            return;
+          }
+          var ink=VC.pieceInk(model,it,amount,0);
+          if (fill && it.faces) {
+            var byFace = new Map();
+            ink.fill.forEach(function (pc) { var rings = byFace.get(pc.face); if (!rings) byFace.set(pc.face, rings = []); rings.push(pc.poly.map(function (v) { return v * k; })); });
+            byFace.forEach(function (rings) { target.shapes.push({ segs: [], rings: rings, closed: true, fill: fill, stroke: null, width: 0 }); });
+            fill = null;
+          }
+          if (path.stroke && d.width > 0) (it.strokePieces || []).forEach(function (piece) {
+            var clip = [ink.clips.get(piece.face).map(function(v){return v*k;})];
+            piece.runs.forEach(function (run) {
+              target.shapes.push({ segs: VC.transformSegs(run.segs, scale), closed: run.closed, fill: null,
+                stroke: path.stroke, width: d.width * k, clip: clip });
+            });
+          });
         }
-        if (fill && it.faces) {
-          it.faces.forEach(function (f) { g.shapes.push({ segs: VC.transformSegs(triangleSegs(f), scale), closed: true, fill: fill, stroke: null, width: 0 }); });
-          // and the faces along the line, up to it
-          (it.edge || []).forEach(function (pc) { g.shapes.push({ segs: VC.transformSegs(polySegs(pc.poly), scale), closed: true, fill: fill, stroke: null, width: 0 }); });
-          fill = null;
-        }
-        g.shapes.push({ segs: VC.transformSegs(it.segs, scale), closed: path.closed, fill: fill, stroke: path.stroke, width: d.width * k });
+        if (g.bleed) addInk(g.bleed, grow);
+        addInk(g, 0);
       });
     });
     var cut = null;
@@ -12735,7 +13170,7 @@ details.more > summary:hover{color:var(--ink)}
         });
       });
     }
-    return { size: k, unit: unit, groups: Array.from(groups.values()), cut: cut };
+    return { size: k, unit: unit, groups: Array.from(groups.values()).reduce(function(all,g){if(g.bleed)all.push(g.bleed);all.push(g);return all;}, []), cut: cut };
   }
   function squareSegs() {
     var c = [[-1, -1], [2, -1], [2, 2], [-1, 2], [-1, -1]], out = [];
