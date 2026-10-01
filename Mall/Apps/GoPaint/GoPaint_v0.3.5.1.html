@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painter - GO v0.3.5.0</title>
+    <title>Painter - GO v0.3.5.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <!-- Layered PDF import / rasterisation (pdf.js) -->
@@ -526,7 +526,7 @@
     <header class="h-12 border-b border-gray-700 flex items-center px-4 justify-between shrink-0 z-20" style="background-color:#252525;">
         <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-black" style="background-color:#00D2FF;">PG</div>
-            <h1 class="font-bold tracking-wide" style="color:#00D2FF;">Painter GO <span class="text-xs font-normal ml-2" style="color:#00D2FF;">v0.3.5.0</span><span class="version-desc text-xs font-normal" style="color:#00D2FF;"> • Wet Oils, Re-wet &amp; Swirl</span></h1>
+            <h1 class="font-bold tracking-wide" style="color:#00D2FF;">Painter GO <span class="text-xs font-normal ml-2" style="color:#00D2FF;">v0.3.5.1</span><span class="version-desc text-xs font-normal" style="color:#00D2FF;"> • Brush Load</span></h1>
         </div>
         <div class="file-actions text-sm">
 
@@ -899,20 +899,20 @@
                 </div>
 
                 <div class="border-t border-gray-700 pt-3" id="impastoTaperBlock">
-                    <label class="text-xs text-gray-300 block mb-1" title="Tapers paint relief from full at the start of a stroke down to this fraction at the end — the 'loaded brush running out of paint' look. Applies to the bristle brush and (when enabled) Auto Paint.">Paint Taper <span class="text-gray-500">(start → end)</span></label>
+                    <label class="text-xs text-gray-300 block mb-1" title="How much paint the bristle brush carries (Paint Thickness 50% and up). A loaded brush leaves its heaviest paint where it touches down, lays less the further it travels, and ends in dry-brush streaks. On Medium the paint lasts about 8 brush widths of travel at 50% thickness, up to 20 at 100%; Heavy goes twice as far, Light half as far. With Wet Paint on, dragging through paint that is still wet reloads the brush and takes on its colour. Endless never runs out.">Brush Load <span class="text-gray-500">(paint on the brush)</span></label>
                     <div class="flex gap-1" id="taperEndGroup">
-                        <button data-taper="1" class="taper-btn flex-1 text-xs py-1.5 rounded-full transition-all">Off</button>
-                        <button data-taper="0.75" class="taper-btn flex-1 text-xs py-1.5 rounded-full transition-all">75%</button>
-                        <button data-taper="0.5" class="taper-btn flex-1 text-xs py-1.5 rounded-full transition-all">50%</button>
-                        <button data-taper="0.25" class="taper-btn flex-1 text-xs py-1.5 rounded-full transition-all">25%</button>
+                        <button data-taper="1" class="taper-btn flex-1 text-xs py-1.5 rounded-full transition-all">Endless</button>
+                        <button data-taper="0.75" class="taper-btn flex-1 text-xs py-1.5 rounded-full transition-all">Heavy</button>
+                        <button data-taper="0.5" class="taper-btn flex-1 text-xs py-1.5 rounded-full transition-all">Medium</button>
+                        <button data-taper="0.25" class="taper-btn flex-1 text-xs py-1.5 rounded-full transition-all">Light</button>
                     </div>
-                    <div class="flex gap-1 mt-1" id="taperCurveGroup">
+                    <label class="flex items-center gap-2 mt-2 text-xs text-gray-300 cursor-pointer" title="Auto Paint: fade each dab's relief along its own length, down to 75% (Heavy), 50% (Medium) or 25% (Light) of its height. Adds work during Auto Paint — default off on mobile.">
+                        <input type="checkbox" id="autoTaperToggle" class="accent-cyan-400"> AutoPaint taper (per dab)
+                    </label>
+                    <div class="flex gap-1 mt-1" id="taperCurveGroup" title="Shape of the Auto Paint per-dab fade.">
                         <button data-curve="linear" class="taper-curve-btn flex-1 text-xs py-1.5 rounded-full transition-all">Linear</button>
                         <button data-curve="smooth" class="taper-curve-btn flex-1 text-xs py-1.5 rounded-full transition-all">Smooth</button>
                     </div>
-                    <label class="flex items-center gap-2 mt-2 text-xs text-gray-300 cursor-pointer" title="Taper each Auto Paint dab along its own axis. Adds work during Auto Paint — default off on mobile.">
-                        <input type="checkbox" id="autoTaperToggle" class="accent-cyan-400"> AutoPaint taper (per dab)
-                    </label>
                 </div>
 
                 <!-- Airbrush-only controls -->
@@ -1467,8 +1467,8 @@
                 wetDrying: 50,               // 0 = fast .. 100 = slow evaporation
                 wetLift: 40,                 // 0 = off .. 100 = strong: how much dried paint water re-wets
                 wetFlow: 'auto',             // 'auto' | 'gentle' (Pigment) | 'swirl' (fluid solver)
-                taperEnd: 0.5,               // stroke-end height fraction (1 = taper off)
-                taperCurve: 'linear',        // 'linear' | 'smooth'
+                taperEnd: 0.5,               // brush load: 1 = endless, 0.75 heavy, 0.5 medium, 0.25 light (also Auto Paint's dab-end height fraction)
+                taperCurve: 'linear',        // Auto Paint dab fade: 'linear' | 'smooth'
                 autoTaper: !impastoIsMobile() // per-dab taper in Auto Paint (default off on mobile)
             };
 
@@ -3088,6 +3088,8 @@
                 // the layer that is still wet lands on top of it, so dry that first.
                 wetStrokeLayer = (wetWanted() && wetBegin(layer)) ? layer : null;
                 if (!wetStrokeLayer && wet.layer === layer) wetFlush();
+                // Paint that is wet right now can reload a brush that runs low on this stroke.
+                if (impastoStroke && wetStrokeLayer && impastoStroke.reach > 0) impastoStroke.wetMap = wetLoadMap();
             };
 
             p.mouseDragged = function() {
@@ -3591,9 +3593,10 @@
                 ctx.lineCap = 'round';
                 ctx.lineWidth = brush.bristleRadius || 2;
 
-                if (impastoStroke) impastoRecordCenter(brush.x, brush.y);   // taper centerline
+                if (impastoStroke) impastoRecordCenter(brush.x, brush.y);   // centreline + brush load
 
-                let baseRGB = hexToRgb(brush.color);
+                // A brush reloaded from wet paint carries that paint's colour too.
+                let baseRGB = (impastoStroke && impastoStroke.carry) || hexToRgb(brush.color);
                 let bMinX = Infinity, bMaxX = -Infinity, bMinY = Infinity, bMaxY = -Infinity;
 
                 // Move bristles toward target with damping (Euler interp)
@@ -3642,6 +3645,11 @@
                 //   Wet end (blend=1) => dryness 0 (continuous lines)
                 //   Dry end (blend=0) => dryness 1 (mostly dots)
                 const manualDryness = 1 - brush.blend;
+                // Paint left on the brush (1 = fully loaded; see BRUSH_LOAD), and
+                // the colour under it in case it reloads from wet paint.
+                const load = impastoStroke ? impastoStroke.load : 1;
+                const reloads = !!(impastoStroke && impastoStroke.wetMap);
+                let pickR = 0, pickG = 0, pickB = 0, pickN = 0;
 
                 for (let b of brush.bristles) {
                     let bristleR = baseRGB.r;
@@ -3663,8 +3671,21 @@
                                 bristleR = bristleR * (1 - colorBlend) + cR * colorBlend;
                                 bristleG = bristleG * (1 - colorBlend) + cG * colorBlend;
                                 bristleB = bristleB * (1 - colorBlend) + cB * colorBlend;
+                                // Bare paper is not paint (it never lifts either).
+                                if (reloads && !(cA === 255 && cR === WET_PAPER[0] && cG === WET_PAPER[1] && cB === WET_PAPER[2])) {
+                                    pickR += cR; pickG += cG; pickB += cB; pickN++;
+                                }
                             }
                         }
+                    }
+
+                    // A brush running out of paint goes dry bristle by bristle, leaving
+                    // fewer and fewer streaks; each one breaks up just before it ends.
+                    let dryness = manualDryness;
+                    if (load < 1) {
+                        if (load <= b.dryAt) continue;
+                        const band = b.dryAt * BRUSH_LOAD.streakEnd;
+                        if (load < b.dryAt + band) dryness = Math.max(dryness, 1 - (load - b.dryAt) / band);
                     }
 
                     ctx.strokeStyle = `rgba(${bristleR}, ${bristleG}, ${bristleB}, ${brush.alpha})`;
@@ -3674,11 +3695,15 @@
                         ctx.lineTo(ex, ey);
                         ctx.stroke();
                         impastoStampSegment(sx, sy, ex, ey);   // no-op unless an impasto stroke is active
-                    }, b.px, b.py, b.x, b.y, manualDryness);
+                    }, b.px, b.py, b.x, b.y, dryness);
                 }
 
                 // Keep the live relief preview confined to the painted footprint.
                 if (impastoStroke) impastoClipPreviewToMask();
+                if (reloads) {
+                    impastoReload(Math.hypot(brush.x - brush.px, brush.y - brush.py),
+                                  pickN ? { r: pickR / pickN, g: pickG / pickN, b: pickB / pickN } : null);
+                }
 
                 if (!drawCtx && brush.wetnessVal > 75 && bMinX !== Infinity) {
                     applyWatercolorBleed(pg, {
@@ -3995,7 +4020,8 @@
                     brush.bristles.push({
                         ox: Math.cos(angle) * radius,
                         oy: Math.sin(angle) * radius,
-                        x: 0, y: 0, px: 0, py: 0
+                        x: 0, y: 0, px: 0, py: 0,
+                        dryAt: 0.03 + 0.45 * Math.pow(Math.random(), 2)   // brush load at which this bristle has run dry
                     });
                 }
             }
@@ -4235,7 +4261,7 @@
             })();
             let impastoMaskPg = null;     // ephemeral: this stroke's coverage footprint
             let impastoPreviewPg = null;  // ephemeral: live directional-ridge preview
-            let impastoStroke = null;     // { layer, amp, bbox, lineW } for the active manual stroke
+            let impastoStroke = null;     // { layer, amp, bbox, lineW, brush load } for the active manual stroke
 
             function clamp255(v) { return v < 0 ? 0 : (v > 255 ? 255 : v); }
 
@@ -4417,14 +4443,68 @@
                 return 2 + 2 * frac;
             }
 
-            // ---- thickness taper (loaded-brush fade along the stroke) ----
+            // ---- brush load (how far the paint on the brush goes) ----
+            // A loaded bristle brush lays its paint down as it travels: most where
+            // it touches down (a short "blob" term), then less and less (a long
+            // "body" term), until its bristles run dry one by one. Distances are
+            // absolute, in brush widths, so a short dab stays fat and a long drag
+            // runs out. Dragging through paint that was already wet when the stroke
+            // began (wet simulation) reloads the brush. settings.taperEnd picks the
+            // load: 1 = endless, 0.75 heavy, 0.5 medium, 0.25 light. Auto Paint keeps
+            // its own per-dab fade (impastoTaperMult, below).
+            const BRUSH_LOAD = {
+                widthsThin: 8,     // travel, in brush widths, that uses the paint up at 50% thickness (medium load)
+                widthsThick: 20,   // ... and at 100% thickness
+                floor: 0.2,        // relief height left once the load is gone
+                blobWidths: 0.5,   // the touch-down blob fades over this many brush widths
+                streakEnd: 0.25,   // a bristle breaks into dashes over this fraction of its own run-dry load (bristle.dryAt)
+                pickWidths: 1      // travel through wet paint, in brush widths, that reloads most of the brush
+            };
+            // The load a stroke starts with. reach = px of travel that leaves ~5% of
+            // the paint (0 = endless); blob = extra relief height at touch-down.
+            function brushLoadSetup() {
+                const e = (settings.taperEnd != null) ? settings.taperEnd : 1;
+                if (!(e < 1)) return { reach: 0, blob: 0, blobLen: 1 };
+                const width = 2 * (brush.size || 20);
+                const t = Math.max(0, Math.min(1, ((brush.thicknessPercent || 50) - 50) / 50));
+                const widths = BRUSH_LOAD.widthsThin + (BRUSH_LOAD.widthsThick - BRUSH_LOAD.widthsThin) * t;
+                return {
+                    reach: width * widths * Math.pow(4, (e - 0.5) * 2),   // heavy x2, medium x1, light x0.5
+                    blob: 0.2 + 1.2 * e,
+                    blobLen: width * BRUSH_LOAD.blobWidths
+                };
+            }
+            // Relief height multiplier for the stroke's load and distance travelled so far.
+            function impastoLoadHeight(st) {
+                if (!(st.reach > 0)) return 1;
+                return BRUSH_LOAD.floor + (1 - BRUSH_LOAD.floor) * st.load + st.blob * Math.exp(-st.clen / st.blobLen);
+            }
+            // Dragging through wet paint puts paint back on the brush, and its colour
+            // with it. d = px travelled, picked = mean colour under the bristles.
+            function impastoReload(d, picked) {
+                const st = impastoStroke;
+                if (!st || !st.wetMap || !(st.reach > 0) || !(d > 0) || st.load > 0.98) return;
+                const r = brush.size || 20;
+                const avail = wetLoadMapAt(st.wetMap, brush.x, brush.y, r, 0);
+                if (avail < 0.02) return;
+                const f = 1 - Math.exp(-d / (2 * r * BRUSH_LOAD.pickWidths));
+                const gain = (1 - st.load) * Math.min(1, avail) * f;
+                wetLoadMapAt(st.wetMap, brush.x, brush.y, r, 0.5 * f * (1 - st.load));   // the brush took that paint
+                if (picked) {
+                    const c = st.carry || hexToRgb(brush.color), k = gain / (st.load + gain);
+                    st.carry = { r: c.r + (picked.r - c.r) * k, g: c.g + (picked.g - c.g) * k, b: c.b + (picked.b - c.b) * k };
+                }
+                st.load += gain;
+            }
+
+            // ---- Auto Paint thickness taper (per-dab fade along the dab) ----
             function impastoIsMobile() {
                 try {
                     if (navigator.maxTouchPoints > 1 && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
                     return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
                 } catch (e) { return false; }
             }
-            // Height multiplier vs. progress along the stroke (0 start -> 1 end).
+            // Height multiplier vs. progress along an Auto Paint dab (0 start -> 1 end).
             function impastoTaperMult(progress) {
                 const end = (typeof settings !== 'undefined' && settings.taperEnd != null) ? settings.taperEnd : 1;
                 if (end >= 1) return 1;
@@ -4433,40 +4513,69 @@
                 return 1 - (1 - end) * t;
             }
 
-            // MANUAL taper: rasterize the recorded centerline path into a Float32
-            // field over the bake region (discs along the path, later points win),
-            // giving each pixel the taper multiplier for its position along the drag.
-            function impastoBuildTaperFieldManual(centers, total, x0, y0, w, h, radius) {
-                if (!(settings.taperEnd < 1) || !centers || centers.length < 2 || !(total > 0)) return null;
-                const field = new Float32Array(w * h).fill(1);
-                const r = Math.max(1, Math.round(radius));
+            // MANUAL load field: the recorded centreline rasterised into a Float32
+            // field over the bake region. Each pixel takes the height multiplier of
+            // the nearest point of the drag (interpolated along its segment); where
+            // the drag crosses itself, the later pass wins.
+            function impastoBuildLoadField(centers, x0, y0, w, h, radius) {
+                if (!centers || centers.length < 2) return null;
+                // Thin the path out: the multiplier changes slowly and the band is wide.
+                const minStep = Math.max(1, radius * 0.2);
+                const pts = [centers[0]];
                 for (let k = 1; k < centers.length; k++) {
-                    const a = centers[k - 1], b = centers[k];
-                    const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y)));
-                    for (let s = 0; s <= steps; s++) {
-                        const f = s / steps;
-                        const px = a.x + (b.x - a.x) * f, py = a.y + (b.y - a.y) * f;
-                        const mult = impastoTaperMult((a.len + (b.len - a.len) * f) / total);
-                        const cx = Math.round(px - x0), cy = Math.round(py - y0);
-                        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
-                            if (dx * dx + dy * dy > r * r) continue;
-                            const xi = cx + dx, yi = cy + dy;
-                            if (xi < 0 || yi < 0 || xi >= w || yi >= h) continue;
-                            field[yi * w + xi] = mult;
+                    if (k === centers.length - 1 || centers[k].len - pts[pts.length - 1].len >= minStep) pts.push(centers[k]);
+                }
+                let mean = 0;
+                for (const c of pts) mean += c.m;
+                mean /= pts.length;
+                const field = new Float32Array(w * h).fill(mean);    // paint a lagging bristle left outside the band
+                const best = new Float32Array(w * h).fill(Infinity);  // squared distance to the winning point
+                const bestLen = new Float32Array(w * h);              // ... and how far along the drag it is
+                const r2 = radius * radius;
+                for (let k = 1; k < pts.length; k++) {
+                    const a = pts[k - 1], b = pts[k];
+                    const dx = b.x - a.x, dy = b.y - a.y, l2 = (dx * dx + dy * dy) || 1e-6;
+                    const xa = Math.max(0, Math.floor(Math.min(a.x, b.x) - radius - x0));
+                    const xb = Math.min(w - 1, Math.ceil(Math.max(a.x, b.x) + radius - x0));
+                    const ya = Math.max(0, Math.floor(Math.min(a.y, b.y) - radius - y0));
+                    const yb = Math.min(h - 1, Math.ceil(Math.max(a.y, b.y) + radius - y0));
+                    for (let yi = ya; yi <= yb; yi++) {
+                        const py = yi + y0 + 0.5 - a.y;
+                        for (let xi = xa; xi <= xb; xi++) {
+                            const px = xi + x0 + 0.5 - a.x;
+                            let t = (px * dx + py * dy) / l2;
+                            t = t < 0 ? 0 : (t > 1 ? 1 : t);
+                            const ex = px - dx * t, ey = py - dy * t, d2 = ex * ex + ey * ey;
+                            if (d2 > r2) continue;
+                            const i = yi * w + xi, len = a.len + (b.len - a.len) * t;
+                            if (d2 < best[i] || len - bestLen[i] > 2 * radius) {
+                                best[i] = d2;
+                                bestLen[i] = len;
+                                field[i] = a.m + (b.m - a.m) * t;
+                            }
                         }
                     }
                 }
                 return field;
             }
+            // Record the brush centre and use up the load for the distance travelled.
             function impastoRecordCenter(x, y) {
-                if (!impastoStroke || !impastoStroke.centers) return;
-                const cs = impastoStroke.centers;
-                if (cs.length === 0) { cs.push({ x, y, len: 0 }); impastoStroke._lcx = x; impastoStroke._lcy = y; impastoStroke.clen = 0; return; }
-                const d = Math.hypot(x - impastoStroke._lcx, y - impastoStroke._lcy);
+                const st = impastoStroke;
+                if (!st || !st.centers) return;
+                const cs = st.centers;
+                if (cs.length === 0) {
+                    st._lcx = x; st._lcy = y; st.clen = 0;
+                    st.m = impastoLoadHeight(st);
+                    cs.push({ x, y, len: 0, m: st.m });
+                    return;
+                }
+                const d = Math.hypot(x - st._lcx, y - st._lcy);
                 if (d < 0.5) return;
-                impastoStroke.clen += d;
-                cs.push({ x, y, len: impastoStroke.clen });
-                impastoStroke._lcx = x; impastoStroke._lcy = y;
+                st.clen += d;
+                if (st.reach > 0) st.load *= Math.exp(-3 * d / st.reach);
+                st.m = impastoLoadHeight(st);
+                cs.push({ x, y, len: st.clen, m: st.m });
+                st._lcx = x; st._lcy = y;
             }
 
             // AutoPaint per-dab taper: a canvas-sized Float32 field, filled with each
@@ -4631,14 +4740,21 @@
                 mctx.lineCap = 'round'; mctx.lineJoin = 'round';
                 const pctx = impastoPreviewPg.drawingContext;
                 pctx.lineCap = 'round'; pctx.lineJoin = 'round';
+                const lineW = Math.max(1, brush.bristleRadius || 2);  // match drawManualStroke's bristle width
+                const bl = brushLoadSetup();
                 impastoStroke = {
                     layer, amp: brush.impastoAmplitude,
                     minX: 1e9, minY: 1e9, maxX: -1e9, maxY: -1e9,
-                    lineW: Math.max(1, brush.bristleRadius || 2),   // match drawManualStroke's bristle width
-                    centers: [], clen: 0,                            // centerline path for thickness taper
-                    bandR: Math.max(2, (brush.size || 20) * 0.6),    // taper-field disc radius (paint band)
+                    lineW,
+                    centers: [], clen: 0,                            // centreline path, with the load's height multiplier
+                    bandR: (brush.size || 20) + lineW / 2 + 2,       // load-field band: the bristles' footprint
+                    load: 1, reach: bl.reach, blob: bl.blob, blobLen: bl.blobLen,   // paint on the brush (see BRUSH_LOAD)
+                    m: 1,                                            // current height multiplier
+                    carry: null,                                     // colour taken on by reloading from wet paint
+                    wetMap: null,                                    // wet paint it can reload from (set by the caller)
                     L: reliefLightForLayer(layer)                    // preview ridge lit side (layer space)
                 };
+                impastoRecordCenter(brush.x, brush.y);               // the touch-down point
             }
             // Cheap directional ridge for live feedback: a white highlight offset to
             // the lit side and a dark line to the shadow side, following the segment.
@@ -4648,13 +4764,14 @@
                 const pxn = -dy, pyn = dx;                       // unit perpendicular
                 const L = impastoStroke.L || IMPASTO.L;
                 const s = (pxn * L.x + pyn * L.y) >= 0 ? 1 : -1;  // lit side
-                const off = Math.max(0.5, Math.min(3, impastoStroke.amp * 0.45));
+                const k = Math.min(1.5, impastoStroke.m);         // the ridge follows the brush load
+                const off = Math.max(0.5, Math.min(3, impastoStroke.amp * 0.45 * k));
                 const lw = Math.max(1, impastoStroke.lineW * 0.6);
                 const ctx = impastoPreviewPg.drawingContext;
                 ctx.lineWidth = lw;
-                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.strokeStyle = 'rgba(255,255,255,' + Math.min(0.7, 0.5 * k) + ')';
                 ctx.beginPath(); ctx.moveTo(sx + pxn * off * s, sy + pyn * off * s); ctx.lineTo(ex + pxn * off * s, ey + pyn * off * s); ctx.stroke();
-                ctx.strokeStyle = 'rgba(0,0,0,0.42)';
+                ctx.strokeStyle = 'rgba(0,0,0,' + Math.min(0.6, 0.42 * k) + ')';
                 ctx.beginPath(); ctx.moveTo(sx - pxn * off * s, sy - pyn * off * s); ctx.lineTo(ex - pxn * off * s, ey - pyn * off * s); ctx.stroke();
             }
             // Stamp this stroke's footprint into the mask + extend its bbox + preview.
@@ -4701,8 +4818,9 @@
                         const maskA = new Uint8Array(w * h);
                         for (let i = 0; i < w * h; i++) maskA[i] = mimg.data[i * 4 + 3];
                         const height = impastoBuildHeightFromSilhouette(maskA, w, h, amp, impastoBevelWidth(amp));
-                        const taper = impastoBuildTaperFieldManual(impastoStroke.centers, impastoStroke.clen, x0, y0, w, h, impastoStroke.bandR);
-                        if (taper) for (let i = 0; i < w * h; i++) height[i] *= taper[i];
+                        const loadField = impastoStroke.reach > 0
+                            ? impastoBuildLoadField(impastoStroke.centers, x0, y0, w, h, impastoStroke.bandR) : null;
+                        if (loadField) for (let i = 0; i < w * h; i++) height[i] *= loadField[i];
                         if (reliefLiveMode()) {
                             reliefAddHeight(layer, x0, y0, w, h, height, amp, true);
                         } else {
@@ -5354,23 +5472,27 @@ void main() {
     rgb = clamp(rgb, 0.0, 1.0);
     o = uStraight ? vec4(rgb, c.a) : vec4(rgb * c.a, c.a);
 }`;
-            // Max water / pigment per WET_BLOCK x WET_BLOCK block (dryness check).
+            // Max water / pigment per WET_BLOCK x WET_BLOCK block (dryness check), and
+            // the block's mean wet oil paint that a brush could pick up (brush load).
             const WET_FS_REDUCE = WET_COMMON + `
 uniform sampler2D uPig, uFlow;
 out vec4 o;
 void main() {
     ivec2 b = ivec2(gl_FragCoord.xy) * ${WET_BLOCK};
-    float mw = 0.0, mm = 0.0;
+    float mw = 0.0, mm = 0.0, pick = 0.0;
     for (int j = 0; j < ${WET_BLOCK}; j++) {
         for (int i = 0; i < ${WET_BLOCK}; i++) {
             ivec2 q = b + ivec2(i, j);
             if (q.x < uSize.x && q.y < uSize.y) {
-                mw = max(mw, texelFetch(uFlow, q, 0).r);
-                mm = max(mm, texelFetch(uPig, q, 0).a);
+                vec4 F = texelFetch(uFlow, q, 0);
+                float m = texelFetch(uPig, q, 0).a;
+                mw = max(mw, F.r);
+                mm = max(mm, m);
+                pick += clamp(F.r * 2.0, 0.0, 1.0) * F.a * min(m, 1.0);
             }
         }
     }
-    o = vec4(mw, mm, 0.0, 1.0);
+    o = vec4(mw, mm, pick / ${(WET_BLOCK * WET_BLOCK).toFixed(1)}, 1.0);
 }`;
 
             function wetCompile(gl, fsSrc) {
@@ -5832,9 +5954,8 @@ void main() {
                 wet.R = null;
             }
 
-            // Per-block maxima -> is anything still wet? Grows the active region
-            // around the wet blocks so spreading water stays inside it.
-            function wetCheck() {
+            // Per block (redW x redH, RGBA): max water, max pigment, mean pickable wet oil.
+            function wetReduce() {
                 const gl = wet.gl, pr = wet.prog.reduce;
                 gl.bindFramebuffer(gl.FRAMEBUFFER, wet.redFbo);
                 gl.viewport(0, 0, wet.redW, wet.redH);
@@ -5848,6 +5969,41 @@ void main() {
                 gl.readBuffer(gl.COLOR_ATTACHMENT0);
                 gl.readPixels(0, 0, wet.redW, wet.redH, gl.RGBA, gl.FLOAT, out);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                return out;
+            }
+
+            // The wet oil paint a brush could pick up, per block, as it is right now.
+            // Taken when a thick stroke begins, so that stroke's own fresh paint does
+            // not reload it (see impastoReload).
+            function wetLoadMap() {
+                if (!wet.ok || !wet.layer || wet.headless) return null;
+                wetSplatPending();
+                if (!wet.R) return null;
+                return { data: wetReduce(), w: wet.redW, h: wet.redH, s: wet.s };
+            }
+
+            // Mean pickable wet paint (0..1) under a brush of radius r at layer px
+            // (x, y). `take` removes that fraction from the map: the brush lifted it.
+            function wetLoadMapAt(map, x, y, r, take) {
+                const k = map.s / WET_BLOCK;
+                const bx0 = Math.max(0, Math.floor((x - r) * k)), bx1 = Math.min(map.w - 1, Math.floor((x + r) * k));
+                const by0 = Math.max(0, Math.floor((y - r) * k)), by1 = Math.min(map.h - 1, Math.floor((y + r) * k));
+                let sum = 0, n = 0;
+                for (let by = by0; by <= by1; by++) {
+                    for (let bx = bx0; bx <= bx1; bx++) {
+                        const i = (by * map.w + bx) * 4 + 2;
+                        sum += map.data[i];
+                        n++;
+                        if (take > 0) map.data[i] *= 1 - take;
+                    }
+                }
+                return n ? sum / n : 0;
+            }
+
+            // Per-block maxima -> is anything still wet? Grows the active region
+            // around the wet blocks so spreading water stays inside it.
+            function wetCheck() {
+                const out = wetReduce();
                 let bx0 = Infinity, by0 = Infinity, bx1 = -1, by1 = -1;
                 for (let by = 0; by < wet.redH; by++) {
                     for (let bx = 0; bx < wet.redW; bx++) {
@@ -11936,7 +12092,7 @@ void main() {
                     const s = document.getElementById('status-text');
                     if (s) s.innerText = 'Wet paint dried.';
                 });
-                // ----- Paint taper controls -----
+                // ----- Brush load (and Auto Paint taper) controls -----
                 function refreshTaperUI() {
                     const active = (el) => { el.classList.add('text-black', 'shadow-md'); el.classList.remove('text-gray-400', 'hover-cyan'); el.style.backgroundColor = '#00D2FF'; };
                     const idle   = (el) => { el.classList.remove('text-black', 'shadow-md'); el.classList.add('text-gray-400', 'hover-cyan'); el.style.backgroundColor = 'transparent'; };
@@ -11947,7 +12103,7 @@ void main() {
                         (b.dataset.curve === settings.taperCurve ? active : idle)(b);
                     });
                     const cg = document.getElementById('taperCurveGroup');
-                    if (cg) cg.style.opacity = (settings.taperEnd < 1) ? '1' : '0.4';
+                    if (cg) cg.style.opacity = (settings.taperEnd < 1 && settings.autoTaper) ? '1' : '0.4';
                     const at = document.getElementById('autoTaperToggle');
                     if (at) at.checked = !!settings.autoTaper;
                 }
@@ -11959,6 +12115,7 @@ void main() {
                 });
                 document.getElementById('autoTaperToggle').addEventListener('change', (e) => {
                     settings.autoTaper = e.target.checked;
+                    refreshTaperUI();
                 });
                 refreshTaperUI();
                 document.getElementById('wetness').addEventListener('input', (e) => {
