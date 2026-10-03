@@ -1,0 +1,242 @@
+﻿<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>selftest</title>
+<link rel="stylesheet" href="css/style.css"></head>
+<body>
+<canvas id="gl"></canvas>
+<div id="loading"><p id="loadmsg"></p><div id="loadbar"><span></span></div></div>
+<div id="start" class="hidden"><button id="startbtn">go</button></div>
+<div id="hud" class="hidden">
+  <div id="crosshair"></div>
+  <div id="stats"><b id="st-mode"></b><span id="st-fly"></span><span id="st-pos"></span>
+    <span id="st-fps"></span><span id="st-chunks"></span><span id="st-mem"></span>
+    <div id="st-membar"><span></span></div></div>
+  <div id="hintbar" class="hidden"></div>
+  <div id="palette"><div id="swatches"></div>
+    <div id="matrow"><button data-mat="0"></button><button data-mat="1"></button><button data-mat="2"></button></div></div>
+  <div id="toast"></div>
+</div>
+<div id="termbar" class="hidden"><span id="tb-which"></span>
+  <button id="tb-typing"></button><b id="tb-cursor"></b><b id="tb-caps"></b><b id="tb-sym"></b>
+  <b id="tb-ext"></b><b id="tb-next"></b><button id="tb-run"></button><button id="tb-list"></button>
+  <button id="tb-break"></button><button id="tb-tape"></button><button id="tb-help"></button>
+  <button id="tb-exit"></button></div>
+<div id="help" class="modal hidden"><button data-close="help"></button></div>
+<div id="tape" class="modal hidden"><button data-close="tape"></button>
+  <div id="tapelist"></div>
+  <button id="tp-import"></button><button id="tp-export"></button><button id="tp-rom"></button>
+  <button id="tp-wipe"></button><button id="tp-project"></button><button id="tp-stop"></button>
+  <p id="tp-status"></p><input type="file" id="tp-file" hidden><input type="file" id="tp-romfile" hidden></div>
+<div id="dropzone" class="hidden"></div>
+
+<pre id="out" style="position:fixed;inset:0;background:#000;color:#0f0;z-index:999;
+  padding:10px;font:12px monospace;white-space:pre-wrap;overflow:auto"></pre>
+
+<script>
+var LOG = [], ERRS = [];
+function say(s){ LOG.push(s); }
+window.onerror = function (m, u, l, c, e) {
+  ERRS.push('ERROR ' + m + ' @' + (u||'').split('/').pop() + ':' + l +
+            (e && e.stack ? '\n' + e.stack.split('\n').slice(0,4).join('\n') : ''));
+};
+window.addEventListener('unhandledrejection', function (e) { ERRS.push('REJECT ' + e.reason); });
+var _err = console.error;
+console.error = function () { ERRS.push('console.error: ' + [].join.call(arguments, ' ')); _err.apply(console, arguments); };
+</script>
+<script src="vendor/three.min.js"></script>
+<script src="js/zxconst.js"></script>
+<script src="js/memory.js"></script>
+<script src="js/world.js"></script>
+<script src="js/screen2d.js"></script>
+<script src="js/keyboard.js"></script>
+<script src="js/basic.js"></script>
+<script src="js/tape.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/assetpanel.js"></script>
+<script src="js/z80.js"></script>
+<script src="js/spectrum.js"></script>
+<script src="js/terminal.js"></script>
+<script src="js/player.js"></script>
+<script src="js/main.js"></script>
+<script>
+(function () {
+  function check(name, cond, extra) {
+    say((cond ? 'ok   ' : 'FAIL ') + name + (cond || extra === undefined ? '' : '  -> ' + extra));
+    if (!cond) ERRS.push('assert failed: ' + name);
+  }
+  function finish() {
+    document.getElementById('out').textContent =
+      LOG.join('\n') + '\n\n--- ERRORS (' + ERRS.length + ') ---\n' + ERRS.join('\n');
+    document.title = ERRS.length ? 'SELFTEST-FAIL-' + ERRS.length : 'SELFTEST-PASS';
+  }
+
+  try {
+    say('three r' + THREE.REVISION);
+    var t0 = performance.now();
+    ZX.main();
+    say('main() built the world in ' + Math.round(performance.now() - t0) + ' ms');
+  } catch (e) {
+    ERRS.push('main() threw: ' + e.message + '\n' + e.stack);
+    finish(); return;
+  }
+
+  var G = ZX.G;
+  check('renderer exists', !!G.renderer);
+  check('world allocated', G.world && G.world.data.length === 255 * 175 * 255, G.world && G.world.data.length);
+  check('four terminals', G.terminals.length === 4, G.terminals.length);
+  check('chunk meshes built', G.world.liveMeshes > 0, G.world.liveMeshes);
+  check('nothing left dirty', G.world.dirty.length === 0, G.world.dirty.length);
+  check('memory budget set', ZX.Mem.budget > 0, ZX.Mem.fmt(ZX.Mem.budget));
+  say('     budget ' + ZX.Mem.fmt(ZX.Mem.budget) + ', used ' + ZX.Mem.fmt(ZX.Mem.used()) +
+      ', meshes ' + G.world.liveMeshes);
+
+  // enter the world
+  G.started = true;
+  document.getElementById('hud').classList.remove('hidden');
+
+  // Headless runs on SwiftShader, so shrink the work down to a wiring check.
+  G.renderer.shadowMap.enabled = false;
+  G.renderer.setSize(96, 96, false);
+  var frames = 0;
+  function frame() {
+    G.player.update(1 / 60);
+    G.machine.update(1 / 60, performance.now());
+    G.world.update(6);
+    for (var i = 0; i < G.terminals.length; i++) G.terminals[i].update(performance.now());
+    G.renderer.render(G.scene, G.camera);
+    frames++;
+  }
+  try {
+    for (var i = 0; i < 3; i++) frame();
+    check('rendered 3 frames', frames === 3, frames);
+  } catch (e) { ERRS.push('render loop threw: ' + e.message + '\n' + e.stack); }
+
+  // gl errors?
+  var gl = G.renderer.getContext();
+  check('no GL error after rendering', gl.getError() === gl.NO_ERROR, gl.getError());
+
+  // walk into the display and check the two movement modes
+  G.player.teleport(15, 3, 15);
+  G.player.update(0.016);
+  check('inside the screen -> minecraft movement', G.player.mode === 'minecraft', G.player.mode);
+  G.player.teleport(15, 0, -6);
+  G.player.update(0.016);
+  check('outside -> first person movement', G.player.mode === 'fps', G.player.mode);
+
+  // gravity settles onto the voxel floor
+  G.player.teleport(16, 6, 16);
+  for (var g = 0; g < 200; g++) G.player.update(1 / 60);
+  check('falls onto the voxel floor and stops', G.player.onGround && Math.abs(G.player.pos.y - 0.125) < 0.02,
+        'y=' + G.player.pos.y.toFixed(4) + ' onGround=' + G.player.onGround);
+
+  // walking into the floor lip should not jam
+  G.player.teleport(15, 0, -1.0);
+  G.player.yaw = Math.PI; G.player.keys = { w: 1 };
+  var z0 = G.player.pos.z;
+  for (var s = 0; s < 120; s++) G.player.update(1 / 60);
+  check('can walk from the ground into the display', G.player.pos.z > z0 + 1.5,
+        z0.toFixed(2) + ' -> ' + G.player.pos.z.toFixed(2));
+  G.player.keys = {};
+
+  // the terminal
+  var term = G.terminals[0];
+  var sp = new THREE.Vector3();
+  term.standPoint(sp);
+  G.player.teleport(sp.x, 0, sp.z);
+  check('stand point is in front of the display', sp.z > ZX.SCREEN_D * ZX.PIX, sp.z.toFixed(2));
+  check('the first terminal is the FRONT one', term.label === 'FRONT', term.label);
+
+  // BASIC: draw the line from the manual
+  var b = G.machine.basic;
+  ['10 SCREEN 4', '20 CLS', '30 INK 6', '40 PLOT 20,20,200', '50 DRAW 200,120,-150', 'RUN']
+    .forEach(function (l) { b.submit(l); });
+  var guard = 0;
+  while (b.running && guard++ < 4000) b.step(10);
+  check('the manual example runs clean', /^0 OK/.test(b.lastReport || ''), b.lastReport);
+  check('it lit the start of the line', G.world.get(20, 20, 200) !== 0, G.world.get(20, 20, 200));
+  check('it lit the end of the line', G.world.get(220, 140, 50) !== 0, G.world.get(220, 140, 50));
+
+  // the chunks that changed must remesh without error
+  try {
+    G.world.flush();
+    frame();
+    check('remeshed the drawn line', gl.getError() === gl.NO_ERROR, gl.getError());
+  } catch (e) { ERRS.push('remesh threw: ' + e.message); }
+
+  // keyboard atlas draws
+  try {
+    G.atlas.state.hover = 'Q';
+    var changed = G.atlas.redraw();
+    check('atlas redraws on hover', changed === true);
+    G.machine.mode = ZX.MODE_K;
+    check('hover preview reads PLOT', G.machine.preview('Q') === 'PLOT', G.machine.preview('Q'));
+  } catch (e) { ERRS.push('atlas threw: ' + e.message); }
+
+  // key meshes are reachable by raycast from the seat
+  try {
+    term.seatPoint(sp);
+    var look = new THREE.Vector3(); term.lookPoint(look);
+    G.camera.position.copy(sp);
+    G.camera.lookAt(look);
+    G.camera.updateMatrixWorld(true);
+    var rc = new THREE.Raycaster();
+    rc.far = 8;
+    say('     seat ' + sp.x.toFixed(2) + ',' + sp.y.toFixed(2) + ',' + sp.z.toFixed(2) +
+        '  look ' + look.x.toFixed(2) + ',' + look.y.toFixed(2) + ',' + look.z.toFixed(2));
+    var km = term.keyboard.keyMeshes[0];
+    var kw = new THREE.Vector3();
+    km.getWorldPosition(kw);
+    say('     first key world pos ' + kw.x.toFixed(2) + ',' + kw.y.toFixed(2) + ',' + kw.z.toFixed(2) +
+        ' (' + km.userData.keyId + ')');
+    // sweep the view: which keys and how much of the CRT can be clicked
+    var found = {}, rows = 0, line = '';
+    for (var ny = -0.20; ny > -0.90; ny -= 0.07) {
+      var row = '';
+      for (var nx = -0.55; nx <= 0.56; nx += 0.11) {
+        rc.setFromCamera(new THREE.Vector2(nx, ny), G.camera);
+        var hh = rc.intersectObjects(term.keyboard.keyMeshes, false);
+        if (hh.length) { found[hh[0].object.userData.keyId] = 1; row += hh[0].object.userData.keyId + ' '; }
+      }
+      if (row) { rows++; line += '\n       y=' + ny.toFixed(2) + ': ' + row; }
+    }
+    var nfound = Object.keys(found).length;
+    say('     key rows visible from the seat: ' + rows + ', distinct keys hit: ' + nfound + line);
+    check('the whole keyboard is reachable from the seat', rows >= 5 && nfound >= 25, rows + '/' + nfound);
+
+    // is the CRT fully inside the view?
+    var scr = term.screenPlane;
+    scr.updateWorldMatrix(true, false);
+    var corners = [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]].map(function (c) {
+      var g = scr.geometry.parameters;
+      var v = new THREE.Vector3(c[0] * g.width, c[1] * g.height, 0);
+      v.applyMatrix4(scr.matrixWorld).project(G.camera);
+      return v;
+    });
+    var inView = corners.every(function (v) { return Math.abs(v.x) < 1 && Math.abs(v.y) < 1; });
+    check('the CRT is fully on screen from the seat', inView,
+          corners.map(function (v) { return v.x.toFixed(2) + ',' + v.y.toFixed(2); }).join('  '));
+  } catch (e) { ERRS.push('raycast threw: ' + e.message); }
+
+  // the CRT texture actually updated
+  check('CRT canvas is 320x240', G.machine.scr.canvas.width === 320 && G.machine.scr.canvas.height === 240,
+        G.machine.scr.canvas.width + 'x' + G.machine.scr.canvas.height);
+
+  // emulator smoke: run the stub ROM for a few frames
+  try {
+    G.machine.spectrum.running = true;
+    for (var f = 0; f < 3; f++) G.machine.spectrum.runFrame();
+    check('stub ROM survives three frames', G.machine.spectrum.running &&
+          G.machine.spectrum.frame === 3, G.machine.spectrum.frame);
+    var frames0 = G.machine.spectrum.mem[23672] | (G.machine.spectrum.mem[23673] << 8);
+    check('the interrupt routine is ticking FRAMES', frames0 >= 2, frames0);
+    G.machine.spectrum.stop();
+  } catch (e) { ERRS.push('emulator threw: ' + e.message); }
+
+  say('\ntiming: ' + Math.round(performance.now() - t0) + ' ms total');
+  finish();
+})();
+</script>
+</body></html>
+
+
+
+

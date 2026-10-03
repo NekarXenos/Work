@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painter - GO v0.3.5.12</title>
+    <title>Painter - GO v0.3.5.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <!-- Layered PDF import / rasterisation (pdf.js) -->
@@ -526,7 +526,7 @@
     <header class="h-12 border-b border-gray-700 flex items-center px-4 justify-between shrink-0 z-20" style="background-color:#252525;">
         <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-black" style="background-color:#00D2FF;">PG</div>
-            <h1 class="font-bold tracking-wide" style="color:#00D2FF;">Painter GO <span class="text-xs font-normal ml-2" style="color:#00D2FF;">v0.3.5.12</span><span class="version-desc text-xs font-normal" style="color:#00D2FF;"> • Paint Types</span></h1>
+            <h1 class="font-bold tracking-wide" style="color:#00D2FF;">Painter GO <span class="text-xs font-normal ml-2" style="color:#00D2FF;">v0.3.5.7</span><span class="version-desc text-xs font-normal" style="color:#00D2FF;"> • Bristle Ropes</span></h1>
         </div>
         <div class="file-actions text-sm">
 
@@ -867,35 +867,6 @@
                     </div>
                 </div>
 
-                <div class="border-t border-gray-700 pt-3 mb-3" id="paintMediumBlock">
-                    <label for="paintMedium" class="text-xs text-gray-300 block mb-1">Paint type</label>
-                    <select id="paintMedium" class="w-full border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:outline-none" style="background-color:#686868;">
-                        <option value="oil">Oil</option>
-                        <option value="acrylic">Acrylic</option>
-                        <option value="water">Water</option>
-                    </select>
-                    <p id="paintMediumDescription" class="text-[10px] text-gray-400 mt-2 leading-snug">Opaque, rich paint that holds its ridges and stays wet for a long time.</p>
-                    <div class="flex gap-2 mt-2">
-                        <button id="resetPaintMediumBtn" type="button" class="flex-1 text-[10px] text-gray-100 py-1.5 px-1 rounded transition-colors" style="background-color:#374151;" title="Restore the selected paint type's thickness, wetness, drying and flow defaults for new strokes.">Reset paint defaults</button>
-                        <button id="paintMediumSurfaceBtn" type="button" class="flex-1 text-[10px] text-gray-100 py-1.5 px-1 rounded transition-colors" style="background-color:#374151;" title="Apply this paint's suggested texture to the background.">Use suggested surface</button>
-                    </div>
-                    <p id="paintMediumSurfaceHint" class="text-[10px] text-gray-500 mt-1 leading-snug">Suggested surface: Canvas weave. Changing paint keeps your current surface.</p>
-                    <div class="mt-2 rounded border border-gray-700 px-2 py-1.5" style="background-color:#202020;">
-                        <table class="w-full text-[10px] text-center text-gray-300" style="table-layout:fixed;border-collapse:collapse;" aria-label="Paint mixability map">
-                            <caption class="text-left text-gray-400 mb-1">Wet paint mixability</caption>
-                            <thead>
-                                <tr><th scope="col" class="text-left font-normal">Paint</th><th scope="col" class="font-normal">Oil</th><th scope="col" class="font-normal">Acrylic</th><th scope="col" class="font-normal">Water</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><th scope="row" class="text-left font-normal">Oil</th><td>Mix</td><td>Mix</td><td style="color:#ffb878;">Repel</td></tr>
-                                <tr><th scope="row" class="text-left font-normal">Acrylic</th><td>Mix</td><td>Mix</td><td>Mix</td></tr>
-                                <tr><th scope="row" class="text-left font-normal">Water</th><td style="color:#ffb878;">Repel</td><td>Mix</td><td>Mix</td></tr>
-                                <tr style="border-top:1px solid #374151;"><th scope="row" class="text-left font-normal pt-1">Re-wets</th><td class="pt-1">No</td><td class="pt-1">No</td><td class="pt-1" style="color:#00D2FF;">Yes</td></tr>
-                            </tbody>
-                        </table>
-                        <p class="text-[9px] text-gray-500 mt-1 leading-snug">Water beads and runs off oil. Dry oil and acrylic remain set; watercolour can lift again.</p>
-                    </div>
-                </div>
                 <div class="border-t border-gray-700 pt-3">
                     <label class="text-xs text-gray-300 block mb-1">Brush Size <span id="val-size" class="float-right text-cyan-400">40</span></label>
                     <input type="range" id="brushSize" min="1" max="150" step="1" value="20" class="w-full">
@@ -917,7 +888,7 @@
                 </div>
 
                 <div class="border-t border-gray-700 pt-3" id="reliefLightBlock">
-                    <label class="text-xs text-gray-300 block mb-1" title="Live keeps each layer's impasto height separate from its colour and lights it on screen, so the light can be moved at any time — even after painting. Baked writes paint lighting into the colour once (lighter on memory); paint over a textured canvas retains live height so it can follow the surface. Auto picks Baked on devices reporting 4GB RAM or less.">Relief Lighting</label>
+                    <label class="text-xs text-gray-300 block mb-1" title="Live keeps each layer's impasto height separate from its colour and lights it on screen, so the light can be moved at any time — even after painting. Baked writes the light and shadow into the colour once, like earlier versions (lighter on memory). Auto picks Baked on devices reporting 4GB RAM or less.">Relief Lighting</label>
                     <select id="reliefLighting" class="w-full border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:outline-none" style="background-color:#686868;">
                         <option value="auto">Auto (detect device)</option>
                         <option value="live">Live (movable light)</option>
@@ -1166,28 +1137,6 @@
                     </div>
                     <p class="text-[10px] text-gray-500 mt-1 leading-snug">Builds a marching-ants selection of the subject on the active layer — feeds straight into New Layer from Selection, Invert, etc.</p>
                 </div>
-            </div>
-
-            <!-- Canvas surface stays separate from paint and pigment pickup. -->
-            <div class="p-4 border-t border-gray-700" id="canvasSurfaceBlock">
-                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Canvas Surface</h2>
-                <label for="canvasTexture" class="text-xs text-gray-300 block mb-1">Texture</label>
-                <select id="canvasTexture" class="w-full border border-gray-600 text-white text-sm rounded px-2 py-1.5 focus:outline-none" style="background-color:#686868;">
-                    <option value="canvas">Canvas weave</option>
-                    <option value="linen">Linen weave</option>
-                    <option value="watercolor-cold">Watercolour paper — cold press</option>
-                    <option value="watercolor-rough">Watercolour paper — rough</option>
-                    <option value="watercolor-hot">Watercolour paper — hot press</option>
-                    <option value="drawing">Drawing paper</option>
-                    <option value="smooth">Smooth canvas</option>
-                </select>
-                <div class="flex items-center justify-between mt-2">
-                    <label for="canvasSurfaceColor" class="text-xs text-gray-300">Background colour</label>
-                    <input type="color" id="canvasSurfaceColor" value="#f5f0eb" class="w-8 h-6 cursor-pointer" title="Colour of the canvas underneath the paint">
-                </div>
-                <label for="canvasSurfaceDepth" class="text-xs text-gray-300 block mb-1 mt-2">Surface bumps <span id="val-surface-depth" class="float-right text-cyan-400">50%</span></label>
-                <input type="range" id="canvasSurfaceDepth" min="0" max="100" step="1" value="50" class="w-full">
-                <p class="text-[10px] text-gray-500 mt-1 leading-snug">Paint starts on its own transparent layer. Canvas texture shows softly through thin paint and fades under thick impasto. Background colour stays separate.</p>
             </div>
 
             <!-- Layer Controls -->
@@ -1494,131 +1443,7 @@
             };
 
             // Auto paint settings
-            // Paint presets apply only to future strokes. Pixel medium maps own
-            // the properties of deposited paint, including after a type change.
-            const PAINT_MEDIA = Object.freeze({
-                oil: Object.freeze({
-                    name: 'Oil', surface: 'canvas', surfaceLabel: 'Canvas weave',
-                    thickness: 65, wetness: 65, autoThickness: 65, autoWetness: 65,
-                    wetDrying: 95, wetLift: 0, wetFlow: 'auto',
-                    evaporation: 0.00002, opacityScale: 1, impastoScale: 1,
-                    viscosity: 0.97, rewet: false,
-                    description: 'Opaque, rich paint that holds its ridges and stays wet for a long time.'
-                }),
-                acrylic: Object.freeze({
-                    name: 'Acrylic', surface: 'canvas', surfaceLabel: 'Canvas weave',
-                    thickness: 55, wetness: 60, autoThickness: 55, autoWetness: 60,
-                    wetDrying: 15, wetLift: 0, wetFlow: 'auto',
-                    evaporation: 0.0025, opacityScale: 0.95, impastoScale: 0.9,
-                    viscosity: 0.62, rewet: false,
-                    description: 'Opaque paint with firm impasto; very wet strokes flow, then dry quickly. Mixes with oil or water.'
-                }),
-                water: Object.freeze({
-                    name: 'Water', surface: 'watercolor-rough', surfaceLabel: 'Rough watercolour paper',
-                    thickness: 12, wetness: 95, autoThickness: 12, autoWetness: 95,
-                    wetDrying: 70, wetLift: 55, wetFlow: 'auto',
-                    evaporation: 0.0006, opacityScale: 0.38, impastoScale: 0,
-                    viscosity: 0.03, rewet: true,
-                    description: 'Very translucent, wet washes that spread and take time to dry. Watercolour can re-wet; it beads on oil.'
-                })
-            });
-
-            function selectedPaintMedium() {
-                return Object.prototype.hasOwnProperty.call(PAINT_MEDIA, settings.paintMedium)
-                    ? settings.paintMedium : 'oil';
-            }
-
-            // Same slider direction as the existing drying control: higher is slower.
-            // The profile's reference point keeps the chosen defaults predictable.
-            function paintMediumEvaporation(key, drying) {
-                const profile = PAINT_MEDIA[key] || PAINT_MEDIA.oil;
-                const value = Number.isFinite(+drying)
-                    ? Math.max(0, Math.min(100, +drying)) : profile.wetDrying;
-                return profile.evaporation * Math.pow(2, (profile.wetDrying - value) / 18);
-            }
-
-            function syncPaintMediumUI() {
-                const key = selectedPaintMedium(), profile = PAINT_MEDIA[key];
-                const selector = document.getElementById('paintMedium');
-                if (selector) selector.value = key;
-                const description = document.getElementById('paintMediumDescription');
-                if (description) description.innerText = profile.description;
-                const surfaceHint = document.getElementById('paintMediumSurfaceHint');
-                if (surfaceHint) surfaceHint.innerText = 'Suggested surface: ' + profile.surfaceLabel + '. Changing paint keeps your current surface.';
-                const surfaceButton = document.getElementById('paintMediumSurfaceBtn');
-                if (surfaceButton) surfaceButton.title = 'Apply ' + profile.surfaceLabel + ' to the background. Existing paint stays in place.';
-            }
-
-            function setPaintMediumControl(id, value, labelId, label) {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.value = value;
-                    if (el.type === 'range') updateSliderFill(el);
-                }
-                const labelEl = labelId && document.getElementById(labelId);
-                if (labelEl) labelEl.innerText = label;
-            }
-
-            function applyPaintMediumDefaults(key, { initial = false, commit = true } = {}) {
-                if (!Object.prototype.hasOwnProperty.call(PAINT_MEDIA, key)) key = 'oil';
-                // Deposit queued ink with the previous stroke's original parameters
-                // before changing brush defaults. The existing wet film keeps moving.
-                wetSplatPending();
-                const profile = PAINT_MEDIA[key];
-                settings.paintMedium = key;
-                brush.thicknessPercent = profile.thickness;
-                brush.wetnessVal = profile.wetness;
-                brush.blend = profile.wetness <= 75 ? profile.wetness / 75 : 1;
-                settings.autoThickness = profile.autoThickness;
-                settings.autoWetness = profile.autoWetness;
-                settings.wetDrying = profile.wetDrying;
-                settings.wetLift = profile.wetLift;
-                if (initial) settings.wetFlow = profile.wetFlow;
-                applyManualThickness();
-
-                setPaintMediumControl('manThick', profile.thickness, 'val-man-thick', profile.thickness + '%');
-                setPaintMediumControl('wetness', profile.wetness, 'val-wetness', profile.wetness + '%');
-                setPaintMediumControl('paintThick', profile.autoThickness, 'val-thick', profile.autoThickness + '%');
-                setPaintMediumControl('autoWetness', profile.autoWetness, 'val-auto-wetness', profile.autoWetness + '%');
-                setPaintMediumControl('wetDrying', profile.wetDrying, 'val-wet-drying', wetDryingLabel(profile.wetDrying));
-                setPaintMediumControl('wetLift', profile.wetLift, 'val-wet-lift', wetLiftLabel(profile.wetLift));
-                setPaintMediumControl('wetFlow', settings.wetFlow);
-                syncPaintMediumUI();
-                updateBrushPreview();
-                wetUpdateStatus();
-                if (!initial) {
-                    const status = document.getElementById('status-text');
-                    if (status) status.innerText = profile.name + ' selected. New strokes use its defaults; existing paint and the canvas keep their state.';
-                    if (commit) commitHistory();
-                }
-            }
-
-            function setupPaintMediumUI() {
-                const selector = document.getElementById('paintMedium');
-                const resetButton = document.getElementById('resetPaintMediumBtn');
-                const surfaceButton = document.getElementById('paintMediumSurfaceBtn');
-                if (selector && !selector.dataset.paintMediumWired) {
-                    selector.dataset.paintMediumWired = '1';
-                    selector.addEventListener('change', e => applyPaintMediumDefaults(e.target.value));
-                }
-                if (resetButton && !resetButton.dataset.paintMediumWired) {
-                    resetButton.dataset.paintMediumWired = '1';
-                    resetButton.addEventListener('click', () => applyPaintMediumDefaults(selectedPaintMedium()));
-                }
-                if (surfaceButton && !surfaceButton.dataset.paintMediumWired) {
-                    surfaceButton.dataset.paintMediumWired = '1';
-                    surfaceButton.addEventListener('click', () => {
-                        const texture = document.getElementById('canvasTexture');
-                        if (!texture) return;
-                        texture.value = PAINT_MEDIA[selectedPaintMedium()].surface;
-                        changeCanvasSurface();
-                    });
-                }
-                syncPaintMediumUI();
-            }
-
             let settings = {
-                paintMedium: 'oil',
                 mode: 'manual',
                 autoStyle: DEFAULTS.auto.paintStyle,
                 cmyInkMode: DEFAULTS.auto.cmyInkMode,
@@ -1673,13 +1498,9 @@
                 p.drawingContext.imageSmoothingQuality = 'high';
 
                 addLayer("Background");
-                applyCanvasSurface(layers[0], PAINT_MEDIA[settings.paintMedium].surface, '#f5f0eb', 50);
-                addLayer("Paint");
                 p.background(240);
 
                 setupUI();
-                setupPaintMediumUI();
-                applyPaintMediumDefaults(settings.paintMedium, {initial:true, commit:false});
                 initializeBristles();
                 updateBrushPreview();
                 setupViewControls();
@@ -2042,7 +1863,7 @@
 
                 // Pixels may have changed: relight the whole relief unless the
                 // painting code already queued the exact region.
-                if ((layer.relief || surfaceBelowLayer(layer)) && !layer._litRect) layer._litFull = true;
+                if (layer.relief && !layer._litRect) layer._litFull = true;
 
                 const pg = layer.pg;
                 pg.loadPixels();
@@ -3194,7 +3015,7 @@
                 const cm = getCanvasMouse();
                 if (cm.x < 0 || cm.x > p.width || cm.y < 0 || cm.y > p.height) return;
 
-                const layer = settings.mode === 'manual' ? ensurePaintLayer() : layers[activeLayerIndex];
+                const layer = layers[activeLayerIndex];
 
                 if (settings.mode === 'move') {
                     if (!layer) return;
@@ -3425,175 +3246,11 @@
             // ==========================================
             // WATERCOLOR BLEED (Diffusion & Fringe)
             // ==========================================
-            // Dry material fractions: oil / acrylic; watercolour is the remainder.
-            // Unknown imported or older raster pixels are sealed acrylic so they
-            // never unexpectedly dissolve when a wet brush passes over them.
-            function paintMaterialWritable(layer) {
-                if (!layer || !layer.pg || layer.surfaceType) return null;
-                const w = layer.pg.width, h = layer.pg.height;
-                let map = layer.paintMaterial;
-                if (!map || map.w !== w || map.h !== h) {
-                    const data = new Uint8Array(w * h * 2);
-                    let pixels = null;
-                    try { pixels = layer.pg.drawingContext.getImageData(0, 0, w, h).data; } catch (_) {}
-                    if (pixels) for (let i = 0; i < w * h; i++) if (pixels[i * 4 + 3]) data[i * 2 + 1] = 255;
-                    map = layer.paintMaterial = { w, h, data, frozen: false };
-                } else if (map.frozen) {
-                    map = layer.paintMaterial = { w, h, data: map.data.slice(), frozen: false };
-                }
-                return map;
-            }
-
-            function paintMaterialDryPickup(layer, x, y, medium) {
-                if (medium === 'oil' || brush.wetnessVal < 60) return 0;
-                const map = paintMaterialWritable(layer);
-                if (!map) return 0;
-                x = Math.floor(x); y = Math.floor(y);
-                if (x < 0 || y < 0 || x >= map.w || y >= map.h) return 0;
-                const i = (y * map.w + x) * 2;
-                // A flattened RGB pixel cannot isolate a transparent wash from
-                // sealed paint below it. Preserve the sealed colour in that case.
-                if (map.data[i] + map.data[i + 1] > 2) return 0;
-                // Only dried watercolour can be lifted, even by wet acrylic.
-                const lift = medium === 'acrylic' ? Math.max(30, settings.wetLift || 0) : (settings.wetLift || 0);
-                return Math.max(0, 1 - (map.data[i] + map.data[i + 1]) / 255)
-                    * Math.min(1, lift / 55);
-            }
-
-            // Mirror the real paths into an alpha mask. This includes bristle gaps,
-            // splatter and gradients, so a stroke tags only paint it actually lays.
-            function paintMaterialTrack(pg, rawCtx, padding = 3) {
-                const layer = layers.find(l => l.pg === pg);
-                if (!layer || layer.surfaceType) return null;
-                const map = paintMaterialWritable(layer);
-                const r = Math.max(3, brush.size * padding + (brush.bristleRadius || 2));
-                const x0 = Math.max(0, Math.floor(Math.min(brush.x, brush.px) - r));
-                const y0 = Math.max(0, Math.floor(Math.min(brush.y, brush.py) - r));
-                const x1 = Math.min(pg.width, Math.ceil(Math.max(brush.x, brush.px) + r));
-                const y1 = Math.min(pg.height, Math.ceil(Math.max(brush.y, brush.py) + r));
-                const w = x1 - x0, h = y1 - y0;
-                if (!map || w <= 0 || h <= 0) return null;
-                let before;
-                try { before = rawCtx.getImageData(x0, y0, w, h).data; } catch (_) { return null; }
-                const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
-                const mask = canvas.getContext('2d', { willReadFrequently: true });
-                const transform = rawCtx.getTransform();
-                mask.setTransform(transform.a, transform.b, transform.c, transform.d, transform.e - x0, transform.f - y0);
-                for (const key of ['lineWidth', 'lineCap', 'lineJoin', 'miterLimit', 'strokeStyle', 'fillStyle', 'globalAlpha']) mask[key] = rawCtx[key];
-                const mirror = new Set(['beginPath', 'closePath', 'moveTo', 'lineTo', 'arc', 'arcTo', 'ellipse', 'rect',
-                    'bezierCurveTo', 'quadraticCurveTo', 'stroke', 'fill', 'strokeRect', 'fillRect', 'drawImage',
-                    'save', 'restore', 'translate', 'rotate', 'scale', 'transform', 'clip']);
-                const ctx = new Proxy(rawCtx, {
-                    get(target, key) {
-                        const value = target[key];
-                        if (typeof value !== 'function') return value;
-                        return (...args) => {
-                            const result = value.apply(target, args);
-                            if (mirror.has(key)) mask[key](...args);
-                            return result;
-                        };
-                    },
-                    set(target, key, value) {
-                        target[key] = value;
-                        if (key !== 'globalCompositeOperation' && key in mask) {
-                            try { mask[key] = value; } catch (_) {}
-                        }
-                        return true;
-                    }
-                });
-                const medium = selectedPaintMedium();
-                return { ctx, finish() {
-                    const painted = mask.getImageData(0, 0, w, h).data;
-                    const incomingOil = medium === 'oil' ? 255 : 0;
-                    const incomingAcrylic = medium === 'acrylic' ? 255 : 0;
-                    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-                        const j = y * w + x, a = painted[j * 4 + 3] / 255;
-                        if (!(a > 0)) continue;
-                        const oldMass = before[j * 4 + 3] / 255 * (1 - a);
-                        const total = a + oldMass, keep = total > 0 ? oldMass / total : 0;
-                        const i = ((y0 + y) * map.w + x0 + x) * 2;
-                        map.data[i] = Math.round(map.data[i] * keep + incomingOil * (1 - keep));
-                        map.data[i + 1] = Math.min(255 - map.data[i], Math.round(map.data[i + 1] * keep + incomingAcrylic * (1 - keep)));
-                    }
-                } };
-            }
-
-            function paintMaterialShift(layer, w, h, dx, dy) {
-                const old = layer.paintMaterial;
-                if (!old) return;
-                const data = new Uint8Array(w * h * 2);
-                for (let y = 0; y < old.h; y++) {
-                    const ny = y + dy; if (ny < 0 || ny >= h) continue;
-                    const sx = Math.max(0, -dx), ex = Math.min(old.w, w - dx);
-                    if (ex > sx) data.set(old.data.subarray((y * old.w + sx) * 2, (y * old.w + ex) * 2), (ny * w + sx + dx) * 2);
-                }
-                layer.paintMaterial = { w, h, data, frozen: false };
-            }
-
-            function paintMaterialResample(layer, w, h) {
-                const old = layer.paintMaterial;
-                if (!old || (old.w === w && old.h === h)) return;
-                const data = new Uint8Array(w * h * 2);
-                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-                    const ox = Math.min(old.w - 1, Math.floor((x + 0.5) * old.w / w));
-                    const oy = Math.min(old.h - 1, Math.floor((y + 0.5) * old.h / h));
-                    const i = (y * w + x) * 2, j = (oy * old.w + ox) * 2;
-                    data[i] = old.data[j]; data[i + 1] = old.data[j + 1];
-                }
-                layer.paintMaterial = { w, h, data, frozen: false };
-            }
-
-            // Auto Paint replaces this layer's pixels, so the resulting coat has
-            // one material throughout its painted footprint. Preserve holes.
-            function paintMaterialTagAuto(layer) {
-                const key = selectedPaintMedium();
-                const profile = PAINT_MEDIA[key];
-                const w = layer.pg.width, h = layer.pg.height;
-                const img = layer.pg.drawingContext.getImageData(0, 0, w, h);
-                const data = new Uint8Array(w * h * 2);
-                const maxAlpha = applyAutoThicknessFromPercent(settings.autoThickness).alpha;
-                for (let i = 0; i < w * h; i++) if (img.data[i * 4 + 3]) {
-                    data[i * 2] = key === 'oil' ? 255 : 0;
-                    data[i * 2 + 1] = key === 'acrylic' ? 255 : 0;
-                    if (profile.opacityScale < 1) img.data[i * 4 + 3] = Math.min(img.data[i * 4 + 3], Math.round(maxAlpha));
-                }
-                if (profile.opacityScale < 1) layer.pg.drawingContext.putImageData(img, 0, 0);
-                layer.paintMaterial = { w, h, data, frozen: false };
-                layer.curveDirty = true;
-            }
-
-            function snapshotPaintControls() {
-                const live = autoPaintLiveSettings || settings;
-                return {
-                    medium: live.paintMedium || 'oil', thickness: brush.thicknessPercent,
-                    wetness: brush.wetnessVal, autoThickness: live.autoThickness,
-                    autoWetness: live.autoWetness, wetDrying: live.wetDrying,
-                    wetLift: live.wetLift, wetFlow: live.wetFlow
-                };
-            }
-
-            function restorePaintControls(state) {
-                if (!state) return;
-                settings.paintMedium = PAINT_MEDIA[state.medium] ? state.medium : 'oil';
-                brush.thicknessPercent = state.thickness; brush.wetnessVal = state.wetness;
-                brush.blend = state.wetness <= 75 ? state.wetness / 75 : 1;
-                for (const key of ['autoThickness', 'autoWetness', 'wetDrying', 'wetLift', 'wetFlow']) settings[key] = state[key];
-                applyManualThickness();
-                setPaintMediumControl('manThick', state.thickness, 'val-man-thick', state.thickness + '%');
-                setPaintMediumControl('wetness', state.wetness, 'val-wetness', state.wetness + '%');
-                setPaintMediumControl('paintThick', state.autoThickness, 'val-thick', state.autoThickness + '%');
-                setPaintMediumControl('autoWetness', state.autoWetness, 'val-auto-wetness', state.autoWetness + '%');
-                setPaintMediumControl('wetDrying', state.wetDrying, 'val-wet-drying', wetDryingLabel(state.wetDrying));
-                setPaintMediumControl('wetLift', state.wetLift, 'val-wet-lift', wetLiftLabel(state.wetLift));
-                setPaintMediumControl('wetFlow', state.wetFlow);
-                syncPaintMediumUI(); updateBrushPreview();
-            }
-
             function applyWatercolorBleed(pg, bbox, wetnessPercent, radiusMultiplier = 1.0, sourceRef = null) {
-                if (wetnessPercent <= 75 || selectedPaintMedium() === 'oil') return;
+                if (wetnessPercent <= 75) return;
                 
                 // Normalize wetness over 75% to 0..1 intensity
-                const bleedIntensity = (wetnessPercent - 75) / 25 * (selectedPaintMedium() === 'acrylic' ? 0.35 : 1);
+                const bleedIntensity = (wetnessPercent - 75) / 25; 
                 
                 const w = pg.width;
                 const h = pg.height;
@@ -3622,12 +3279,6 @@
                 
                 const subW = x1 - x0 + 1;
                 const subH = y1 - y0 + 1;
-                const dryMaterials = !sourceRef && (layers.find(l => l.pg === pg) || {}).paintMaterial;
-                const sealedAt = (x, y) => {
-                    if (!dryMaterials) return false;
-                    const i = ((y0 + y) * dryMaterials.w + x0 + x) * 2;
-                    return dryMaterials.data[i] + dryMaterials.data[i + 1] > 2;
-                };
                 
                 let src = new Uint8ClampedArray(subW * subH * 4);
                 let srcLum = new Uint8Array(subW * subH);
@@ -3673,7 +3324,6 @@
                         for (let x = 1; x < subW - 1; x++) {
                             const idx = (y * subW + x) * 4;
                             const sa = src[idx + 3];
-                            if (sealedAt(x, y)) continue;
                             
                             if (srcLum[y * subW + x] === 255 && sa === 0) continue;
                             
@@ -3692,7 +3342,6 @@
                             for (let pos of nPositions) {
                                 const nx = Math.max(0, Math.min(subW - 1, pos.x));
                                 const ny = Math.max(0, Math.min(subH - 1, pos.y));
-                                if (sealedAt(nx, ny)) continue;
                                 const nIdx = (ny * subW + nx) * 4;
                                 const na = src[nIdx + 3];
                                 sum_a += na;
@@ -3949,8 +3598,7 @@
             // ==========================================
             function drawManualStroke(pg, drawCtx = null) {
                 const sctx = pg.drawingContext;
-                const materialTrack = drawCtx ? null : paintMaterialTrack(pg, sctx);
-                const ctx = drawCtx || (materialTrack ? materialTrack.ctx : sctx);
+                const ctx = drawCtx || sctx;
                 ctx.lineCap = 'round';
                 ctx.lineWidth = brush.bristleRadius || 2;
 
@@ -4051,12 +3699,11 @@
                             let idx = (ly * imgData.width + lx) * 4;
                             let cA = imgData.data[idx + 3];
                             // Only blend with existing paint (skip transparent areas)
-                            const pickup = drawCtx ? 1 : paintMaterialDryPickup(layers.find(l => l.pg === pg), b.px, b.py, selectedPaintMedium());
-                            if (cA > 0 && pickup > 0) {
+                            if (cA > 0) {
                                 let cR = imgData.data[idx];
                                 let cG = imgData.data[idx + 1];
                                 let cB = imgData.data[idx + 2];
-                                let colorBlend = Math.min(0.85, brush.blend) * pickup;
+                                let colorBlend = Math.min(0.85, brush.blend);
                                 bristleR = bristleR * (1 - colorBlend) + cR * colorBlend;
                                 bristleG = bristleG * (1 - colorBlend) + cG * colorBlend;
                                 bristleB = bristleB * (1 - colorBlend) + cB * colorBlend;
@@ -4119,7 +3766,6 @@
                                   pickN ? { r: pickR / pickN, g: pickG / pickN, b: pickB / pickN } : null);
                 }
 
-                if (materialTrack) materialTrack.finish();
                 if (!drawCtx && brush.wetnessVal > 75 && bMinX !== Infinity) {
                     applyWatercolorBleed(pg, {
                         minX: bMinX, 
@@ -4174,8 +3820,7 @@
             }
 
             function drawAirbrushStroke(pg) {
-                const materialTrack = paintMaterialTrack(pg, pg.drawingContext, 1.2);
-                const ctx = materialTrack ? materialTrack.ctx : pg.drawingContext;
+                const ctx = pg.drawingContext;
                 const rgb = hexToRgb(brush.color);
                 const r = Math.max(1, brush.size);
                 const splatterFrac = Math.min(1, Math.max(0, brush.airSplatter / 100));
@@ -4207,7 +3852,6 @@
                     // Always restore so the layer composite / other draws aren't multiplied.
                     ctx.globalCompositeOperation = prevOp || 'source-over';
                 }
-                if (materialTrack) materialTrack.finish();
             }
 
             // ==========================================
@@ -4301,9 +3945,6 @@
             }
 
             function drawContrastStroke(pg) {
-                // Contrast changes existing colour rather than depositing a new
-                // binder. Initialize its material map and retain the fractions.
-                paintMaterialWritable(layers.find(l => l.pg === pg));
                 const r = Math.max(1, brush.size);
                 const strength = Math.min(1, Math.max(0, brush.contrastStrength / 100));
                 if (strength <= 0) return;
@@ -4640,17 +4281,16 @@
             // ==========================================
             function applyAutoThicknessFromPercent(thicknessPercent) {
                 const percent = parseInt(thicknessPercent, 10);
-                const profile = PAINT_MEDIA[selectedPaintMedium()];
                 if (percent <= 50) {
                     return {
-                        alpha: p.map(percent, 0, 50, 0, 255) * profile.opacityScale,
+                        alpha: p.map(percent, 0, 50, 0, 255),
                         strokeWeight: 1,
                         skip: 1
                     };
                 }
                 const strokeWeight = p.map(percent, 50, 100, 1, 5);
                 return {
-                    alpha: 255 * profile.opacityScale,
+                    alpha: 255,
                     strokeWeight,
                     skip: Math.max(1, Math.floor(strokeWeight))
                 };
@@ -4714,12 +4354,10 @@
             // 50% -> faint floor; 100% -> full; below 50% -> flat (0).
             function impastoAmplitudeFromPercent(pct) {
                 pct = +pct;
-                const scale = PAINT_MEDIA[selectedPaintMedium()].impastoScale;
-                if (!(scale > 0)) return 0;
                 if (pct < 50) return 0;
                 const t = (pct - 50) / 50;
                 const eased = t * t * (3 - 2 * t);   // smoothstep: subtle low, full high
-                return (IMPASTO.minVisibleAmp + (IMPASTO.fullAmp - IMPASTO.minVisibleAmp) * eased) * scale;
+                return IMPASTO.minVisibleAmp + (IMPASTO.fullAmp - IMPASTO.minVisibleAmp) * eased;
             }
 
             // Manual Paint Thickness (decision B): bristle pins OPAQUE at/above 50%
@@ -4727,12 +4365,11 @@
             // legacy alpha = thickness/100 coverage behaviour (no relief).
             function applyManualThickness() {
                 const pct = (brush.thicknessPercent != null) ? brush.thicknessPercent : 50;
-                const profile = PAINT_MEDIA[selectedPaintMedium()];
                 if (brush.type === 'bristle') {
-                    brush.alpha = (pct <= 50 ? Math.max(0.02, pct / 50) : 1) * profile.opacityScale;
+                    brush.alpha = pct <= 50 ? Math.max(0.02, pct / 50) : 1;
                     brush.impastoAmplitude = impastoAmplitudeFromPercent(pct);
                 } else {
-                    brush.alpha = pct / 100 * profile.opacityScale;
+                    brush.alpha = pct / 100;
                     brush.impastoAmplitude = 0;
                 }
             }
@@ -5374,9 +5011,7 @@
                 if (st.live) {
                     if (wet.ok && wet.layer === layer && wet.massRelief) impastoLayBlob(null, rgb, true);
                 } else if (!st.wetInk) {
-                    const materialTrack = paintMaterialTrack(layer.pg, layer.pg.drawingContext);
-                    impastoLayBlob(materialTrack ? materialTrack.ctx : layer.pg.drawingContext, rgb, true);
-                    if (materialTrack) materialTrack.finish();
+                    impastoLayBlob(layer.pg.drawingContext, rgb, true);
                 } else if (wet.ok && wet.layer === layer) {
                     impastoLayBlob(wetInkCtx(), rgb, true);
                     wetQueueInkBox(impastoTakeInkBox());
@@ -5797,7 +5432,7 @@
                         for (let col = 0; col < w; col++) height[hb + col] *= impastoAutoTaperField[fb + col];
                     }
                 }
-                if (layer && reliefLiveForLayer(layer)) {
+                if (layer && reliefLiveMode()) {
                     reliefAddHeight(layer, x0, y0, w, h, height, amp, false);
                     return;
                 }
@@ -5989,7 +5624,7 @@
                         } else if (lf) {
                             for (let i = 0; i < w * h; i++) height[i] *= lf.field[i];
                         }
-                        if (reliefLiveForLayer(layer)) {
+                        if (reliefLiveMode()) {
                             reliefAddHeight(layer, x0, y0, w, h, height, amp, true);
                         } else {
                             impastoShadePgRegion(layer.pg, x0, y0, w, h, height, reliefLightForLayer(layer));
@@ -6035,93 +5670,13 @@
             }
 
             // The layer's height map, sized to its buffer and safe to write.
-            // Canvas support supplies geometry only. Colour pickup always reads layer.pg
-            // or the wet pigment buffers; none of these helpers copy background pixels.
-            function surfaceBelowLayer(layer) {
-                if (!layer || layer.surfaceType || layer.surfaceContactBaked) return null;
-                const index = layers.indexOf(layer);
-                for (let i = index - 1; i >= 0; i--) {
-                    const l = layers[i];
-                    if (l.surfaceType && l.relief && isLayerEffectivelyVisible(l) && getEffectiveOpacity(l) > 0) return l;
-                }
-                return null;
-            }
-
-            // Cache the substrate in the painting layer's coordinate system. Translating,
-            // rotating or scaling paint does not move the canvas weave with it.
-            function canvasSupport(layer) {
-                const surface = surfaceBelowLayer(layer);
-                if (!surface) { layer._surfaceSupport = null; return null; }
-                const r = surface.relief, W = layer.pg.width, H = layer.pg.height;
-                const transform = l => {
-                    const rot = l.rotation || 0, scale = l.scale || 1;
-                    const c = rot || scale !== 1 ? getLayerCenter(l) : {cx:0,cy:0};
-                    return {cx:c.cx,cy:c.cy,x:l.offsetX || 0,y:l.offsetY || 0,rot,scale};
-                };
-                const a = transform(layer), b = transform(surface);
-                const key = [W,H,...Object.values(a),...Object.values(b)].join('|');
-                const cached = layer._surfaceSupport;
-                if (cached && cached.source === r && cached.key === key) return cached;
-                let data;
-                if (W === r.w && H === r.h && key === [W,H,0,0,0,0,0,1,0,0,0,0,0,1].join('|')) {
-                    data = r.data; // the usual untransformed case shares immutable substrate height
-                } else {
-                    data = new Float32Array(W * H);
-                    const ca = Math.cos(a.rot), sa = Math.sin(a.rot), cb = Math.cos(b.rot), sb = Math.sin(b.rot);
-                    const k = b.scale / a.scale;
-                    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-                        const lx = (x - a.cx) * a.scale, ly = (y - a.cy) * a.scale;
-                        const dx = lx * ca - ly * sa + a.cx + a.x - b.cx - b.x;
-                        const dy = lx * sa + ly * ca + a.cy + a.y - b.cy - b.y;
-                        const u = (dx * cb + dy * sb) / b.scale + b.cx;
-                        const v = (-dx * sb + dy * cb) / b.scale + b.cy;
-                        if (u < 0 || v < 0 || u > r.w - 1 || v > r.h - 1) continue;
-                        const ix = Math.floor(u), iy = Math.floor(v), jx = Math.min(r.w-1,ix+1), jy = Math.min(r.h-1,iy+1);
-                        const tx = u-ix, ty = v-iy;
-                        data[y*W+x] = ((r.data[iy*r.w+ix]*(1-tx)+r.data[iy*r.w+jx]*tx)*(1-ty)
-                            + (r.data[jy*r.w+ix]*(1-tx)+r.data[jy*r.w+jx]*tx)*ty)*k;
-                    }
-                }
-                return layer._surfaceSupport = {w:W,h:H,data,source:r,key};
-            }
-
-            // Canvas tooth is weaker in a thin paint film, and buried as paint builds up.
-            // Paint's own relief stays separate, so canvas never flattens bristle ridges.
-            const CANVAS_PAINT_RELIEF = { strength: 0.22, burialDepth: 1.5 };
-            function canvasReliefTransmission(paintHeight) {
-                return CANVAS_PAINT_RELIEF.strength * Math.exp(-Math.max(0, paintHeight) / CANVAS_PAINT_RELIEF.burialDepth);
-            }
-            function effectiveLayerRelief(layer) {
-                const ground = canvasSupport(layer);
-                let own = layer.relief;
-                if (own && (own.w !== layer.pg.width || own.h !== layer.pg.height)) own = layer.relief = null;
-                if (!ground) { layer._combinedRelief = null; return own; }
-                const version = own && (own.version || 0), prev = layer._combinedRelief;
-                if (prev && prev.ground === ground && prev.own === own && prev.version === version) return prev;
-                const data = new Float32Array(ground.data.length);
-                const canvasData = new Float32Array(ground.data.length);
-                for (let i=0;i<data.length;i++) {
-                    const paintHeight = own ? own.data[i] : 0;
-                    canvasData[i] = ground.data[i] * canvasReliefTransmission(paintHeight);
-                    data[i] = paintHeight + canvasData[i];
-                }
-                return layer._combinedRelief = {w:ground.w,h:ground.h,data,canvasData,ground,own,version,
-                    x0:0,y0:0,x1:ground.w-1,y1:ground.h-1};
-            }
-
-            function reliefLiveForLayer(layer) {
-                // Contact with a procedural substrate retains height even in Baked mode,
-                // so paint and canvas keep sharing one geometry and never share pigment.
-                return reliefLiveMode() || !!surfaceBelowLayer(layer);
-            }
-
             function reliefWritable(layer) {
                 const W = layer.pg.width, H = layer.pg.height;
                 let r = layer.relief;
                 if (!r || r.w !== W || r.h !== H) {
                     r = { w: W, h: H, data: new Float32Array(W * H), frozen: false, x0: W, y0: H, x1: -1, y1: -1 };
                 } else if (r.frozen) {
-                    r = { w: W, h: H, data: r.data.slice(), frozen: false, version: r.version || 0, x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 };
+                    r = { w: W, h: H, data: r.data.slice(), frozen: false, x0: r.x0, y0: r.y0, x1: r.x1, y1: r.y1 };
                 }
                 layer.relief = r;
                 return r;
@@ -6133,7 +5688,6 @@
                 layer.litPg = null;
                 layer._litRect = null;
                 layer._litKey = null;
-                layer._litReliefRef = null;
             }
 
             // Forget a layer's height map (its pixels were cleared, repainted, or
@@ -6141,18 +5695,12 @@
             function dropLayerRelief(layer) {
                 if (!layer) return;
                 layer.relief = null;
-                layer._combinedRelief = null;
-                layer._surfaceSupport = null;
-                delete layer.surfaceType;
-                delete layer.surfaceColor;
-                delete layer.surfaceDepth;
-                delete layer.surfaceSeed;
                 freeLayerLitBuffer(layer);
             }
 
             // Queue a region (inclusive, layer-buffer coords) for relighting.
             function litMarkRect(layer, x0, y0, x1, y1) {
-                if (!layer || (!layer.relief && !surfaceBelowLayer(layer))) return;
+                if (!layer || !layer.relief) return;
                 const q = layer._litRect;
                 if (!q) { layer._litRect = { x0, y0, x1, y1 }; return; }
                 if (x0 < q.x0) q.x0 = x0;
@@ -6171,6 +5719,7 @@
                 if (!any) return;
                 const r = reliefWritable(layer);
                 const W = r.w, H = r.h, hm = r.data;
+
                 let blur = null, bx0 = 0, by0 = 0, bw = 0;
                 if (soften && r.x1 >= r.x0 &&
                     r.x0 <= x0 + w - 1 && r.x1 >= x0 && r.y0 <= y0 + h - 1 && r.y1 >= y0) {
@@ -6211,7 +5760,6 @@
                     }
                 }
                 if (nx1 < 0) return;
-                r.version = (r.version || 0) + 1;
                 if (nx0 < r.x0) r.x0 = nx0;
                 if (ny0 < r.y0) r.y0 = ny0;
                 if (nx1 > r.x1) r.x1 = nx1;
@@ -6226,9 +5774,9 @@
             // join seamlessly.
             function reliefShadeInto(px, r, x0, y0, w, h, L) {
                 const hm = r.data, W = r.w, H = r.h;
-                const kd = r.surface ? 0.045 : IMPASTO.kd, gK = r.surface ? 0 : IMPASTO.glossK, gMax = IMPASTO.glossMax;
+                const kd = IMPASTO.kd, gK = IMPASTO.glossK, gMax = IMPASTO.glossMax;
                 const Lx = L.x, Ly = L.y;
-                const steps = reliefShadowSteps(L), sK = r.surface ? 0.1 : IMPASTO.shadowK, M = RELIEF_SHADOW_MAX;
+                const steps = reliefShadowSteps(L), sK = IMPASTO.shadowK, M = RELIEF_SHADOW_MAX;
                 // Only pixels within reach of the relief bounds can be lit or shadowed.
                 const ya = Math.max(y0, r.y0 - M), yb = Math.min(y0 + h - 1, r.y1 + M);
                 const xa = Math.max(x0, r.x0 - M), xb = Math.min(x0 + w - 1, r.x1 + M);
@@ -6236,8 +5784,7 @@
                     const ym = (y > 0 ? y - 1 : y) * W, yc = y * W, yp = (y < H - 1 ? y + 1 : y) * W;
                     let o = ((y - y0) * w + (xa - x0)) * 4;
                     for (let x = xa; x <= xb; x++, o += 4) {
-                        const shadowMap = px[o + 3] === 0 && r.ground ? (r.own && r.own.data) : hm;
-                        const dark = shadowMap ? sK * reliefShadowAt(shadowMap, W, H, x, y, shadowMap[yc + x], steps) : 0;
+                        const dark = sK * reliefShadowAt(hm, W, H, x, y, hm[yc + x], steps);
                         if (px[o + 3] === 0) {
                             // The shadow falls past the paint: on a see-through layer it
                             // shows as a dark veil over whatever lies below.
@@ -6264,7 +5811,7 @@
 
             // Relight one region of the lit buffer from `base` (the layer's colour).
             function relightRegion(layer, base, x0, y0, x1, y1, L) {
-                const r = effectiveLayerRelief(layer), M = RELIEF_SHADOW_MAX;   // (a change throws its shadow further out)
+                const r = layer.relief, M = RELIEF_SHADOW_MAX;   // (a change throws its shadow further out)
                 x0 = Math.max(0, Math.floor(x0) - M); y0 = Math.max(0, Math.floor(y0) - M);
                 x1 = Math.min(r.w - 1, Math.ceil(x1) + M); y1 = Math.min(r.h - 1, Math.ceil(y1) + M);
                 if (x1 < x0 || y1 < y0) return;
@@ -6279,7 +5826,7 @@
             // layer has none. `base` is what would be drawn otherwise (pg or the
             // adjusted curvePg); `curveRegen` = the adjusted buffer was just rebuilt.
             function ensureLayerLitBuffer(layer, base, baseIsCurve, curveRegen) {
-                const r = effectiveLayerRelief(layer);
+                const r = layer.relief;
                 if (!r || r.w !== base.width || r.h !== base.height || r.x1 < r.x0) {
                     if (r && (r.w !== base.width || r.h !== base.height)) layer.relief = null;
                     if (layer.litPg) freeLayerLitBuffer(layer);
@@ -6297,7 +5844,7 @@
                 const W = r.w, H = r.h;
                 let lp = layer.litPg;
                 let full = !lp || lp.width !== W || lp.height !== H || layer._litKey !== key
-                        || layer._litReliefRef !== r || !!layer._litFull || (curveRegen && !layer._litRect);
+                        || !!layer._litFull || (curveRegen && !layer._litRect);
                 if (!lp || lp.width !== W || lp.height !== H) {
                     if (lp) { try { lp.remove(); } catch (e) {} }
                     lp = p.createGraphics(W, H);
@@ -6320,7 +5867,6 @@
                     relightRegion(layer, base, q.x0, q.y0, q.x1, q.y1, L);
                 }
                 layer._litKey = key;
-                layer._litReliefRef = r;
                 layer._litRot = rot;
                 layer._litFull = false;
                 layer._litRect = null;
@@ -6329,7 +5875,7 @@
 
             // Queue the area the bristles just painted (plus any watercolour bleed).
             function litMarkBristles(layer) {
-                if (!layer || (!layer.relief && !surfaceBelowLayer(layer))) return;
+                if (!layer || !layer.relief) return;
                 let mx0 = Infinity, my0 = Infinity, mx1 = -Infinity, my1 = -Infinity;
                 for (const b of brush.bristles) {
                     if (b.px < mx0) mx0 = b.px; if (b.x < mx0) mx0 = b.x;
@@ -6488,7 +6034,7 @@
                 gl: null, canvas: null, vao: null, prog: {},
                 W: 0, H: 0, s: 1,                     // simulation size, simulation px per layer px
                 LW: 0, LH: 0,                         // layer size the simulation was allocated for
-                pig: [null, null], flow: [null, null], base: [null, null], meta: [null, null], fbo: [null, null], cur: 0,
+                pig: [null, null], flow: [null, null], base: [null, null], fbo: [null, null], cur: 0,
                 aux: [null, null], auxFbo: [null, null], auxCur: 0,
                 inkTex: null, inkCanvas: null, inkCtx: null, inkPrm: null,
                 gainTex: null,                        // the stroke's mask under the ink (the bristles' ropes, see WET_FS_SPLAT)
@@ -6549,17 +6095,7 @@ vec4 forHalf(vec4 v) {
 }
 vec3 toKS(vec3 c) { vec3 r = clamp(c, 0.008, 1.0); return (1.0 - r) * (1.0 - r) / (2.0 * r); }
 vec3 fromKS(vec3 k) { k = max(k, vec3(0.0)); return 1.0 / (1.0 + k + sqrt(k * k + 2.0 * k)); }
-float covK(float solid) { return mix(1.9, 3.2, clamp(solid, 0.0, 1.0)); }   // Pigment: coverage = 1 - exp(-mass * K)
-// Material identity survives drying, movement and changes of brush medium.
-vec3 materialOf(vec4 F, vec4 M) { float oil = clamp(F.a, 0.0, 1.0), acr = clamp(M.r, 0.0, 1.0 - oil); return vec3(oil, acr, max(0.0, 1.0 - oil - acr)); }
-float compatible(vec3 a, vec3 b) { return clamp(1.0 - a.x * b.z - a.z * b.x, 0.0, 1.0); }
-float mobility(vec4 P, vec4 F, vec4 M) {
-    vec3 t = materialOf(F, M);
-    float heavy = smoothstep(0.3, 2.5, P.a);
-    float dilute = smoothstep(0.55, 1.5, F.r);
-    return clamp(1.0 - 0.994 * t.x - t.y * (0.36 + 0.61 * heavy) * (1.0 - 0.65 * dilute), 0.003, 1.0);
-}
-vec3 materialMass(vec4 P, vec4 F, vec4 M) { return vec3(F.a, M.r, max(M.g, 0.000001)) * P.a; }
+float covK(float oil) { return mix(1.9, 3.2, oil); }   // Pigment: coverage = 1 - exp(-mass * K)
 // Bilinear read at a position in pixel units (texel centres at +0.5).
 vec4 fetchLin(sampler2D t, vec2 q) {
     q -= 0.5;
@@ -6574,7 +6110,6 @@ vec4 fetchLin(sampler2D t, vec2 q) {
 layout(location = 0) out vec4 oPig;
 layout(location = 1) out vec4 oFlow;
 layout(location = 2) out vec4 oBase;
-layout(location = 3) out vec4 oMeta;
 `;
             // Add ink: drag wet paint along, then deposit with Pigment's dab rule.
             // With uFilm > 0 (mass relief, oil) the brush leaves a film of that mass
@@ -6587,9 +6122,9 @@ layout(location = 3) out vec4 oMeta;
             // (uRaw); a bristle crossing it leaves part of what the blob laid there
             // (blobOwn).
             const WET_FS_SPLAT = WET_COMMON + WET_OUT3 + `
-uniform sampler2D uPig, uFlow, uBase, uInk, uMeta;
+uniform sampler2D uPig, uFlow, uBase, uInk;
 uniform ivec4 uRect;
-uniform float uWater, uAlpha, uVelGain, uOil, uAcrylic, uEvap, uLift, uSmear;
+uniform float uWater, uAlpha, uVelGain, uOil, uSmear;
 uniform vec2 uDir, uSmearOff;
 uniform float uFilm, uPlough, uFurrow;
 uniform float uRaw;     // 1: the ink's alpha is paint mass, as a share of uFilm (the touch-down blob)
@@ -6609,44 +6144,8 @@ uniform vec3 uBlobCap;  // ... behind its axis's first point: the way the drag s
 uniform float uSeed;    // places the furrows' streaks
 const float M0 = ${WET_H_M0.toFixed(3)}, MMAX = ${WET_MASS_MAX.toFixed(1)};
 const float ARM_FADE = ${BRUSH_LOAD.armFade.toFixed(3)}, RIM_FADE = ${BRUSH_LOAD.rimFade.toFixed(3)}, MID_END = ${BRUSH_LOAD.midEnd.toFixed(3)}, MID_BOW = ${BRUSH_LOAD.midBow.toFixed(3)}, MID_FADE = ${BRUSH_LOAD.midFade.toFixed(3)}, RIM_IN = ${BRUSH_LOAD.rimIn.toFixed(3)};
-float oilGround(ivec2 q) {
-    vec4 Bq = texelFetch(uBase, cl(q), 0), Mq = texelFetch(uMeta, cl(q), 0);
-    vec4 Pq = texelFetch(uPig, cl(q), 0), Fq = texelFetch(uFlow, cl(q), 0);
-    return clamp(Bq.a * Mq.b + (1.0 - exp(-Pq.a * 3.2)) * Fq.a * (1.0 - Mq.r), 0.0, 1.0);
-}
-vec4 rawInkAt(ivec2 q) {
-    return (q.x >= uRect.x && q.y >= uRect.y && q.x <= uRect.z && q.y <= uRect.w) ? texelFetch(uInk, q, 0) : vec4(0.0);
-}
-// Water beads on oil. Redirect the rejected share onto adjacent absorbent pixels,
-// retaining it as a bead when the oil patch completely encloses the dab.
 vec4 inkAt(ivec2 q) {
-    vec4 ink = rawInkAt(q);
-    if (uOil + uAcrylic > 0.5) return ink;
-    float stick = 1.0 - 0.94 * oilGround(q);
-    float exits = 0.0;
-    for (int i = 0; i < 4; i++) {
-        ivec2 d = i == 0 ? ivec2(-1,0) : (i == 1 ? ivec2(1,0) : (i == 2 ? ivec2(0,-1) : ivec2(0,1)));
-        if (all(equal(cl(q + d), q + d))) exits += 1.0 - oilGround(q + d);
-    }
-    float keep = exits > 0.05 ? stick : 1.0;
-    vec3 rgb = ink.rgb * ink.a * keep;
-    float alpha = ink.a * keep;
-    for (int i = 0; i < 4; i++) {
-        ivec2 d = i == 0 ? ivec2(-1,0) : (i == 1 ? ivec2(1,0) : (i == 2 ? ivec2(0,-1) : ivec2(0,1)));
-        ivec2 n = q + d;
-        if (any(notEqual(cl(n), n))) continue;
-        float sum = 0.0;
-        for (int j = 0; j < 4; j++) {
-            ivec2 e = j == 0 ? ivec2(-1,0) : (j == 1 ? ivec2(1,0) : (j == 2 ? ivec2(0,-1) : ivec2(0,1)));
-            if (all(equal(cl(n + e), n + e))) sum += 1.0 - oilGround(n + e);
-        }
-        if (sum > 0.05) {
-            vec4 nb = rawInkAt(n);
-            float add = nb.a * 0.94 * oilGround(n) * (1.0 - oilGround(q)) / sum;
-            rgb += nb.rgb * add; alpha += add;
-        }
-    }
-    return vec4(alpha > 1e-6 ? rgb / alpha : vec3(0.0), min(alpha, 0.985));
+    return (q.x >= uRect.x && q.y >= uRect.y && q.x <= uRect.z && q.y <= uRect.w) ? texelFetch(uInk, q, 0) : vec4(0.0);
 }
 float contact(float a) { return a > 0.002 ? min(1.0, a / max(uAlpha, 0.02)) : 0.0; }
 // Distance from pixel centre q to the brush centre's line of travel.
@@ -6704,13 +6203,8 @@ float pushed(vec4 Pq, vec4 Fq, ivec2 q) {
 }
 void main() {
     ivec2 p = ivec2(gl_FragCoord.xy);
-    vec4 P = texelFetch(uPig, p, 0), F = texelFetch(uFlow, p, 0), B = texelFetch(uBase, p, 0), M = texelFetch(uMeta, p, 0);
-    vec3 incoming = vec3(uOil, uAcrylic, max(0.0, 1.0 - uOil - uAcrylic));
+    vec4 P = texelFetch(uPig, p, 0), F = texelFetch(uFlow, p, 0), B = texelFetch(uBase, p, 0);
     vec4 ink = inkAt(p);
-    // A single pigment reservoir cannot stack two immiscible wet media.
-    // Water rejected by wet oil is redirected by inkAt; never dissolve the
-    // underlying oil when an enclosed part of its patch has no escape pixel.
-    if (uOil + uAcrylic < 0.5 && F.a > 0.02 && P.a > 0.002) ink = vec4(0.0);
     // 0. Plough: what the brush pushes off this pixel leaves, what it pushes
     //    off the pixel uPush behind arrives. A whole-pixel shift, so no paint is lost.
     if (uPlough > 0.0 && uFilm > 0.0) {
@@ -6725,8 +6219,6 @@ void main() {
                 float sh = come / P.a;
                 F.r = mix(F.r, Fu.r, sh);
                 F.a = mix(F.a, Fu.a, sh);
-                vec4 Mu = texelFetch(uMeta, u, 0);
-                M.rg = mix(M.rg, Mu.rg, sh);
             }
         } else if (gone > 0.0) {
             P *= 1.0 - gone / P.a;
@@ -6742,23 +6234,17 @@ void main() {
         if (ink.a > (raw ? 0.003 : (uFilm > 0.0 ? 0.05 : 0.002))) {
             float c = raw ? min(1.0, lay / M0) : contact(ink.a);   // bristle contact (the blob: how well it covers)
             // 1. A brush pulled through wet paint carries it along.
-            float k = c * uSmear * clamp(F.r * 2.0, 0.0, 1.0) * compatible(incoming, materialOf(F, M));
+            float k = c * uSmear * clamp(F.r * 2.0, 0.0, 1.0);
             if (k > 0.0) {
                 vec2 q = vec2(p) + 0.5 + uSmearOff;
-                vec4 Pq = fetchLin(uPig, q), Fq = fetchLin(uFlow, q), Mq = fetchLin(uMeta, q);
-                k *= compatible(incoming, materialOf(Fq, Mq));
                 float m0 = P.a;
-                vec3 quantity = mix(materialMass(P,F,M), materialMass(Pq,Fq,Mq), k);
-                P = mix(P, Pq, k);
-                if (P.a > 1e-6) {
-                    F.a = clamp(quantity.x / P.a,0.0,1.0);
-                    M.r = clamp(quantity.y / P.a,0.0,1.0-F.a);
-                    M.g = max(0.000001,quantity.z / P.a);
-                }
+                P = mix(P, fetchLin(uPig, q), k);
                 // Mass relief: only the colour is dragged; the paint's mass (its
                 // relief) moves with the plough and the furrows instead.
                 if (uFilm > 0.0 && P.a > 1e-6) P *= m0 / P.a;
+                vec4 Fq = fetchLin(uFlow, q);
                 F.r = mix(F.r, Fq.r, k);
+                F.a = mix(F.a, Fq.a, k);
             }
             // 1b. Mass relief: a bristle cuts a furrow. It scrapes the wet paint on its
             //     track down towards what it lays itself, leaving part of what the
@@ -6784,31 +6270,12 @@ void main() {
                 float capM = film + keep;
                 if (P.a > capM) P *= mix(1.0, capM / P.a, c * smoothstep(0.0, 0.1, F.r));   // (dry paint is not scraped)
             }
-            // Fresh water or aqueous acrylic can lift watercolor, never a set oil/acrylic film.
-            // The base colour is flattened. When it includes a sealed binder,
-            // conservatively retain the whole film rather than lifting that
-            // binder's colour along with a translucent watercolor overcoat.
-            float dryWater = M.b + M.a < 0.01 ? 1.0 : 0.0;
-            if (uLift > 0.0 && uOil < 0.5 && B.a > 0.002 && dryWater > 0.001) {
-                float mb = -log(1.0 - min(B.a, 0.999)) / 1.9;
-                float dm = mb * min(0.9, c * uWater * uLift) * dryWater;
-                float m0 = P.a;
-                P += vec4(toKS(B.rgb) * dm, dm);
-                if (P.a > 1e-6) {
-                    F.a *= m0 / P.a;
-                    M.r *= m0 / P.a;
-                    M.g = (M.g * m0 + uEvap * dm) / P.a;
-                }
-                float left = max(0.0, mb - dm);
-                if (left > 1e-6) M.ba = clamp(M.ba * (mb / left), vec2(0.0), vec2(1.0));
-                B.a = 1.0 - exp(-left * 1.9);
-            }
-            // 2. Deposit: compatible wet colours blend by mass; sealed paint is covered.
+            // 2. Deposit: on wet paint colours blend by mass, dry paint gets covered.
             float a = min(ink.a, 0.985);
-            float add = raw ? min(lay, M0) : -log(1.0 - a) / covK(uOil + uAcrylic);   // same coverage as alpha a
+            float add = raw ? min(lay, M0) : -log(1.0 - a) / covK(uOil);   // same coverage as alpha a
             float old = P.a;
             float newM = uFilm > 0.0 ? min(MMAX, max(old, raw ? lay : track * c)) : min(7.0, old + add);
-            float mixf = clamp(F.r * 1.2, 0.0, 1.0) * mix(0.97, 0.76, uOil + uAcrylic) * compatible(incoming, materialOf(F, M));
+            float mixf = clamp(F.r * 1.2, 0.0, 1.0) * mix(0.97, 0.76, uOil);
             // Mass relief moves paint about and can leave traces too thin for
             // half floats to hold a colour: those count as bare.
             float none = uFilm > 0.0 ? 1e-3 : 1e-6;
@@ -6819,15 +6286,13 @@ void main() {
             vec3 ex = old > none ? P.rgb / old : ks;
             P = vec4((ex * (1.0 - ratio) + ks * ratio) * newM, newM);
             F.a = old > none ? mix(F.a, uOil, ratio) : uOil;
-            M.r = old > none ? mix(M.r, uAcrylic, ratio) : uAcrylic;
-            M.g = old > none ? mix(M.g, uEvap, ratio) : uEvap;
             // (A film is evenly workable — twice one pass's worth — however often
             // the bristles overlap; an uneven film would run unevenly.)
             F.r = uFilm > 0.0 ? max(F.r, min(2.5, 2.0 * c * uWater)) : min(2.5, F.r + c * uWater);
             F.gb = clamp(F.gb + uDir * (c * uVelGain), vec2(-1.5), vec2(1.5));
         }
     }
-    oPig = forHalf(P); oFlow = F; oBase = B; oMeta = M;
+    oPig = forHalf(P); oFlow = F; oBase = B;
 }`;
             // One simulation step: Pigment.html's rules (uAdvect = 0) or the same with
             // semi-Lagrangian transport by the fluid velocity (Swirling), plus
@@ -6837,119 +6302,145 @@ void main() {
             // to its four neighbours and, by the same rule, what they send it, so no
             // paint is made or lost.
             const WET_FS_STEP = WET_COMMON + WET_OUT3 + `
-uniform sampler2D uPig, uFlow, uBase, uMeta;
-uniform float uEvapScale, uDecay, uAdvect, uTilt;
-uniform vec2 uDown;
+uniform sampler2D uPig, uFlow, uBase;
+uniform float uEvapW, uEvapO, uDecay, uLift, uAdvect;
+uniform vec3 uPaper;
+uniform float uTilt;     // 0 = canvas flat (no drips) .. 1 = upright
+uniform vec2 uDown;      // how much of "down" lies along x and y (signed, |x| + |y| = 1)
 const float M0 = ${WET_H_M0.toFixed(3)}, MMAX = ${WET_MASS_MAX.toFixed(1)}, MOB = ${WET_MOB.toFixed(4)};
-float barrier(ivec2 q) {
-    vec4 B = texelFetch(uBase, cl(q), 0), M = texelFetch(uMeta, cl(q), 0);
-    vec4 P = texelFetch(uPig, cl(q), 0), F = texelFetch(uFlow, cl(q), 0);
-    return clamp(B.a * M.b * (1.0 - M.a) + (1.0 - exp(-P.a * 3.2)) * F.a * (1.0 - M.r), 0.0, 1.0);
+// Smooth value noise in 0..1; cell = its grain in px.
+float runNoise(ivec2 q, int cell, ivec2 seed) {
+    ivec2 c = q / cell;
+    vec2 f = (vec2(q - c * cell) + 0.5) / float(cell);
+    f = f * f * (3.0 - 2.0 * f);
+    c += seed;
+    return mix(mix(hash21(c), hash21(c + ivec2(1, 0)), f.x), mix(hash21(c + ivec2(0, 1)), hash21(c + ivec2(1, 1)), f.x), f.y);
 }
-float movable(vec4 P, vec4 F, vec4 M) {
-    if (P.a <= 1e-6 || F.r <= 0.008) return 0.0;
-    vec3 t = materialOf(F, M);
-    float hold = M0 + ${WET_RUN_HOLD.toFixed(2)} * (1.0 - 0.75 * clamp(F.r, 0.0, 1.0)) / max(0.08, uTilt);
-    hold *= mix(1.0, 0.12, t.y * smoothstep(0.55, 1.5, F.r));
-    float heavy = max(0.0, P.a - hold) / max(P.a, 1e-6);
-    return clamp(t.z + t.y * 0.6 * smoothstep(0.55, 1.5, F.r) + (t.x + t.y) * heavy, 0.0, 1.0);
+// The share of the oil paint here that is running (0..1): it arrived by running
+// and lies on top of the paint that was there.
+float mobAt(vec4 Fq) { return Fq.a > 0.5 ? clamp(Fq.g / MOB, 0.0, 1.0) : 0.0; }
+// Wet oil paint at q that is free to run.
+//  - Paint at rest gives way where it stands above what it can hold. Wetter
+//    paint and a steeper canvas hold less, and the hold is uneven: here and
+//    there a weak spot, where a thick blob lets go first.
+//  - Running paint rides over the paint under it. On thin or bare ground it
+//    leaves a film behind, the trail, and only the rest moves on.
+float freeAt(vec4 Pq, vec4 Fq, ivec2 q) {
+    float run = mobAt(Fq) * Pq.a, still = Pq.a - run;
+    float soft = ${WET_RUN_HOLD.toFixed(2)} * (1.0 - 0.75 * clamp(Fq.r, 0.0, 1.0)) / uTilt;
+    float n = 1.0 - runNoise(q, 14, ivec2(31, 17));
+    float rest = M0 + soft * (1.25 - 0.47 * n * n);
+    float trail = M0 + soft * ${WET_RUN_TRAIL.toFixed(3)};
+    return (max(0.0, still - rest) + max(0.0, run - max(0.0, trail - still))) * Fq.a * smoothstep(0.0, 0.06, Fq.r);
+}
+float runRate(float e) { return min(0.4 * e, ${WET_RUN_RATE.toFixed(3)} * uTilt * e * e); }
+float wetted(float m) { return smoothstep(0.05, 0.8, m); }
+// How readily e of free paint moves downhill onto pixel r holding mass mr: bare
+// canvas resists until a bead has gathered. How big a bead differs a lot from
+// place to place, in bands that run down the slope, so a front breaks through
+// at its weak spots and those become the drips.
+float ontoDown(float e, float mr, ivec2 r) {
+    ivec2 cell = abs(uDown.y) >= abs(uDown.x) ? ivec2(10, 48) : ivec2(48, 10);
+    ivec2 c = r / cell;
+    vec2 f = (vec2(r - c * cell) + 0.5) / vec2(cell);
+    f = f * f * (3.0 - 2.0 * f);
+    c += ivec2(7, 53);
+    float n = mix(mix(hash21(c), hash21(c + ivec2(1, 0)), f.x), mix(hash21(c + ivec2(0, 1)), hash21(c + ivec2(1, 1)), f.x), f.y);
+    float bead = ${WET_RUN_BEAD.toFixed(3)} * mix(0.35, 3.0, smoothstep(0.3, 0.7, n));
+    return mix(${WET_RUN_BARE.toFixed(3)} * smoothstep(0.0, 0.6, e - bead), 1.0, wetted(mr));
 }
 void main() {
     ivec2 p = ivec2(gl_FragCoord.xy);
-    vec4 P0 = texelFetch(uPig, p, 0), F0 = texelFetch(uFlow, p, 0), B = texelFetch(uBase, p, 0), M0v = texelFetch(uMeta, p, 0);
-    vec3 types = materialOf(F0, M0v);
-    bool sealed0 = F0.r <= 0.008 && P0.a > 0.002 && types.x + types.y > 0.01;
-    vec4 P = P0;
-    vec3 Q = materialMass(P0, F0, M0v);
-    float water = F0.r, waterWeight = 0.0, waterPaint = 0.0, evapWater = F0.r * M0v.g;
-    vec2 velocity = F0.gb;
-    float oilHere = barrier(p);
-    vec2 gradient = vec2(barrier(p + ivec2(1,0)) - barrier(p + ivec2(-1,0)), barrier(p + ivec2(0,1)) - barrier(p + ivec2(0,-1)));
-    // Nonwetting washes move off the oil film toward an absorbent edge; on its
-    // interior they bead and drain downhill rather than staining the film.
-    velocity += -gradient * types.z * F0.r * 0.7 + uDown * oilHere * types.z * F0.r * (0.035 + 0.2 * uTilt);
-    float mob0 = mobility(P0, F0, M0v);
-    for (int k = 0; k < 4; k++) {
-        ivec2 d = k == 0 ? ivec2(-1,0) : (k == 1 ? ivec2(1,0) : (k == 2 ? ivec2(0,-1) : ivec2(0,1)));
-        ivec2 q = p + d;
-        if (any(notEqual(cl(q), q))) continue;
-        vec4 Pq = texelFetch(uPig, q, 0), Fq = texelFetch(uFlow, q, 0), Mq = texelFetch(uMeta, q, 0);
-        vec3 tq = materialOf(Fq, Mq);
-        bool sealedq = Fq.r <= 0.008 && Pq.a > 0.002 && tq.x + tq.y > 0.01;
-        vec3 Qq = materialMass(Pq, Fq, Mq);
-        float comp = compatible(types, tq);
-        float mobq = mobility(Pq, Fq, Mq);
-        float edge = sealed0 || sealedq ? 0.0 : min(mob0, mobq) * comp;
-        float wetEdge = sealed0 || sealedq ? 0.0 : (1.0 - max(types.x, tq.x) * 0.98) * comp;
-        // Dry oil blocks capillary water ingress. Acrylic remains a bridge.
-        float capillary = 1.0 - max(oilHere * types.z, barrier(q) * tq.z) * 0.94;
-        water += (Fq.r - F0.r) * 0.065 * wetEdge * capillary;
-        evapWater += (Fq.r * Mq.g - F0.r * M0v.g) * 0.065 * wetEdge * capillary;
-        float diffuse = min(1.2, min(F0.r, Fq.r)) * 0.023 * edge * capillary;
-        P += (Pq - P0) * diffuse;
-        Q += (Qq - materialMass(P0, F0, M0v)) * diffuse;
-        // Directed pigment flux: each outgoing share and its matching incoming
-        // share use the same source state, preserving colour and medium identity.
-        vec2 vq = Fq.gb;
-        vec2 gq = vec2(barrier(q + ivec2(1,0)) - barrier(q + ivec2(-1,0)), barrier(q + ivec2(0,1)) - barrier(q + ivec2(0,-1)));
-        vq += -gq * tq.z * Fq.r * 0.7 + uDown * barrier(q) * tq.z * Fq.r * (0.035 + 0.2 * uTilt);
-        float outflow = max(0.0, dot(velocity, vec2(d))) * min(1.2, F0.r) * mob0 * 0.042;
-        float inflow = max(0.0, dot(vq, -vec2(d))) * min(1.2, Fq.r) * mobq * 0.042;
-        float oilDest = barrier(q), oilSrc = oilHere;
-        outflow *= 1.0 - oilDest * types.z * (1.0 - oilHere) * 0.95;
-        inflow *= 1.0 - oilSrc * tq.z * (1.0 - barrier(q)) * 0.95;
-        float down = dot(vec2(d), uDown);
-        float run0 = movable(P0, F0, M0v), runq = movable(Pq, Fq, Mq);
-        outflow += max(down, 0.0) * uTilt * run0 * (0.025 + 0.075 * min(F0.r, 1.5));
-        inflow += max(-down, 0.0) * uTilt * runq * (0.025 + 0.075 * min(Fq.r, 1.5));
-        // Oil does not dissolve into watercolor. Empty destinations accept the
-        // moving wash, but an occupied incompatible surface keeps its colour.
-        outflow *= Pq.a > 0.002 ? comp : 1.0;
-        inflow *= P0.a > 0.002 ? comp : 1.0;
-        if (sealed0 || sealedq) { outflow = 0.0; inflow = 0.0; }
-        outflow = min(0.12, outflow); inflow = min(0.12, inflow);
-        P += Pq * inflow - P0 * outflow;
-        Q += Qq * inflow - materialMass(P0, F0, M0v) * outflow;
-        waterPaint += Fq.r * Pq.a * inflow - F0.r * P0.a * outflow;
-        waterWeight += Pq.a * inflow - P0.a * outflow;
+    ivec2 pl = cl(p + ivec2(-1, 0)), pr = cl(p + ivec2(1, 0)), pu = cl(p + ivec2(0, -1)), pd = cl(p + ivec2(0, 1));
+    vec4 F = texelFetch(uFlow, p, 0);
+    vec4 Fl = texelFetch(uFlow, pl, 0), Fr = texelFetch(uFlow, pr, 0), Fu = texelFetch(uFlow, pu, 0), Fd = texelFetch(uFlow, pd, 0);
+    vec4 P = texelFetch(uPig, p, 0), B = texelFetch(uBase, p, 0);
+    float w = F.r, o = F.a;
+    // Drips: what leaves this pixel and what arrives, from the state before the step.
+    float runKeep = 1.0, runIn = 0.0, runW = 0.0, runO = 0.0, mob = mobAt(F), gone = 0.0;
+    float running = mob * P.a;                                  // mass of the running paint here
+    vec4 runP = vec4(0.0);
+    if (uTilt > 0.0) {
+        float e = freeAt(P, F, p), m = P.a;
+        for (int k = 0; k < 4; k++) {
+            ivec2 d = k == 0 ? ivec2(-1, 0) : (k == 1 ? ivec2(1, 0) : (k == 2 ? ivec2(0, -1) : ivec2(0, 1)));
+            ivec2 q = p + d;
+            if (q.x < 0 || q.y < 0 || q.x >= uSize.x || q.y >= uSize.y) continue;
+            vec4 Pq = texelFetch(uPig, q, 0), Fq = texelFetch(uFlow, q, 0);
+            float eq = freeAt(Pq, Fq, q);
+            float down = dot(vec2(d), uDown);                     // > 0: q lies downhill
+            // Downhill with gravity, and sideways into lower neighbours. Bare canvas
+            // resists, most of all sideways, which keeps a run narrow.
+            float fo = runRate(e) * max(down, 0.0) * ontoDown(e, Pq.a, q)
+                     + ${WET_RUN_LEVEL.toFixed(3)} * uTilt * min(e, max(0.0, m - Pq.a)) * mix(${WET_RUN_BARE_SIDE.toFixed(3)}, 1.0, wetted(Pq.a));
+            float fi = runRate(eq) * max(-down, 0.0) * ontoDown(eq, m, p)
+                     + ${WET_RUN_LEVEL.toFixed(3)} * uTilt * min(eq, max(0.0, Pq.a - m)) * mix(${WET_RUN_BARE_SIDE.toFixed(3)}, 1.0, wetted(m));
+            if (fo > 1e-3) gone += fo;                             // (no traces: see the plough)
+            if (fi > 1e-3) {
+                runP += Pq * (fi / Pq.a);
+                runIn += fi; runW += Fq.r * fi; runO += Fq.a * fi;
+            }
+        }
+        if (gone > 0.0) runKeep = 1.0 - min(gone, m) / m;
     }
-    P = max(P, vec4(0.0)); Q = max(Q, vec3(0.0));
-    vec4 F = F0, M = M0v;
-    if (P.a > 1e-5) {
-        F.a = clamp(Q.x / P.a, 0.0, 1.0);
-        M.r = clamp(Q.y / P.a, 0.0, 1.0 - F.a);
-        M.g = max(0.000001, Q.z / P.a);
-        float carried = P0.a + waterWeight;
-        if (carried > 1e-5) water = mix(water, max(0.0, (F0.r * P0.a + waterPaint) / carried), clamp(abs(waterWeight) / carried, 0.0, 1.0));
-    } else {
-        F.a = 0.0; M.r = 0.0;
-        if (water > 0.0001) M.g = max(0.000001, evapWater / water);
+    // Water spreads to the neighbours (Pigment), except into or out of oil paint,
+    // whose "water" is its workability and stays put while it slowly dries.
+    float nw = w + ((Fl.r - w) * (1.0 - max(o, Fl.a) * 0.95) + (Fr.r - w) * (1.0 - max(o, Fr.a) * 0.95)
+                  + (Fu.r - w) * (1.0 - max(o, Fu.a) * 0.95) + (Fd.r - w) * (1.0 - max(o, Fd.a) * 0.95)) * 0.09;
+    if (w > 0.008 || nw > 0.008) {
+        const float diff = 0.023;
+        float ql = min(w, Fl.r) * (1.0 - max(o, Fl.a) * 0.992) * diff;
+        float qr = min(w, Fr.r) * (1.0 - max(o, Fr.a) * 0.992) * diff;
+        float qu = min(w, Fu.r) * (1.0 - max(o, Fu.a) * 0.992) * diff;
+        float qd = min(w, Fd.r) * (1.0 - max(o, Fd.a) * 0.992) * diff;
+        vec4 Pl = texelFetch(uPig, pl, 0), Pr = texelFetch(uPig, pr, 0), Pu = texelFetch(uPig, pu, 0), Pd = texelFetch(uPig, pd, 0);
+        vec4 spread = (Pl - P) * ql + (Pr - P) * qr + (Pu - P) * qu + (Pd - P) * qd;
+        if (uAdvect > 0.0) {
+            vec2 d = clamp(F.gb * uAdvect * (1.0 - o * 0.99), vec2(-1.5), vec2(1.5));
+            vec2 q = vec2(p) + 0.5 - d;
+            vec4 Fq = fetchLin(uFlow, q);
+            // Only wet paint travels, and oil paint stays where it was put.
+            float g = smoothstep(0.008, 0.05, min(w, Fq.r)) * (1.0 - max(o, Fq.a) * 0.99);
+            P = mix(P, fetchLin(uPig, q), g) + spread;
+            nw += (Fq.r - w) * g;
+        } else {
+            float sx = clamp(F.g * w * (1.0 - o * 0.99) * 0.042, -0.06, 0.06);
+            float sy = clamp(F.b * w * (1.0 - o * 0.99) * 0.042, -0.06, 0.06);
+            ivec2 ix = sx > 0.0 ? pl : pr, iy = sy > 0.0 ? pu : pd;
+            float ax = abs(sx), ay = abs(sy);
+            P += spread + (texelFetch(uPig, ix, 0) - P) * ax + (texelFetch(uPig, iy, 0) - P) * ay;
+        }
     }
-    // Arriving free water lifts a watercolor stain beyond the original brush
-    // footprint. The dried oil/acrylic shares remain sealed as the soluble
-    // watercolor fraction decreases. This belongs to the deposited water,
-    // so changing the active brush medium does not disable an existing wash.
-    // Flattened mixed base colours cannot be separated again. Sealed-binder
-    // films stay intact; pure watercolor stains remain fully rewettable.
-    float dryWater = M.b + M.a < 0.01 && !sealed0 ? 1.0 : 0.0;
-    vec3 now = materialOf(F,M);
-    float aqueous = now.z + now.y * 0.45 * smoothstep(0.3,1.2,water);
-    if (water > 0.008 && B.a > 0.002 && dryWater > 0.001 && aqueous > 0.001) {
-        float mb = -log(1.0 - min(B.a,0.999)) / 1.9;
-        float dm = mb * min(0.025,0.0025 * min(water,1.5) * aqueous) * dryWater;
+    // Drips: the paint moves, and takes its wetness, oiliness and motion along.
+    if (runKeep < 1.0 || runIn > 0.0) {
+        float stay = P.a * runKeep, tot = stay + runIn;
+        P = P * runKeep + runP;
+        if (P.a > MMAX) P *= MMAX / P.a;
+        if (tot > 1e-6) {
+            nw = (nw * stay + runW) / tot;
+            o = (o * stay + runO) / tot;
+        }
+    }
+    // What left was running paint first; what arrives is running; and running
+    // paint comes to rest in time.
+    if (uTilt > 0.0) mob = P.a > 1e-6 ? clamp((max(0.0, running - gone) + runIn) * ${WET_RUN_REST.toFixed(4)} / P.a, 0.0, 1.0) : 0.0;
+    // Re-wetting: water dissolves some of the layer's dried paint into the pigment.
+    if (uLift > 0.0 && w > 0.008 && B.a > 0.002 &&
+        !(B.a > 0.998 && all(lessThan(abs(B.rgb - uPaper), vec3(0.8 / 255.0))))) {
+        float K = covK(o);
+        float mb = -log(1.0 - min(B.a, 0.999)) / K;
+        float dm = mb * min(1.0, uLift * min(w, 1.0));
         float m0 = P.a;
-        P += vec4(toKS(B.rgb) * dm,dm);
-        if (P.a > 1e-6) { F.a *= m0 / P.a; M.r *= m0 / P.a; }
-        float left = max(0.0,mb - dm);
-        if (left > 1e-6) M.ba = clamp(M.ba * (mb / left),vec2(0.0),vec2(1.0));
-        B.a = 1.0 - exp(-left * 1.9);
+        P += vec4(toKS(B.rgb) * dm, dm);
+        if (P.a > MMAX) P *= MMAX / P.a;
+        o = P.a > 1e-6 ? o * m0 / (m0 + dm) : o;
+        B.a = 1.0 - exp(-(mb - dm) * K);
     }
-    if (P.a > MMAX) P *= MMAX / P.a;
-    float evap = max(M.g, 0.000001) * uEvapScale * (0.72 + paperGrain(p) * 0.56);
-    F.r = max(0.0, water - evap);
-    F.gb = clamp(velocity * uDecay, vec2(-1.5), vec2(1.5));
-    oPig = forHalf(P); oFlow = F; oBase = B; oMeta = M;
-
+    float evap = mix(uEvapW, uEvapO, o) * (0.72 + paperGrain(p) * 0.56);
+    oPig = forHalf(P);
+    // (Oil paint hardly uses its velocity: on a tilted canvas x holds "is running".)
+    oFlow = vec4(max(0.0, nw - evap), (uTilt > 0.0 && o > 0.5) ? vec2(mob * MOB, 0.0) : F.gb * uDecay, o);
+    oBase = B;
 }`;
             // Swirling flow, pass 1: curl of the velocity -> aux.b
             const WET_FS_CURL = WET_COMMON + `
@@ -6965,7 +6456,7 @@ void main() {
             // Pass 2: velocity self-advection, vorticity confinement, water pushing
             // outwards, damping; no flow on dry paper.
             const WET_FS_VEL = WET_COMMON + WET_OUT3 + `
-uniform sampler2D uPig, uFlow, uBase, uAux, uMeta;
+uniform sampler2D uPig, uFlow, uBase, uAux;
 uniform float uAdvect, uVort, uPush, uDecay, uKeepOil;
 float wabs(ivec2 q) { return abs(texelFetch(uAux, cl(q), 0).b); }
 void main() {
@@ -6986,7 +6477,6 @@ void main() {
     oPig = texelFetch(uPig, p, 0);
     oFlow = vec4(F.r, clamp(vel, vec2(-1.5), vec2(1.5)), F.a);
     oBase = texelFetch(uBase, p, 0);
-    oMeta = texelFetch(uMeta, p, 0);
 }`;
             // Pass 3: divergence -> aux.g
             const WET_FS_DIV = WET_COMMON + `
@@ -7012,7 +6502,7 @@ void main() {
 }`;
             // Pass 5: take (most of) the divergence out -> swirls instead of spreading.
             const WET_FS_PROJECT = WET_COMMON + WET_OUT3 + `
-uniform sampler2D uPig, uFlow, uBase, uAux, uMeta;
+uniform sampler2D uPig, uFlow, uBase, uAux;
 uniform float uProject, uKeepOil;
 void main() {
     ivec2 p = ivec2(gl_FragCoord.xy);
@@ -7024,7 +6514,6 @@ void main() {
     oPig = texelFetch(uPig, p, 0);
     oFlow = vec4(F.r, clamp(vel, vec2(-1.5), vec2(1.5)), F.a);
     oBase = texelFetch(uBase, p, 0);
-    oMeta = texelFetch(uMeta, p, 0);
 }`;
             // The finished look of the region: Pigment's paint colour (edge darkening
             // and granulation for watercolour) over what is left of the layer's own
@@ -7033,7 +6522,7 @@ void main() {
             // little first, so a single bristle's line rounds into a bead and a
             // film's edge into a rim.
             const WET_FS_HEIGHT = WET_COMMON + `
-uniform sampler2D uPig, uFlow, uMeta;
+uniform sampler2D uPig, uFlow;
 out vec4 o;
 void main() {
     ivec2 p = ivec2(gl_FragCoord.xy);
@@ -7041,78 +6530,53 @@ void main() {
     for (int j = -1; j <= 1; j++) {
         for (int i = -1; i <= 1; i++) {
             ivec2 q = cl(p + ivec2(i, j));
-            s += texelFetch(uPig, q, 0).a * clamp(texelFetch(uFlow, q, 0).a + texelFetch(uMeta, q, 0).r, 0.0, 1.0);
+            s += texelFetch(uPig, q, 0).a * texelFetch(uFlow, q, 0).a;
         }
     }
     o = vec4(${WET_H_K.toFixed(3)} * max(0.0, s / 9.0 - ${WET_H_M0.toFixed(3)}), 0.0, 0.0, 1.0);
 }`;
             const WET_FS_DISPLAY = WET_COMMON + `
-uniform sampler2D uPig, uFlow, uBase, uRelief, uWetH, uGround, uMeta;
+uniform sampler2D uPig, uFlow, uBase, uRelief, uWetH;
 uniform ivec2 uRSize;
-uniform bool uReplace, uLit, uHasRelief, uHasWetH, uSheen, uStraight, uFlip, uPlain, uHasGround;
+uniform bool uReplace, uLit, uHasRelief, uHasWetH, uSheen, uStraight, uFlip, uPlain;
 uniform vec3 uL;
-uniform vec2 uPickMedium;
-uniform bool uPickup;
-uniform float uKd, uGK, uGMax, uSoften, uSoftAmp, uCanvasBurial;
+uniform float uKd, uGK, uGMax, uSoften, uSoftAmp;
 uniform vec3 uShadow;   // cast shadow: reach, soft, strength (see reliefShadowAt)
 out vec4 o;
 float mAt(ivec2 q) { return texelFetch(uPig, cl(q), 0).a; }
+float hAt(ivec2 q) { return texelFetch(uRelief, clamp(q, ivec2(0), uRSize - 1), 0).r; }
 float wAt(ivec2 q) { return texelFetch(uWetH, cl(q), 0).r; }
-float rawGroundAt(ivec2 q) { return texelFetch(uGround, clamp(q, ivec2(0), uRSize - 1), 0).r; }
-float groundAt(ivec2 q) {
-    return uHasGround ? rawGroundAt(q) * exp(-max(0.0, uHasWetH ? wAt(q) : 0.0) / uCanvasBurial) : 0.0;
-}
-float hAt(ivec2 q) {
-    float height = texelFetch(uRelief, clamp(q, ivec2(0), uRSize - 1), 0).r;
-    return uHasGround ? height - rawGroundAt(q) + groundAt(q) : height;
-}
 float topAt(ivec2 q) { return (uHasRelief ? hAt(q) : 0.0) + (uHasWetH ? wAt(q) : 0.0); }
 // How deep in the cast shadow of taller paint towards the light (0..1).
-float shadowAt(ivec2 p, bool paintOnly) {
+float shadowAt(ivec2 p) {
     const float D[8] = float[8](1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 13.0);
     vec2 dir = uL.xy / max(length(uL.xy), 1e-4);
     float h0 = topAt(p), s = 0.0;
-    if (paintOnly) h0 -= groundAt(p);
-    for (int i = 0; i < 8; i++) {
-        ivec2 q = p + ivec2(round(dir * D[i]));
-        float h = topAt(q);
-        if (paintOnly) h -= groundAt(q);
-        s = max(s, h - h0 - D[i] / uShadow.x);
-    }
+    for (int i = 0; i < 8; i++) s = max(s, topAt(p + ivec2(round(dir * D[i]))) - h0 - D[i] / uShadow.x);
     return clamp(s / uShadow.y, 0.0, 1.0);
 }
 void main() {
     ivec2 p = ivec2(int(gl_FragCoord.x), uFlip ? uSize.y - 1 - int(gl_FragCoord.y) : int(gl_FragCoord.y));
     vec4 P = texelFetch(uPig, p, 0), F = texelFetch(uFlow, p, 0);
     vec4 B = uReplace ? texelFetch(uBase, p, 0) : vec4(0.0);
-    vec4 M = texelFetch(uMeta, p, 0);
-    vec3 medium = materialOf(F, M);
-    float m = P.a, w = F.r, oil = medium.x, solid = medium.x + medium.y, watercolor = medium.z;
+    float m = P.a, w = F.r, oil = F.a;
     vec3 col = vec3(0.0);
     float cov = 0.0;
     if (m > 1e-4) {
         col = fromKS(P.rgb / m);
-        cov = 1.0 - exp(-m * covK(solid));
-    }
-    if (uPickup) {
-        vec3 incoming = vec3(uPickMedium, max(0.0, 1.0 - uPickMedium.x - uPickMedium.y));
-        float cw = cov * smoothstep(0.008, 0.05, w) * compatible(incoming, medium);
-        float cb = B.a * (M.b + M.a < 0.01 ? 1.0 : 0.0) * (1.0 - incoming.x);
-        float ca = cw + cb * (1.0 - cw);
-        vec3 rgb = ca > 1e-6 ? (col * cw + B.rgb * cb * (1.0 - cw)) / ca : vec3(0.0);
-        o = vec4(rgb, ca); return;
+        cov = 1.0 - exp(-m * covK(oil));
     }
     // Plain = the paint's own colour (for pickup; the effects below would
     // otherwise be picked up and deposited again, darkening every frame).
     if (m > 1e-4 && !uPlain) {
         float mn = min(min(mAt(p + ivec2(-3, 0)), mAt(p + ivec2(3, 0))), min(mAt(p + ivec2(0, -3)), mAt(p + ivec2(0, 3))));
-        float edge = clamp((m - mn) * 0.7, 0.0, 0.25) * watercolor;        // pigment gathers at the edges
-        float gran = 1.0 - (1.0 - paperGrain(p)) * 0.15 * min(1.0, m) * (0.3 + 0.7 * (1.0 - clamp(w, 0.0, 1.0))) * watercolor;
+        float edge = clamp((m - mn) * 0.7, 0.0, 0.25) * (1.0 - oil);        // pigment gathers at the edges
+        float gran = 1.0 - (1.0 - paperGrain(p)) * 0.15 * min(1.0, m) * (0.3 + 0.7 * (1.0 - clamp(w, 0.0, 1.0))) * (1.0 - oil);
         col *= gran * (1.0 - edge);
     }
     vec4 c = vec4(col * cov, cov) + vec4(B.rgb * B.a, B.a) * (1.0 - cov);   // premultiplied, paint over base
     bool relit = uLit && (uHasRelief || uHasWetH);
-    float dark = relit ? uShadow.z * shadowAt(p, uHasGround && c.a < 0.5 / 255.0) : 0.0;
+    float dark = relit ? uShadow.z * shadowAt(p) : 0.0;
     if (c.a < 0.5 / 255.0) { o = vec4(0.0, 0.0, 0.0, dark); return; }   // only the shadow falls here
     vec3 rgb = c.rgb / c.a;
     float wetN = clamp(w / 0.35, 0.0, 1.0);
@@ -7151,8 +6615,7 @@ void main() {
             // Max water / pigment per WET_BLOCK x WET_BLOCK block (dryness check), and
             // the block's mean wet oil paint that a brush could pick up (brush load).
             const WET_FS_REDUCE = WET_COMMON + `
-uniform sampler2D uPig, uFlow, uMeta;
-uniform vec2 uPickMedium;
+uniform sampler2D uPig, uFlow;
 out vec4 o;
 void main() {
     ivec2 b = ivec2(gl_FragCoord.xy) * ${WET_BLOCK};
@@ -7165,8 +6628,7 @@ void main() {
                 float m = texelFetch(uPig, q, 0).a;
                 mw = max(mw, F.r);
                 mm = max(mm, m);
-                vec3 incoming = vec3(uPickMedium, max(0.0, 1.0 - uPickMedium.x - uPickMedium.y));
-                pick += clamp(F.r * 2.0, 0.0, 1.0) * compatible(incoming, materialOf(F, texelFetch(uMeta, q, 0))) * min(m, 1.0);
+                pick += clamp(F.r * 2.0, 0.0, 1.0) * F.a * min(m, 1.0);
             }
         }
     }
@@ -7301,15 +6763,14 @@ void main() { o = vec4(uV); }`);
                 const W = Math.max(1, Math.round(LW * s)), H = Math.max(1, Math.round(LH * s));
                 wet.LW = LW; wet.LH = LH;
                 if (W === wet.W && H === wet.H && wet.pig[0]) return;
-                for (const t of [...wet.pig, ...wet.flow, ...wet.base, ...wet.meta, ...wet.aux, wet.inkTex, wet.gainTex, wet.pickTex, wet.redTex, wet.hTex, wet.groundTex]) if (t) gl.deleteTexture(t);
+                for (const t of [...wet.pig, ...wet.flow, ...wet.base, ...wet.aux, wet.inkTex, wet.gainTex, wet.pickTex, wet.redTex, wet.hTex]) if (t) gl.deleteTexture(t);
                 for (const f of [...wet.fbo, ...wet.auxFbo, wet.pickFbo, wet.redFbo, wet.hFbo]) if (f) gl.deleteFramebuffer(f);
                 wet.W = W; wet.H = H; wet.s = W / LW;
                 for (let i = 0; i < 2; i++) {
                     wet.pig[i] = wetTexture(gl, W, H, gl.RGBA16F);
                     wet.flow[i] = wetTexture(gl, W, H, gl.RGBA16F);
                     wet.base[i] = wetTexture(gl, W, H, gl.RGBA16F);
-                    wet.meta[i] = wetTexture(gl, W, H, gl.RGBA16F);
-                    wet.fbo[i] = wetFramebuffer(gl, [wet.pig[i], wet.flow[i], wet.base[i], wet.meta[i]]);
+                    wet.fbo[i] = wetFramebuffer(gl, [wet.pig[i], wet.flow[i], wet.base[i]]);
                     wet.aux[i] = wetTexture(gl, W, H, gl.RGBA16F);
                     wet.auxFbo[i] = wetFramebuffer(gl, [wet.aux[i]]);
                 }
@@ -7349,7 +6810,7 @@ void main() { o = vec4(uV); }`);
             // in the layer's pixels the moment the stroke ends.
             function wetWanted() {
                 if (brush.type !== 'bristle') return false;
-                if (brush.impastoAmplitude > 0 && !reliefLiveForLayer(layers[activeLayerIndex])) return false;
+                if (brush.impastoAmplitude > 0 && !reliefLiveMode()) return false;
                 return wetModeAllows();
             }
 
@@ -7366,7 +6827,7 @@ void main() { o = vec4(uV); }`);
                 gl.disable(gl.SCISSOR_TEST);
                 for (const fb of wet.fbo) {
                     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-                    for (let a = 0; a < 4; a++) gl.clearBufferfv(gl.COLOR, a, [0, 0, 0, 0]);
+                    for (let a = 0; a < 3; a++) gl.clearBufferfv(gl.COLOR, a, [0, 0, 0, 0]);
                 }
                 for (const fb of [...wet.auxFbo, wet.hFbo]) {
                     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
@@ -7397,7 +6858,6 @@ void main() { o = vec4(uV); }`);
                 wet.dir.x = wet.dir.y = 0;
                 wet.acc = 0; wet.lastT = 0; wet.stepsSinceCheck = 0; wet.framesSinceCheck = 0;
                 wet.reliefRef = null; wet.reliefDirty = null;
-                wet.groundRef = null;
                 wetUpdateStatus();
                 return true;
             }
@@ -7416,20 +6876,12 @@ void main() { o = vec4(uV); }`);
                 if (w <= 0 || h <= 0 || !wet.layer || !wet.layer.pg) return;
                 let img;
                 try { img = wet.layer.pg.drawingContext.getImageData(x0, y0, w, h); } catch (e) { return; }
-                const d = img.data, f = new Float32Array(d.length), mat = new Float32Array(d.length);
+                const d = img.data, f = new Float32Array(d.length);
                 for (let i = 0; i < d.length; i++) f[i] = d[i] / 255;
-                const pm = wet.layer.paintMaterial;
-                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-                    const j = (y * w + x) * 4, p = ((y0 + y) * wet.LW + x0 + x) * 2;
-                    if (pm && pm.w === wet.LW && pm.h === wet.LH) { mat[j + 2] = pm.data[p] / 255; mat[j + 3] = pm.data[p + 1] / 255; }
-                    else if (d[j + 3] > 0) mat[j + 3] = 1; // unclassified imported pixels are sealed
-                }
                 const gl = wet.gl;
                 for (let i = 0; i < 2; i++) {
                     gl.bindTexture(gl.TEXTURE_2D, wet.base[i]);
                     gl.texSubImage2D(gl.TEXTURE_2D, 0, x0, y0, w, h, gl.RGBA, gl.FLOAT, f);
-                    gl.bindTexture(gl.TEXTURE_2D, wet.meta[i]);
-                    gl.texSubImage2D(gl.TEXTURE_2D, 0, x0, y0, w, h, gl.RGBA, gl.FLOAT, mat);
                 }
             }
 
@@ -7457,7 +6909,7 @@ void main() { o = vec4(uV); }`);
 
             // Keep the GPU copy of the layer's relief current (replace mode lights on the GPU).
             function wetSyncRelief() {
-                const layer = wet.layer, r = layer && effectiveLayerRelief(layer), gl = wet.gl;
+                const layer = wet.layer, r = layer && layer.relief, gl = wet.gl;
                 wet.hasRelief = !!(wet.replace && r && r.x1 >= r.x0 && r.w === wet.W && r.h === wet.H);
                 if (!wet.hasRelief) { wet.reliefRef = null; return; }
                 if (!wet.reliefTex || wet.reliefW !== r.w || wet.reliefH !== r.h) {
@@ -7580,12 +7032,10 @@ void main() { o = vec4(uV); }`);
 
             // How the current brush's paint goes into the simulation.
             function wetBrushPrm() {
-                const key = selectedPaintMedium(), oil = key === 'oil' ? 1 : 0, acrylic = key === 'acrylic' ? 1 : 0;
-                const drying = settings.wetDrying != null ? settings.wetDrying : PAINT_MEDIA[key].wetDrying;
+                const oil = brush.impastoAmplitude > 0 ? 1 : 0;
                 const wetness = Math.max(0, Math.min(1, brush.wetnessVal / 100));
                 return {
-                    oil, acrylic, evap: paintMediumEvaporation(key, drying),
-                    lift: oil ? 0 : 0.16 * Math.pow(((settings.wetLift != null) ? settings.wetLift : PAINT_MEDIA[key].wetLift) / 100, 1.5),
+                    oil,
                     water: 1.1 * Math.pow(wetness, 1.4) * (oil ? 0.4 : 1),
                     alpha: brush.alpha || 1,
                     velGain: 0.35 * wetness * (oil ? 0.3 : 1),
@@ -7689,8 +7139,6 @@ void main() { o = vec4(uV); }`);
                 gl.uniform1i(pr.u.uFlow, 1);
                 gl.uniform1i(pr.u.uBase, 2);
                 gl.uniform1i(pr.u.uAux, 3);
-                gl.activeTexture(gl.TEXTURE7); gl.bindTexture(gl.TEXTURE_2D, wet.meta[wet.cur]);
-                gl.uniform1i(pr.u.uMeta, 7);
                 gl.uniform2i(pr.u.uSize, wet.W, wet.H);
                 gl.uniform1f(pr.u.uHalfBias, wet.halfBias);
             }
@@ -7724,83 +7172,6 @@ void main() { o = vec4(uV); }`);
 
             // Add ink from a 2D canvas (rect q, sim px) to the simulation — or, with
             // `bytes`, ink given as that rect's RGBA rows (the touch-down blob: prm.raw).
-            // A fast-drying acrylic patch can set while oil elsewhere keeps this
-            // session open. Seal it before the new stroke adds workability, so a
-            // fresh wash never reactivates the dried permanent binder beneath it.
-            function wetSealUnderStroke(q) {
-                if (!wet.replace || !wet.layer || !wet.R) return;
-                const gl = wet.gl, w = q.x1 - q.x0 + 1, h = q.y1 - q.y0 + 1;
-                const flow = new Float32Array(w * h * 4), meta = new Float32Array(flow.length);
-                gl.bindFramebuffer(gl.READ_FRAMEBUFFER, wet.fbo[wet.cur]);
-                gl.readBuffer(gl.COLOR_ATTACHMENT1);
-                gl.readPixels(q.x0, q.y0, w, h, gl.RGBA, gl.FLOAT, flow);
-                gl.readBuffer(gl.COLOR_ATTACHMENT3);
-                gl.readPixels(q.x0, q.y0, w, h, gl.RGBA, gl.FLOAT, meta);
-                let any = false;
-                for (let i = 0; i < flow.length; i += 4) {
-                    if (flow[i] <= WET_EPS_WATER && flow[i + 3] + meta[i] > 0.01) { any = true; break; }
-                }
-                if (!any) { gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null); return; }
-                const pig = new Float32Array(flow.length), base = new Float32Array(flow.length), sealed = new Uint8Array(w * h);
-                gl.readBuffer(gl.COLOR_ATTACHMENT0);
-                gl.readPixels(q.x0, q.y0, w, h, gl.RGBA, gl.FLOAT, pig);
-                gl.readBuffer(gl.COLOR_ATTACHMENT2);
-                gl.readPixels(q.x0, q.y0, w, h, gl.RGBA, gl.FLOAT, base);
-                gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-                let height = null, hq = null, hw = 0, hh = 0;
-                if (wet.massRelief) {
-                    hq = { x0: Math.max(0,q.x0 - 1), y0: Math.max(0,q.y0 - 1), x1: Math.min(wet.W - 1,q.x1 + 1), y1: Math.min(wet.H - 1,q.y1 + 1) };
-                    hw = hq.x1 - hq.x0 + 1; hh = hq.y1 - hq.y0 + 1;
-                    wetHeightPass(hq);
-                    const values = new Float32Array(hw * hh * 4);
-                    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, wet.hFbo);
-                    gl.readBuffer(gl.COLOR_ATTACHMENT0);
-                    gl.readPixels(hq.x0, hq.y0, hw, hh, gl.RGBA, gl.FLOAT, values);
-                    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-                    height = values;
-                }
-                let moved = false;
-                for (let i = 0; i < flow.length; i += 4) {
-                    const mass = pig[i + 3], oil = flow[i + 3], acrylic = meta[i];
-                    if (!(mass > 1e-4 && flow[i] <= WET_EPS_WATER && oil + acrylic > 0.01)) continue;
-                    const cov = 1 - Math.exp(-mass * (1.9 + 1.3 * Math.min(1,oil + acrylic)));
-                    const old = base[i + 3] * (1 - cov), total = cov + old;
-                    for (let ch = 0; ch < 3; ch++) {
-                        const ks = Math.max(0,pig[i + ch] / mass);
-                        const col = 1 / (1 + ks + Math.sqrt(ks * ks + 2 * ks));
-                        base[i + ch] = (col * cov + base[i + ch] * old) / Math.max(total,1e-6);
-                    }
-                    base[i + 3] = total;
-                    meta[i + 2] = (oil * cov + meta[i + 2] * old) / Math.max(total,1e-6);
-                    meta[i + 3] = (acrylic * cov + meta[i + 3] * old) / Math.max(total,1e-6);
-                    meta[i] = 0; meta[i + 1] = 0;
-                    pig.fill(0,i,i + 4); flow.fill(0,i,i + 4);
-                    sealed[i / 4] = 1; moved = true;
-                }
-                if (!moved) return;
-                for (const [tex,data] of [[wet.pig[wet.cur],pig],[wet.flow[wet.cur],flow],[wet.base[wet.cur],base],[wet.meta[wet.cur],meta]]) {
-                    gl.bindTexture(gl.TEXTURE_2D,tex);
-                    gl.texSubImage2D(gl.TEXTURE_2D,0,q.x0,q.y0,w,h,gl.RGBA,gl.FLOAT,data);
-                }
-                if (height) {
-                    // Transfer exactly the disappearing wet-height contribution,
-                    // including its 1px smoothing fringe. Adjacent wet paint keeps
-                    // its own contribution and cannot be counted a second time.
-                    wetHeightPass(hq);
-                    const after = new Float32Array(height.length), data = new Float32Array(hw * hh);
-                    gl.bindFramebuffer(gl.READ_FRAMEBUFFER,wet.hFbo);
-                    gl.readBuffer(gl.COLOR_ATTACHMENT0);
-                    gl.readPixels(hq.x0,hq.y0,hw,hh,gl.RGBA,gl.FLOAT,after);
-                    gl.bindFramebuffer(gl.READ_FRAMEBUFFER,null);
-                    let raised = false;
-                    for (let i = 0; i < data.length; i++) {
-                        data[i] = Math.max(0,height[i * 4] - after[i * 4]);
-                        if (data[i] > 0) raised = true;
-                    }
-                    if (raised) reliefAddHeight(wet.layer,hq.x0,hq.y0,hw,hh,data,WET_SOFT_AMP,true);
-                }
-            }
-
             function wetSplatFrom(srcCtx, q, prm, dir, bytes) {
                 const gl = wet.gl, w = q.x1 - q.x0 + 1, h = q.y1 - q.y0 + 1;
                 if (!bytes) {
@@ -7812,8 +7183,6 @@ void main() { o = vec4(uV); }`);
                     srcCtx.restore();
                     bytes = new Uint8Array(img.data.buffer, img.data.byteOffset, img.data.byteLength);
                 }
-                wetGrowR(q.x0 - WET_MARGIN, q.y0 - WET_MARGIN, q.x1 + WET_MARGIN, q.y1 + WET_MARGIN);
-                wetSealUnderStroke(q);
                 gl.bindTexture(gl.TEXTURE_2D, wet.inkTex);
                 gl.texSubImage2D(gl.TEXTURE_2D, 0, q.x0, q.y0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
                 // Bristles dragging their share of the touch-down blob out (mass relief,
@@ -7838,6 +7207,7 @@ void main() { o = vec4(uV); }`);
                 const s = wet.s, film = prm.film || 0, plough = film > 0 && !!prm.plough && !!prm.seg;
                 const pushLen = plough ? Math.min(WET_PUSH_MAX, len) * s : 0;
                 const pushX = Math.round(dx * pushLen), pushY = Math.round(dy * pushLen);
+                wetGrowR(q.x0 - WET_MARGIN, q.y0 - WET_MARGIN, q.x1 + WET_MARGIN, q.y1 + WET_MARGIN);
                 let seg = [0, 0, 0, 0], segLen = [0, 0], rail = [0, 1, 0], band = [0, 0], foot = 0;
                 if (film > 0 && prm.seg) {
                     // The bristles trail the brush centre: its footprint and the raised
@@ -7903,10 +7273,7 @@ void main() { o = vec4(uV); }`);
                     gl2.uniform1f(u.uWater, prm.water);
                     gl2.uniform1f(u.uAlpha, prm.alpha);
                     gl2.uniform1f(u.uVelGain, prm.velGain);
-                    gl2.uniform1f(u.uOil, prm.oil || 0);
-                    gl2.uniform1f(u.uAcrylic, prm.acrylic || 0);
-                    gl2.uniform1f(u.uEvap, prm.evap || paintMediumEvaporation(prm.oil ? 'oil' : prm.acrylic ? 'acrylic' : 'water', 50));
-                    gl2.uniform1f(u.uLift, prm.lift || 0);
+                    gl2.uniform1f(u.uOil, prm.oil);
                     gl2.uniform1f(u.uSmear, prm.smear);
                     gl2.uniform2f(u.uDir, dx, dy);
                     gl2.uniform2f(u.uSmearOff, -dx * smearPx, -dy * smearPx);
@@ -7950,7 +7317,7 @@ void main() { o = vec4(uV); }`);
             }
 
             function wetStep(evapScale = 1) {
-                const f = evapScale;
+                const f = wetDryingFactor() * evapScale;
                 const fluid = wetFluidOn();
                 const tilt = wetTilt();
                 if (fluid) {
@@ -7970,11 +7337,15 @@ void main() { o = vec4(uV); }`);
                         gl.uniform1f(u.uKeepOil, tilt ? 1 : 0);
                     });
                 }
+                const lift = wet.replace ? 0.03 * Math.pow(((settings.wetLift != null) ? settings.wetLift : 40) / 100, 1.5) : 0;
                 wetPass(wet.prog.step, (gl, u) => {
-                    gl.uniform1f(u.uEvapScale, f);
+                    gl.uniform1f(u.uEvapW, WET_EVAP * f);
+                    gl.uniform1f(u.uEvapO, WET_EVAP_OIL * f);
                     gl.uniform1f(u.uDecay, fluid ? 1.0 : 0.86);
-                                        gl.uniform1f(u.uAdvect, fluid ? 0.6 : 0.0);
-                                        gl.uniform1f(u.uTilt, tilt ? tilt.t : 0);
+                    gl.uniform1f(u.uLift, wet.headless ? 0 : lift);
+                    gl.uniform1f(u.uAdvect, fluid ? 0.6 : 0.0);
+                    gl.uniform3f(u.uPaper, WET_PAPER[0] / 255, WET_PAPER[1] / 255, WET_PAPER[2] / 255);
+                    gl.uniform1f(u.uTilt, tilt ? tilt.t : 0);
                     gl.uniform2f(u.uDown, tilt ? tilt.x : 0, tilt ? tilt.y : 1);
                 });
             }
@@ -8021,8 +7392,6 @@ void main() { o = vec4(uV); }`);
                 gl.useProgram(pr.prog);
                 gl.bindVertexArray(wet.vao);
                 wetBindInputs(pr);
-                const medium = selectedPaintMedium();
-                gl.uniform2f(pr.u.uPickMedium, medium === 'oil' ? 1 : 0, medium === 'acrylic' ? 1 : 0);
                 gl.drawArrays(gl.TRIANGLES, 0, 3);
                 const out = new Float32Array(wet.redW * wet.redH * 4);
                 gl.bindFramebuffer(gl.READ_FRAMEBUFFER, wet.redFbo);
@@ -8137,7 +7506,7 @@ void main() { o = vec4(uV); }`);
                 gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 if (!any) return;
-                if (reliefLiveForLayer(layer)) reliefAddHeight(layer, R.x0, R.y0, w, h, height, WET_SOFT_AMP, true);
+                if (reliefLiveMode()) reliefAddHeight(layer, R.x0, R.y0, w, h, height, WET_SOFT_AMP, true);
                 else impastoShadePgRegion(layer.pg, R.x0, R.y0, w, h, height, reliefLightForLayer(layer));
             }
 
@@ -8164,20 +7533,6 @@ void main() { o = vec4(uV); }`);
                 gl.bindVertexArray(wet.vao);
                 wetBindInputs(pr);
                 const useRelief = lit && wet.hasRelief;
-                const relief = useRelief && effectiveLayerRelief(layer);
-                const ground = relief && relief.canvasData;
-                gl.activeTexture(gl.TEXTURE6);
-                if (ground && wet.groundRef !== ground) {
-                    if (wet.groundTex) gl.deleteTexture(wet.groundTex);
-                    wet.groundTex = wetTexture(gl, relief.w, relief.h, gl.R32F);
-                    gl.bindTexture(gl.TEXTURE_2D, wet.groundTex);
-                    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, relief.w, relief.h, gl.RED, gl.FLOAT, ground);
-                    wet.groundRef = ground;
-                }
-                gl.activeTexture(gl.TEXTURE6);
-                gl.bindTexture(gl.TEXTURE_2D, ground ? wet.groundTex : wet.dummyTex);
-                gl.uniform1i(pr.u.uGround, 6);
-                gl.uniform1i(pr.u.uHasGround, ground ? 1 : 0);
                 gl.activeTexture(gl.TEXTURE4);
                 gl.bindTexture(gl.TEXTURE_2D, useRelief ? wet.reliefTex : wet.dummyTex);
                 gl.uniform1i(pr.u.uRelief, 4);
@@ -8188,7 +7543,6 @@ void main() { o = vec4(uV); }`);
                 gl.uniform1i(pr.u.uHasWetH, wetH ? 1 : 0);
                 gl.uniform1f(pr.u.uSoften, RELIEF_OVERPAINT_SOFTEN);
                 gl.uniform1f(pr.u.uSoftAmp, WET_SOFT_AMP);
-                gl.uniform1f(pr.u.uCanvasBurial, CANVAS_PAINT_RELIEF.burialDepth);
                 gl.uniform1i(pr.u.uReplace, wet.replace ? 1 : 0);
                 gl.uniform1i(pr.u.uLit, lit ? 1 : 0);
                 gl.uniform1i(pr.u.uHasRelief, useRelief ? 1 : 0);
@@ -8196,9 +7550,6 @@ void main() { o = vec4(uV); }`);
                 gl.uniform1i(pr.u.uStraight, pick ? 1 : 0);
                 gl.uniform1i(pr.u.uFlip, pick ? 0 : 1);
                 gl.uniform1i(pr.u.uPlain, pick ? 1 : 0);
-                gl.uniform1i(pr.u.uPickup, pick ? 1 : 0);
-                const medium = selectedPaintMedium();
-                gl.uniform2f(pr.u.uPickMedium, medium === 'oil' ? 1 : 0, medium === 'acrylic' ? 1 : 0);
                 const L = wetLightFor(layer);
                 gl.uniform3f(pr.u.uL, L.x, L.y, L.z);
                 gl.uniform1f(pr.u.uKd, IMPASTO.kd);
@@ -8214,16 +7565,8 @@ void main() { o = vec4(uV); }`);
             // along; watercolour mixes inside the simulation instead and only picks
             // up the layer's dried paint (as in classic painting).
             function wetPickup(pg, x0, y0, w, h) {
-                if (!wet.ok || !wet.replace || !wet.layer || wet.layer.pg !== pg) {
-                    const owner = layers.find(l => l.pg === pg);
-                    const img = pg.drawingContext.getImageData(x0, y0, w, h), map = owner && owner.paintMaterial;
-                    const key = selectedPaintMedium();
-                    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-                        const k = (y * w + x) * 4, j = ((y0 + y) * pg.width + x0 + x) * 2;
-                        const water = map && map.w === pg.width && map.h === pg.height ? Math.max(0, 1 - (map.data[j] + map.data[j + 1]) / 255) : 0;
-                        img.data[k + 3] = key === 'oil' ? 0 : Math.round(img.data[k + 3] * water);
-                    }
-                    return img;
+                if (!wet.ok || !wet.replace || !wet.layer || wet.layer.pg !== pg || !(brush.impastoAmplitude > 0)) {
+                    return pg.drawingContext.getImageData(x0, y0, w, h);
                 }
                 wetSplatPending();
                 wetGrowR(x0, y0, x0 + w - 1, y0 + h - 1);
@@ -8268,7 +7611,7 @@ void main() { o = vec4(uV); }`);
                     wet.compPg = p.createGraphics(W, H);
                     wet.compPg.pixelDensity(1);
                 }
-                const rl = effectiveLayerRelief(layer);
+                const rl = layer.relief;
                 const hasRelief = !!(rl && rl.x1 >= rl.x0);
                 const exact = layerAdjustActive(layer) || (hasRelief && !wet.replace);
                 wetRender({ lit: !exact, sheen: true });
@@ -8305,40 +7648,11 @@ void main() { o = vec4(uV); }`);
                 let img;
                 try { img = ex.getImageData(0, 0, q.w, q.h); } catch (e) { return; }
                 if (layerAdjustActive(layer)) applyLayerAdjustmentsTo(layer, img.data);
-                const rl = effectiveLayerRelief(layer);
+                const rl = layer.relief;
                 if (rl && rl.x1 >= rl.x0 && rl.w === pg.width && rl.h === pg.height) {
                     reliefShadeInto(img.data, rl, q.x0, q.y0, q.w, q.h, wetLightFor(layer));
                 }
                 ctx.putImageData(img, q.x0, q.y0);
-            }
-
-            function wetWriteMaterials(layer) {
-                if (!wet.R || !wet.ok) return;
-                const R = wet.R, w = R.x1 - R.x0 + 1, h = R.y1 - R.y0 + 1, gl = wet.gl;
-                const pig = new Float32Array(w * h * 4), flow = new Float32Array(pig.length), base = new Float32Array(pig.length), meta = new Float32Array(pig.length);
-                gl.bindFramebuffer(gl.READ_FRAMEBUFFER, wet.fbo[wet.cur]);
-                for (const [attachment, data] of [[0,pig],[1,flow],[2,base],[3,meta]]) {
-                    gl.readBuffer(gl.COLOR_ATTACHMENT0 + attachment);
-                    gl.readPixels(R.x0, R.y0, w, h, gl.RGBA, gl.FLOAT, data);
-                }
-                gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-                const pm = paintMaterialWritable(layer);
-                for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-                    const i = (y * w + x) * 4, oil = Math.max(0,Math.min(1,flow[i + 3])), acr = Math.max(0,Math.min(1-oil,meta[i]));
-                    const cov = 1 - Math.exp(-pig[i + 3] * (1.9 + 1.3 * (oil + acr)));
-                    const sx0 = Math.max(0,Math.floor((R.x0 + x) / wet.s)), sy0 = Math.max(0,Math.floor((R.y0 + y) / wet.s));
-                    const sx1 = Math.min(pm.w - 1,Math.ceil((R.x0 + x + 1) / wet.s) - 1), sy1 = Math.min(pm.h - 1,Math.ceil((R.y0 + y + 1) / wet.s) - 1);
-                    for (let yy = sy0; yy <= sy1; yy++) for (let xx = sx0; xx <= sx1; xx++) {
-                        const j = (yy * pm.w + xx) * 2;
-                        const bOil = wet.replace ? meta[i + 2] : pm.data[j] / 255, bAcr = wet.replace ? meta[i + 3] : pm.data[j + 1] / 255;
-                        const bCov = wet.replace ? base[i + 3] : 1;
-                        const old = bCov * (1 - cov), total = cov + old;
-                        if (total <= 1e-6) { pm.data[j] = pm.data[j + 1] = 0; continue; }
-                        const o = Math.max(0,Math.min(1,(oil * cov + bOil * old) / total));
-                        const a = Math.max(0,Math.min(1-o,(acr * cov + bAcr * old) / total));
-                        pm.data[j] = Math.round(o * 255); pm.data[j + 1] = Math.min(255 - pm.data[j], Math.round(a * 255));
-                    }
-                }
             }
 
             // Write the wet paint into its layer as ordinary pixels and end the session.
@@ -8347,7 +7661,6 @@ void main() { o = vec4(uV); }`);
                 if (!layer) return;
                 if (wet.ok) wetSplatPending();
                 if (wet.ok && wet.R && layer.pg) {
-                    wetWriteMaterials(layer);
                     wetRender({});
                     const ctx = layer.pg.drawingContext;
                     ctx.save();
@@ -8413,7 +7726,7 @@ void main() { o = vec4(uV); }`);
 
             // Add the strokes drawn since the last call (inside `rect`, layer px, when
             // given), then run `steps` steps.
-            function wetAutoChunk(steps, rect, materialPrm = null) {
+            function wetAutoChunk(steps, rect) {
                 if (!wet.layer || !wet.headless) return;
                 const t = wetAutoIntensity(), a = wet.autoRect;
                 const q = rect ? {
@@ -8422,7 +7735,7 @@ void main() { o = vec4(uV); }`);
                 } : a;
                 if (q.x1 < q.x0 || q.y1 < q.y0) return;
                 wetSplatFrom(wet.autoInk.drawingContext, q, {
-                    ...(materialPrm || wetBrushPrm()), water: 0.35 + 1.1 * t, alpha: Math.max(0.02, activeBristleAlpha / 255),
+                    oil: 0, water: 0.35 + 1.1 * t, alpha: Math.max(0.02, activeBristleAlpha / 255),
                     velGain: 0, smear: 0
                 }, { x: 0, y: 0 });
                 for (let i = 0; i < steps; i++) wetStep(1.6);
@@ -8484,8 +7797,7 @@ void main() { o = vec4(uV); }`);
                     R: { x0: R.x0, y0: R.y0, x1: R.x1, y1: R.y1 },
                     pig: wetReadState(gl.COLOR_ATTACHMENT0, R.x0, R.y0, w, h),
                     flow: wetReadState(gl.COLOR_ATTACHMENT1, R.x0, R.y0, w, h),
-                    base: wet.replace ? wetReadState(gl.COLOR_ATTACHMENT2, R.x0, R.y0, w, h) : null,
-                    meta: wetReadState(gl.COLOR_ATTACHMENT3, R.x0, R.y0, w, h)
+                    base: wet.replace ? wetReadState(gl.COLOR_ATTACHMENT2, R.x0, R.y0, w, h) : null
                 };
             }
 
@@ -8502,10 +7814,6 @@ void main() { o = vec4(uV); }`);
                     gl.texSubImage2D(gl.TEXTURE_2D, 0, R.x0, R.y0, w, h, gl.RGBA, gl.HALF_FLOAT, ws.pig);
                     gl.bindTexture(gl.TEXTURE_2D, wet.flow[i]);
                     gl.texSubImage2D(gl.TEXTURE_2D, 0, R.x0, R.y0, w, h, gl.RGBA, gl.HALF_FLOAT, ws.flow);
-                    if (ws.meta) {
-                        gl.bindTexture(gl.TEXTURE_2D, wet.meta[i]);
-                        gl.texSubImage2D(gl.TEXTURE_2D, 0, R.x0, R.y0, w, h, gl.RGBA, gl.HALF_FLOAT, ws.meta);
-                    }
                     if (ws.base) {
                         gl.bindTexture(gl.TEXTURE_2D, wet.base[i]);
                         gl.texSubImage2D(gl.TEXTURE_2D, 0, R.x0, R.y0, w, h, gl.RGBA, gl.HALF_FLOAT, ws.base);
@@ -8515,7 +7823,7 @@ void main() { o = vec4(uV); }`);
             }
 
             function wetStateBytes(ws) {
-                return ws ? ws.pig.byteLength + ws.flow.byteLength + (ws.base ? ws.base.byteLength : 0) + (ws.meta ? ws.meta.byteLength : 0) : 0;
+                return ws ? ws.pig.byteLength + ws.flow.byteLength + (ws.base ? ws.base.byteLength : 0) : 0;
             }
 
             function wetUpdateStatus() {
@@ -8745,37 +8053,10 @@ void main() { o = vec4(uV); }`);
                 base.remove();
             }
 
-            let autoPaintLiveSettings = null;
-
-            // Each queued Auto Paint callback gets the settings captured when its
-            // run began. Restore the live controls before returning to the event
-            // loop, so selecting another paint affects only future strokes.
-            function withAutoPaintRun(run, callback) {
-                if (!run) return callback();
-                const live = settings, previousLive = autoPaintLiveSettings;
-                const alpha = activeBristleAlpha, weight = activeBristleStrokeWeight, skip = activeBristleSkip;
-                autoPaintLiveSettings = previousLive || live;
-                settings = Object.assign({}, live, run.settings);
-                activeBristleAlpha = run.alpha; activeBristleStrokeWeight = run.weight; activeBristleSkip = run.skip;
-                try { return callback(); }
-                finally {
-                    settings = live; autoPaintLiveSettings = previousLive;
-                    activeBristleAlpha = alpha; activeBristleStrokeWeight = weight; activeBristleSkip = skip;
-                }
-            }
-
             function runAutoPaint() {
                 wetFlush();
                 // Resolve the source image BEFORE the layer buffer is touched.
-                let layer = layers[activeLayerIndex];
-                if (layer && layer.surfaceType) {
-                    // A substrate is never the source or destination of pigment.
-                    if (!sourceImg) {
-                        alert("Please upload a source image first!");
-                        return;
-                    }
-                    layer = ensurePaintLayer();
-                }
+                const layer = layers[activeLayerIndex];
                 // If embedded adjustments (tone curve / HSL / B&W) are active,
                 // bake them into the layer first so Auto Paint reproduces the
                 // FILTERED appearance. Baking also refreshes the layer's embedded
@@ -8810,8 +8091,6 @@ void main() { o = vec4(uV); }`);
                 clearSeparableDetails(paintLayer);
                 // Auto Paint repaints the whole layer, relief included.
                 dropLayerRelief(paintLayer);
-                paintLayer.paintMaterial = null;
-                paintLayer.surfaceContactBaked = false;
 
                 document.getElementById('status-text').innerText = "Auto painting... please wait.";
 
@@ -8820,18 +8099,13 @@ void main() { o = vec4(uV); }`);
                 activeBristleAlpha = thickness.alpha;
                 activeBristleStrokeWeight = thickness.strokeWeight;
                 activeBristleSkip = thickness.skip;
-                const paintRun = {
-                    settings: Object.assign({}, settings),
-                    alpha: thickness.alpha, weight: thickness.strokeWeight, skip: thickness.skip,
-                    materialPrm: Object.assign({}, wetBrushPrm())
-                };
 
                 // Reset per-run impasto taper accumulation (per-dab thickness fade).
                 impastoBeginAutoTaper(pg.width, pg.height, impastoAmplitudeFromPercent(settings.autoThickness));
 
                 if (settings.autoStyle === 'cmy-ink-brush') {
                     document.getElementById('status-text').innerText = "Auto painting CMY Ink-Brush... please wait.";
-                    setTimeout(() => withAutoPaintRun(paintRun, async () => {
+                    setTimeout(async () => {
                         const originalSourceImg = sourceImg;
                         const imgDrawX = paintLayer.imgDrawX !== undefined ? paintLayer.imgDrawX : 0;
                         const imgDrawY = paintLayer.imgDrawY !== undefined ? paintLayer.imgDrawY : 0;
@@ -8884,17 +8158,14 @@ void main() { o = vec4(uV); }`);
                             // the silhouette edge naturally (matching the Realistic
                             // / Poster paths) while transparent areas still get no
                             // flat flood fill.
-                            await withAutoPaintRun(paintRun, () => paintRealisticOnLayer(mockLayer, sepImg, false, paintRun));
+                            await paintRealisticOnLayer(mockLayer, sepImg, false);
 
-                            withAutoPaintRun(paintRun, () => {
                             paintLayer.pg.push();
                             paintLayer.pg.drawingContext.globalCompositeOperation = 'multiply';
                             paintLayer.pg.image(tempPg, 0, 0);
                             paintLayer.pg.pop();
-                            });
                         }
 
-                        withAutoPaintRun(paintRun, () => {
                         // Clean up temporary graphics
                         tempPg.remove();
 
@@ -8919,20 +8190,18 @@ void main() { o = vec4(uV); }`);
 
                         const impAmpCmy = impastoAmplitudeFromPercent(settings.autoThickness);
                         if (impAmpCmy > 0) bakeImpastoAuto(paintLayer.pg, imgDrawX, imgDrawY, imgW, imgH, impAmpCmy, paintLayer);
-                        paintMaterialTagAuto(paintLayer);
 
                         paintLayer.bboxDirty = true;
                         sourceImg = originalSourceImg;
                         updateLayerUI();
                         document.getElementById('status-text').innerText = "CMY Ink-Brush auto paint complete.";
                         commitHistory();
-                        });
-                    }), 50);
+                    }, 50);
                     return;
                 }
 
                 // Defer to let UI repaint
-                setTimeout(() => withAutoPaintRun(paintRun, () => {
+                setTimeout(() => {
                     sourceImg.loadPixels();
 
                     // Offset: where the image sits on the canvas (centred on import).
@@ -9001,7 +8270,6 @@ void main() { o = vec4(uV); }`);
                     if (sourceHasTransparency) {
                         fillBaseCoatPerBlob(pg, pieces, sourceImg.width, sourceImg.height, imgDrawX, imgDrawY);
                     }
-                    paintMaterialTagAuto(paintLayer);
 
                     // Translate pg so all stroke/detail coordinates (which are in
                     // sourceImg space, 0-based) land in the correct canvas position.
@@ -9021,7 +8289,6 @@ void main() { o = vec4(uV); }`);
 
                     let pieceIndex = 0;
                     function processChunk() {
-                        return withAutoPaintRun(paintRun, () => {
                         // In Paused Debug Mode, draw exactly one stroke per tick so
                         // its hull/curve overlay can be inspected before the next
                         // stroke is drawn; otherwise draw in large fast batches.
@@ -9070,7 +8337,7 @@ void main() { o = vec4(uV); }`);
                             // This chunk's strokes join the wet paint (and flow a little
                             // before the next ones land, with Advanced Bleed).
                             wetAutoChunk(settings.advancedBleed ? 3 : 0,
-                                { x0: imgDrawX + cx0, y0: imgDrawY + cy0, x1: imgDrawX + cx1, y1: imgDrawY + cy1 }, paintRun.materialPrm);
+                                { x0: imgDrawX + cx0, y0: imgDrawY + cy0, x1: imgDrawX + cx1, y1: imgDrawY + cy1 });
                         }
 
                         if (pieceIndex < pieces.length) {
@@ -9107,7 +8374,6 @@ void main() { o = vec4(uV); }`);
                             // (replaces the old per-stroke fake highlight/shadow).
                             const impAmpStd = impastoAmplitudeFromPercent(settings.autoThickness);
                             if (impAmpStd > 0) bakeImpastoAuto(pg, imgDrawX, imgDrawY, imgW, imgH, impAmpStd, paintLayer);
-                            paintMaterialTagAuto(paintLayer);
 
                             layer.bboxDirty = true;
                             paintLayer.bboxDirty = true;
@@ -9115,11 +8381,10 @@ void main() { o = vec4(uV); }`);
                             document.getElementById('status-text').innerText = "Auto paint complete.";
                             commitHistory();
                         }
-                        });
                     }
                     
                     processChunk();
-                }), 50);
+                }, 50);
             }
 
             function drawBrushStroke(pg, piece, impressionistVariation) {
@@ -10168,7 +9433,7 @@ void main() { o = vec4(uV); }`);
                 };
             }
 
-            function paintRealisticOnLayer(layer, sepImg, isImpressionist, paintRun = null) {
+            function paintRealisticOnLayer(layer, sepImg, isImpressionist) {
                 const pg = layer.pg;
                 const imgDrawX = layer.imgDrawX !== undefined ? layer.imgDrawX : 0;
                 const imgDrawY = layer.imgDrawY !== undefined ? layer.imgDrawY : 0;
@@ -10234,7 +9499,6 @@ void main() { o = vec4(uV); }`);
                 return new Promise((resolveOuter) => {
                     let pieceIndex = 0;
                     function step() {
-                        return withAutoPaintRun(paintRun, () => {
                         const slowStep = autoPaintDebugMode && pausedDebugMode;
                         const chunkEnd = slowStep ? Math.min(pieceIndex + 1, pieces.length) : pieces.length;
                         for (; pieceIndex < chunkEnd; pieceIndex++) {
@@ -10249,7 +9513,6 @@ void main() { o = vec4(uV); }`);
                             layer.bboxDirty = true;
                             resolveOuter();
                         }
-                        });
                     }
                     step();
                 });
@@ -10860,113 +10123,14 @@ void main() { o = vec4(uV); }`);
                 return true;
             }
 
-            // Procedural substrate: matte colour and actual height, separate from paint.
-            // Scalar parameters live on the layer so history and project import retain them.
-            const CANVAS_SURFACES = {
-                canvas: 'Canvas weave', linen: 'Linen weave',
-                'watercolor-cold': 'Watercolour paper — cold press',
-                'watercolor-rough': 'Watercolour paper — rough',
-                'watercolor-hot': 'Watercolour paper — hot press',
-                drawing: 'Drawing paper', smooth: 'Smooth canvas'
-            };
-
-            function canvasSurfaceHeight(type, x, y, seed) {
-                if (type === 'smooth') return 0;
-                const n = (cell, salt) => impastoLumpNoise(x, y, cell, seed + salt);
-                if (type === 'canvas' || type === 'linen') {
-                    const pitch = type === 'linen' ? 5 : 4;
-                    // Close-set, broad warp/weft threads: about 65% of each pitch is thread at half height.
-                    const wx = x + 0.15 * (impastoLumpNoise(0, y, 32, seed) - 0.5);
-                    const wy = y + 0.15 * (impastoLumpNoise(x, 0, 32, seed + 1) - 0.5);
-                    const warp = Math.pow(0.5 + 0.5 * Math.cos(wx * Math.PI * 2 / pitch), 0.55);
-                    const weft = Math.pow(0.5 + 0.5 * Math.cos(wy * Math.PI * 2 / pitch), 0.55);
-                    const over = 0.5 + 0.5 * Math.cos(wx * Math.PI / pitch) * Math.cos(wy * Math.PI / pitch);
-                    return 0.12 + 0.9 * (warp * (0.45 + 0.55 * over) + weft * (1 - 0.55 * over)) + 0.09 * n(1.5, 2);
-                }
-                if (type === 'watercolor-rough') return 0.08 + 1.6 * n(6, 3) + 0.45 * n(2.5, 4) + 0.15 * n(1, 5);
-                if (type === 'watercolor-cold') return 0.08 + 0.9 * n(4, 3) + 0.3 * n(1.8, 4) + 0.08 * n(1, 5);
-                if (type === 'watercolor-hot') return 0.04 + 0.18 * n(3, 3) + 0.1 * n(1, 4);
-                return 0.05 + 0.32 * n(2, 3) + 0.14 * impastoLumpNoise(x, y * 3, 6, seed + 4);
-            }
-
-            function applyCanvasSurface(layer, type, color, depth) {
-                if (!layer || !layer.pg || !CANVAS_SURFACES[type]) return;
-                const seed = layer.surfaceSeed == null ? 1729 : layer.surfaceSeed;
-                dropLayerRelief(layer);
-                layer.surfaceType = type;
-                layer.surfaceColor = /^#[0-9a-f]{6}$/i.test(color) ? color : '#f5f0eb';
-                layer.surfaceDepth = Math.max(0, Math.min(100, +depth || 0));
-                layer.surfaceSeed = seed;
-                const W = layer.pg.width, H = layer.pg.height;
-                const ctx = layer.pg.drawingContext, img = ctx.createImageData(W, H);
-                const rgb = [1, 3, 5].map(i => parseInt(layer.surfaceColor.slice(i, i + 2), 16));
-                const amount = layer.surfaceDepth / 50;
-                const height = type !== 'smooth' && amount > 0 ? new Float32Array(W * H) : null;
-                for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-                    const i = y * W + x, o = i * 4;
-                    if (height) height[i] = canvasSurfaceHeight(type, x, y, seed) * amount;
-                    const grain = height ? (impastoLumpNoise(x, y, 1, seed + 6) - 0.5) * 2 * Math.min(1, amount) : 0;
-                    img.data[o] = rgb[0] + grain;
-                    img.data[o + 1] = rgb[1] + grain;
-                    img.data[o + 2] = rgb[2] + grain;
-                    img.data[o + 3] = 255;
-                }
-                ctx.putImageData(img, 0, 0);
-                if (height) layer.relief = { w: W, h: H, data: height, frozen: false, x0: 0, y0: 0, x1: W - 1, y1: H - 1, surface: true };
-                layer.bboxDirty = true;
-                layer.curveDirty = true;
-            }
-
-            function refreshCanvasSurfaceUI() {
-                const surface = layers.find(l => l.surfaceType);
-                const type = document.getElementById('canvasTexture');
-                if (!type) return;
-                type.value = surface ? surface.surfaceType : 'canvas';
-                document.getElementById('canvasSurfaceColor').value = surface ? surface.surfaceColor : '#f5f0eb';
-                const depth = document.getElementById('canvasSurfaceDepth');
-                depth.value = surface ? surface.surfaceDepth : 50;
-                document.getElementById('val-surface-depth').innerText = depth.value + '%';
-                updateSliderFill(depth);
-            }
-
-            function changeCanvasSurface() {
-                const type = document.getElementById('canvasTexture').value;
-                const color = document.getElementById('canvasSurfaceColor').value;
-                const depth = +document.getElementById('canvasSurfaceDepth').value;
-                let surface = layers.find(l => l.surfaceType);
-                if (!surface) {
-                    // After flatten/delete/import, add a substrate below existing artwork.
-                    const active = layers[activeLayerIndex];
-                    addLayer('Background');
-                    surface = layers.pop();
-                    layers.unshift(surface);
-                    activeLayerIndex = active ? layers.indexOf(active) : 0;
-                }
-                applyCanvasSurface(surface, type, color, depth);
-                updateLayerUI();
-                commitHistory();
-                document.getElementById('status-text').innerText = CANVAS_SURFACES[type] + ' surface applied.';
-            }
-
-            function ensurePaintLayer() {
-                let layer = layers[activeLayerIndex];
-                if (layer && layer.surfaceType) {
-                    const index = activeLayerIndex;
-                    if (wet.layer) wetFlush();
-                    clearSelection();
-                    addLayer('Paint');
-                    layer = layers.pop();
-                    layers.splice(index + 1, 0, layer);
-                    activeLayerIndex = index + 1;
-                    updateLayerUI();
-                }
-                return layer;
-            }
-
             function addLayer(name) {
                 let pg = p.createGraphics(p.width, p.height);
                 pg.pixelDensity(1);
                 pg.clear();
+
+                if (layers.length === 0) {
+                    pg.background(245, 240, 235);
+                }
 
                 layers.push({
                     id: Date.now() + Math.random(),
@@ -11012,8 +10176,7 @@ void main() { o = vec4(uV); }`);
             // derived buffers are regenerated on restore. The relief height map is
             // shared with the snapshot (frozen, copy-on-write) rather than copied.
             const HIST_EXCLUDE = new Set(['pg', 'curvePg', '_strokesOnlyPg', '_lightDetailPg', '_shadowDetailPg', 'bbox',
-                                          'litPg', 'relief', 'paintMaterial', '_litRect', '_litKey', '_litRot', '_litFull',
-                                          '_surfaceSupport', '_combinedRelief', '_litReliefRef']);
+                                          'litPg', 'relief', '_litRect', '_litKey', '_litRot', '_litFull']);
 
             function cloneCanvasOf(pg) {
                 const src = (pg && pg.canvas) ? pg.canvas : (pg && pg.elt) ? pg.elt : pg;
@@ -11037,10 +10200,6 @@ void main() { o = vec4(uV); }`);
                 if (entry.relief) {
                     entry.relief.frozen = true;   // the live layer copies before its next write
                     props.relief = entry.relief;
-                }
-                if (entry.paintMaterial) {
-                    entry.paintMaterial.frozen = true;
-                    props.paintMaterial = entry.paintMaterial;
                 }
                 const grp = isGroup(entry);
                 return {
@@ -11068,8 +10227,6 @@ void main() { o = vec4(uV); }`);
                     if (e.bitmap) b += e.bitmap.width * e.bitmap.height * 4;
                     const rl = e.props && e.props.relief;
                     if (rl && !seen.has(rl.data)) { seen.add(rl.data); b += rl.data.byteLength; }
-                    const material = e.props && e.props.paintMaterial;
-                    if (material && !seen.has(material.data)) { seen.add(material.data); b += material.data.byteLength; }
                 }
                 if (snap.selection) b += snap.selection.mask.length;
                 b += wetStateBytes(snap.wet);
@@ -11113,8 +10270,7 @@ void main() { o = vec4(uV); }`);
                     activeLayerIndex,
                     entries: layers.map(snapshotLayerEntry),
                     selection: snapshotSelection(),
-                    wet: wetSnap,
-                    paintControls: snapshotPaintControls()
+                    wet: wetSnap
                 };
                 // Drop any redo branch ahead of the current pointer.
                 if (historyIndex < historyStack.length - 1) historyStack.length = historyIndex + 1;
@@ -11183,7 +10339,6 @@ void main() { o = vec4(uV); }`);
                     selectionPathDirty = false;
                 }
 
-                restorePaintControls(snap.paintControls);
                 if (snap.wet) wetRestore(snap.wet);
 
                 historySuppress = false;
@@ -11315,17 +10470,10 @@ void main() { o = vec4(uV); }`);
                     bw: src.bw ? { enabled: src.bw.enabled, threshold: src.bw.threshold } : makeDefaultBW(),
                     hsl: src.hsl ? JSON.parse(JSON.stringify(src.hsl)) : makeDefaultHSL()
                 };
-                for (const key of ['surfaceType', 'surfaceColor', 'surfaceDepth', 'surfaceSeed', 'surfaceContactBaked']) {
-                    if (src[key] != null) dupe[key] = src[key];
-                }
                 // Same relief: shared and frozen, so whichever layer paints next copies it.
                 if (src.relief) {
                     src.relief.frozen = true;
                     dupe.relief = src.relief;
-                }
-                if (src.paintMaterial) {
-                    src.paintMaterial.frozen = true;
-                    dupe.paintMaterial = src.paintMaterial;
                 }
 
                 // Insert the duplicate directly above the source layer
@@ -11495,11 +10643,9 @@ void main() { o = vec4(uV); }`);
                     if (i === 0) ng.background(245, 240, 235);
                     // Copy preserving 1:1 pixels at the chosen anchor.
                     ng.image(old, anchorX, anchorY);
-                    paintMaterialShift(layer, newW, newH, anchorX, anchorY);
                     layer.pg = ng;
                     layer.bboxDirty = true;
-                    if (layer.surfaceType) applyCanvasSurface(layer, layer.surfaceType, layer.surfaceColor, layer.surfaceDepth);
-                    else reliefShift(layer, newW, newH, anchorX, anchorY);
+                    reliefShift(layer, newW, newH, anchorX, anchorY);
                     if (old && old.remove) old.remove(); // free the old buffer
 
                     // Adjust the image draw offsets if the layer has a source image
@@ -11609,12 +10755,10 @@ void main() { o = vec4(uV); }`);
             // Shared by the classical and AI resamplers. Unitless fields
             // (layer.scale, layer.rotation) are intentionally left untouched.
             function scaleLayerMetadata(layer, sx, sy) {
-                paintMaterialResample(layer, layer.pg.width, layer.pg.height);
                 if (layer.curvePg && layer.curvePg.remove) layer.curvePg.remove();
                 layer.curvePg = null;
                 layer.curveDirty = true;
-                if (layer.surfaceType) applyCanvasSurface(layer, layer.surfaceType, layer.surfaceColor, layer.surfaceDepth);
-                else reliefResample(layer, layer.pg.width, layer.pg.height);   // pg is already the new size
+                reliefResample(layer, layer.pg.width, layer.pg.height);   // pg is already the new size
                 if (layer.offsetX) layer.offsetX *= sx;
                 if (layer.offsetY) layer.offsetY *= sy;
                 if (layer.sourceImg) {
@@ -12023,10 +11167,8 @@ void main() { o = vec4(uV); }`);
                 // 3. Clear bottom layer buffer and draw the tempCanvas onto it
                 bottomLayer.pg.clear();
                 bottomLayer.pg.drawingContext.drawImage(tempCanvas, 0, 0);
-                bottomLayer.paintMaterial = null;
                 resetLayerAdjustments(bottomLayer); // curve + B&W baked into the merge result
                 dropLayerRelief(bottomLayer);       // relief lighting baked in too
-                bottomLayer.surfaceContactBaked = true;
 
                 // 4. Reset bottom layer properties to identity transform and bake opacity
                 bottomLayer.offsetX = 0;
@@ -12092,10 +11234,8 @@ void main() { o = vec4(uV); }`);
 
                 targetLayer.pg.clear();
                 targetLayer.pg.drawingContext.drawImage(tempCanvas, 0, 0);
-                targetLayer.paintMaterial = null;
                 resetLayerAdjustments(targetLayer); // curve + B&W baked into the merge result
                 dropLayerRelief(targetLayer);       // relief lighting baked in too
-                targetLayer.surfaceContactBaked = true;
 
                 targetLayer.offsetX = 0;
                 targetLayer.offsetY = 0;
@@ -12127,10 +11267,8 @@ void main() { o = vec4(uV); }`);
                 baseLayer.name = "Background";
                 baseLayer.pg.clear();
                 baseLayer.pg.drawingContext.drawImage(composite, 0, 0);
-                baseLayer.paintMaterial = null;
                 resetLayerAdjustments(baseLayer); // composite already includes every layer adjustment
                 dropLayerRelief(baseLayer);       // ...and every layer's relief lighting
-                baseLayer.surfaceContactBaked = true;
 
                 baseLayer.offsetX = 0;
                 baseLayer.offsetY = 0;
@@ -12154,9 +11292,7 @@ void main() { o = vec4(uV); }`);
                 if (wet.layer === layer) wetDiscard();
                 clearSeparableDetails(layer);
                 dropLayerRelief(layer);
-                layer.surfaceContactBaked = false;
                 layer.pg.clear();
-                layer.paintMaterial = null;
                 layer.bbox = null;
                 layer.bboxDirty = false;
                 updateLayerUI();
@@ -12183,7 +11319,6 @@ void main() { o = vec4(uV); }`);
                 const baked = renderLayerToCanvas(layer);
                 layer.pg.clear();
                 layer.pg.drawingContext.drawImage(baked, 0, 0);
-                layer.paintMaterial = null;
 
                 // Transform now lives in the pixels — reset to identity.
                 layer.offsetX = 0;
@@ -12194,7 +11329,6 @@ void main() { o = vec4(uV); }`);
                 // Adjustments baked — clear live filters so they don't re-apply.
                 resetLayerAdjustments(layer);
                 dropLayerRelief(layer);   // relief lighting is in the pixels now
-                layer.surfaceContactBaked = true;
 
                 // Sever the embedded source image + placement metadata and drop any
                 // retained Auto-Paint detail buffers. This is what makes Auto Paint
@@ -12370,7 +11504,7 @@ void main() { o = vec4(uV); }`);
                     // If the document is still pristine (just the startup
                     // Background layer, no imports/paint committed), adopt the
                     // PSD's canvas size so layers land at 1:1 their PSD coords.
-                    const fresh = isFreshDoc();
+                    const fresh = (layers.length === 1 && !isGroup(layers[0]) && imageImportCount === 0);
                     if (fresh && (docW !== p.width || docH !== p.height)) {
                         resizeArtCanvas(docW, docH, 0, 0);
                     }
@@ -12665,11 +11799,7 @@ void main() { o = vec4(uV); }`);
             }
 
             function isFreshDoc() {
-                if (imageImportCount !== 0) return false;
-                // The startup document now has a substrate plus an empty Paint layer.
-                return layers.length === 2 && !!layers[0].surfaceType && !isGroup(layers[1])
-                    && !layers[1].sourceImg && !canvasHasAlpha(layers[1].pg.canvas)
-                    && wet.layer !== layers[1];
+                return layers.length === 1 && !isGroup(layers[0]) && imageImportCount === 0;
             }
 
             async function importProjectZIP(file) {
@@ -12744,7 +11874,6 @@ void main() { o = vec4(uV); }`);
                         if (bmp) pg.drawingContext.drawImage(bmp, 0, 0);
                     }
                     o.pg = pg;
-                    if (o.surfaceType) applyCanvasSurface(o, o.surfaceType, o.surfaceColor, o.surfaceDepth);
                     if (rec.source) {
                         const si = await zipP5Image(zip, rec.source);
                         if (si) o.sourceImg = si;
@@ -14792,14 +13921,6 @@ void main() { o = vec4(uV); }`);
                     e.target.value = ''; // allow re-selecting the same file
                 });
 
-                // ----- Canvas substrate (one undoable change per gesture) -----
-                document.getElementById('canvasTexture').addEventListener('change', changeCanvasSurface);
-                document.getElementById('canvasSurfaceColor').addEventListener('change', changeCanvasSurface);
-                document.getElementById('canvasSurfaceDepth').addEventListener('input', e => {
-                    document.getElementById('val-surface-depth').innerText = e.target.value + '%';
-                });
-                document.getElementById('canvasSurfaceDepth').addEventListener('change', changeCanvasSurface);
-
                 // ----- Layer buttons -----
                 document.getElementById('addLayerBtn').addEventListener('click', () => { addLayer("Layer " + (layers.length + 1)); commitHistory(); });
                 document.getElementById('deleteLayerBtn').addEventListener('click', () => { removeLayer(activeLayerIndex); commitHistory(); });
@@ -15556,7 +14677,6 @@ void main() { o = vec4(uV); }`);
             }
 
             function updateLayerUI() {
-                refreshCanvasSurfaceUI();
                 // Any operation that changes layer pixels refreshes the panel,
                 // so invalidate every curved layer's cache here as a catch-all.
                 for (const lyr of layers) { if (layerAdjustActive(lyr)) lyr.curveDirty = true; }

@@ -1,0 +1,346 @@
+/* VOID SHIFT: the SCREEN 4 shooter bezel. No external fonts or image assets. */
+:root {
+  --doom-amber: #ffc65a;
+  --doom-cyan: #62f0d0;
+  --doom-ink: #111a20;
+  --doom-steel: #26353d;
+  --doom-muted: #91a5aa;
+}
+
+/* Launch screen */
+#start {
+  overflow: auto;
+  justify-content: safe center;
+  padding: 26px 16px;
+  background:
+    linear-gradient(120deg, transparent 65%, #102f3380 65%, transparent 82%),
+    repeating-linear-gradient(0deg, #0000 0 3px, #0003 3px 4px),
+    radial-gradient(ellipse at 20% 30%, #224248 0, #0a171c 46%, #060c10 100%);
+}
+#start .panel {
+  position: relative;
+  width: min(680px, 100%);
+  max-width: 680px;
+  padding: 30px 38px 22px;
+  border: 1px solid #4b656d;
+  background: linear-gradient(115deg, #16272dee, #101a20f5 65%);
+  box-shadow: 9px 9px 0 #0005, inset 0 0 0 4px #0a141a;
+}
+#start .panel::before, .doom-overlay-panel::before {
+  content: "";
+  position: absolute;
+  width: 70px;
+  height: 5px;
+  top: -1px;
+  left: 38px;
+  background: var(--doom-amber);
+}
+#start .rainbow { height: 4px; width: 65px; margin-bottom: 14px; }
+.doom-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #a1b6bb;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+.doom-brand span:last-child {
+  padding: 3px 7px;
+  color: var(--doom-cyan);
+  border: 1px solid #39615d;
+  letter-spacing: 1px;
+}
+#start p.doom-eyebrow, .doom-eyebrow {
+  color: var(--doom-amber);
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin: 27px 0 13px;
+}
+#start .doom-intro h1 {
+  position: relative;
+  font-size: clamp(54px, 9vw, 92px);
+  line-height: .87;
+  letter-spacing: -6px;
+  color: #e1e8df;
+  text-shadow: 4px 4px 0 #33434a, 7px 7px 0 #060e14;
+  margin: 0 0 24px;
+  font-weight: 900;
+}
+#start .doom-intro h1 span { color: var(--doom-amber); }
+#start .doom-intro h1 i {
+  position: absolute;
+  color: #335556;
+  font-style: normal;
+  right: 8px;
+  top: 40px;
+  font-size: 120px;
+  letter-spacing: -20px;
+}
+#start p.doom-tagline {
+  color: #d4e1df;
+  line-height: 1.5;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+.doom-sectors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 22px;
+  border-top: 1px solid #35474d;
+  border-bottom: 1px solid #35474d;
+  padding: 10px 0;
+  color: #9baeb1;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.doom-sectors b { color: var(--doom-cyan); margin-right: 5px; }
+#start p.doom-premise { color: #9fb2b7; font-size: 12px; margin: 15px 0 17px; line-height: 1.65; }
+.doom-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 13px 20px;
+  font: bold 12px var(--mono);
+  letter-spacing: 2px;
+  background: #25373f;
+  border: 1px solid #60737a;
+  color: #e1e8df;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 #050a0e;
+}
+.doom-button:hover { background: #354a53; border-color: #b6c6c5; }
+.doom-button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #050a0e; }
+.doom-button:focus-visible, #doom-launch:focus-visible, #startbtn:focus-visible {
+  outline: 2px solid var(--doom-cyan);
+  outline-offset: 4px;
+}
+.doom-primary { color: #171d21; border-color: #ffda8a; background: var(--doom-amber); }
+.doom-primary:hover { background: #ffe4a8; border-color: #fff; }
+.doom-primary span { font-size: 20px; line-height: 1; }
+#start p.doom-controls, .doom-controls {
+  font-size: 10px;
+  color: #acbdc0;
+  line-height: 2.1;
+  text-align: center;
+  margin: 14px 0 0;
+}
+.doom-controls kbd, .doom-keyboard kbd, .doom-bottom-controls kbd {
+  background: #25353c;
+  color: #d6e5e2;
+  border-color: #50656a;
+  border-radius: 0;
+  font-size: 10px;
+}
+.doom-controls > span { color: #587079; padding: 0 4px; }
+#start p.doom-keyboard { color: #718b93; text-align: center; font-size: 10px; margin: 3px 0 20px; }
+.doom-sandbox {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border-top: 1px solid #35474d;
+  padding-top: 18px;
+}
+.doom-sandbox > div { flex: 1; }
+.doom-sandbox b { color: #a4b9be; font-size: 10px; letter-spacing: 1px; }
+#start .doom-sandbox p { color: #708b94; font-size: 10px; line-height: 1.5; margin: 3px 0 0; }
+#startbtn {
+  width: auto;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  border: 1px solid #506770;
+  background: #1c2c34;
+  color: #b8caca;
+}
+#startbtn:hover { background: #324750; color: #fff; }
+#start p.doom-listing {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 5px 12px;
+  margin: 16px 0 0;
+  color: #708b94;
+  font-size: 9px;
+}
+.doom-listing a, #help a { color: var(--doom-cyan); text-underline-offset: 3px; }
+.doom-listing code { color: #b8c9c5; }
+#doom-launch {
+  position: absolute;
+  pointer-events: auto;
+  top: 12px;
+  right: 12px;
+  padding: 11px 14px;
+  background: #171f23e8;
+  border: 1px solid var(--doom-amber);
+  color: var(--doom-amber);
+  font: bold 11px var(--mono);
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+#doom-launch:hover { background: var(--doom-amber); color: #161d22; }
+#hud.seated #doom-launch { display: none; }
+
+/* In-game overlay. Its roots are toggled with the existing .hidden utility. */
+body.doom-playing #stats, body.doom-playing #palette,
+body.doom-playing #hud-assets, body.doom-playing #doom-launch,
+body.doom-playing #crosshair, body.doom-playing #hintbar { display: none; }
+#doom-hud { position: fixed; inset: 0; z-index: 24; pointer-events: none; font-family: var(--mono); }
+.doom-topline {
+  position: absolute;
+  top: 18px;
+  left: 22px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  filter: drop-shadow(1px 2px 1px #000);
+}
+.doom-mission { display: flex; gap: 10px; align-items: center; }
+.doom-indicator { width: 7px; height: 26px; background: var(--doom-cyan); box-shadow: 0 0 12px #62f0d03b; }
+.doom-mission-label { display: block; color: #a4babd; font-size: 9px; letter-spacing: 2px; margin-bottom: 4px; }
+#doom-name { display: block; color: #edf0df; font-size: 15px; letter-spacing: 2px; }
+.doom-mode { color: #b6c7c6; font-size: 10px; letter-spacing: 2px; }
+.doom-mode b { margin-left: 10px; color: var(--doom-cyan); }
+#doom-message {
+  position: absolute;
+  top: 75px;
+  left: 50%;
+  width: max-content;
+  max-width: calc(100% - 40px);
+  transform: translateX(-50%);
+  padding: 9px 16px;
+  border-left: 3px solid var(--doom-amber);
+  background: #0d181ee6;
+  box-shadow: 2px 3px 0 #0005;
+  color: #ffdb8b;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+}
+#doom-message:empty { display: none; }
+.doom-reticle { position: absolute; top: 50%; left: 50%; width: 24px; height: 24px; transform: translate(-50%, -50%); filter: drop-shadow(1px 1px 1px #000); }
+.doom-reticle::before, .doom-reticle::after { content: ""; position: absolute; top: 11px; width: 6px; height: 2px; background: #ecf5e1; }
+.doom-reticle::before { left: 0; }
+.doom-reticle::after { right: 0; }
+.doom-reticle i { position: absolute; left: 11px; top: 11px; width: 2px; height: 2px; background: var(--doom-amber); }
+.doom-statusbar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, calc(100% - 36px));
+  min-height: 87px;
+  display: grid;
+  grid-template-columns: 1fr 1fr .85fr 1fr 1fr;
+  gap: 0;
+  padding: 13px 10px 12px;
+  border: 2px solid #6b7978;
+  background: linear-gradient(#303e42, #1f2b31 14%, #1f2b31 86%, #101b22);
+  box-shadow: inset 0 0 0 3px #101a20, 0 6px 0 #0007;
+}
+.doom-statusbar::before, .doom-statusbar::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  background: #82918e;
+  box-shadow: 0 63px 0 #82918e;
+}
+.doom-statusbar::before { left: 6px; }
+.doom-statusbar::after { right: 6px; }
+.doom-stat { padding: 0 15px; border-right: 1px solid #4b5a5f; }
+.doom-stat:last-child { border: 0; }
+.doom-stat > span { display: block; color: #afbfbd; font-size: 9px; letter-spacing: 2px; margin: 0 0 4px; }
+.doom-stat > div { display: flex; align-items: baseline; gap: 6px; }
+.doom-stat b { color: var(--doom-amber); font-size: 35px; line-height: 1; letter-spacing: -2px; text-shadow: 2px 2px 0 #000; }
+.doom-stat small { color: #7f969b; font-size: 10px; white-space: nowrap; }
+.doom-health-stat b { color: #e8eddd; }
+.doom-health-line { display: block; width: 36px; height: 3px; margin-top: 5px; background: var(--doom-cyan); }
+.doom-status-brand { display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 1px solid #4b5a5f; }
+.doom-status-brand > b { font-size: 30px; color: #abbdb9; line-height: 1; letter-spacing: -4px; }
+.doom-status-brand b span { color: #547c7b; }
+.doom-status-brand > span { margin-top: 6px; color: #678991; font-size: 7px; letter-spacing: 2px; }
+.doom-level-stat b { color: #b1dbd0; }
+.doom-kills-stat b { color: #c6d2c9; }
+.doom-kills-caption { display: block; margin-top: 4px; font-size: 8px !important; letter-spacing: 1px; }
+.doom-bottom-controls { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; gap: 25px; color: #92a6aa; font-size: 8px; letter-spacing: 1px; white-space: nowrap; text-shadow: 1px 1px #000; }
+.doom-bottom-controls kbd { font-size: 8px; }
+#doom-hud.low-health #doom-health { color: #ff7770; }
+#doom-hud.low-health .doom-health-line { background: #ff7770; }
+
+/* A stepped silhouette, drawn entirely with CSS. */
+#doom-weapon { position: absolute; bottom: 110px; left: 50%; width: 154px; height: 208px; transform: translateX(-50%); image-rendering: pixelated; filter: drop-shadow(5px 5px 0 #0009); }
+.doom-gun-barrel { position: absolute; left: 59px; bottom: 97px; width: 38px; height: 79px; border: 6px solid #344249; background: linear-gradient(90deg, #526169 0 25%, #87948f 25% 42%, #46545a 42% 66%, #29383f 66%); box-shadow: 0 -6px 0 #1c2b31, -5px 14px 0 #27373d, 5px 14px 0 #14212a; }
+.doom-gun-sight { position: absolute; width: 8px; height: 12px; bottom: 174px; left: 74px; background: #203039; border-top: 4px solid #a8d4c4; }
+.doom-gun-body { position: absolute; bottom: 25px; left: 30px; width: 98px; height: 86px; border: 7px solid #2c3b42; background: linear-gradient(90deg, #596c70 0 12%, #344b54 12% 36%, #9ba699 36% 44%, #51646a 44% 75%, #293d47 75%); clip-path: polygon(14% 0,86% 0,86% 14%,100% 14%,100% 100%,0 100%,0 14%,14% 14%); box-shadow: inset 0 -18px 0 #273a44; }
+.doom-gun-body i { position: absolute; left: 16px; top: 23px; width: 52px; height: 10px; background: repeating-linear-gradient(90deg, #192a34 0 7px, #415962 7px 10px); border-top: 3px solid #718684; }
+.doom-gun-body span { position: absolute; bottom: 5px; right: 9px; width: 15px; height: 8px; background: var(--doom-amber); border: 2px solid #6f6243; }
+.doom-gun-grip { position: absolute; left: 21px; right: 19px; bottom: 0; height: 43px; background: repeating-linear-gradient(0deg, #394751 0 8px, #202f3a 8px 13px); border: 8px solid #1a2933; border-bottom: 0; clip-path: polygon(8% 0,92% 0,100% 100%,0 100%); }
+.doom-gun-flame { display: none; position: absolute; left: 32px; bottom: 155px; width: 92px; height: 70px; background: #ffec98; clip-path: polygon(46% 0,58% 32%,100% 15%,75% 56%,95% 89%,62% 72%,50% 100%,35% 75%,0 89%,25% 56%,3% 15%,39% 34%); filter: drop-shadow(0 0 8px #ffaf35); }
+#doom-weapon.firing { transform: translate(-50%, 10px); }
+#doom-weapon.firing .doom-gun-flame { display: block; }
+#doom-flash { position: absolute; inset: 0; opacity: 0; background: #c42a1d; pointer-events: none; }
+#doom-flash.damage { animation: doom-damage .34s ease-out; }
+#doom-flash.warp { background: #54ffe1; animation: doom-warp .7s ease-out; }
+@keyframes doom-damage { 0% { opacity: .34; } 100% { opacity: 0; } }
+@keyframes doom-warp { 0%, 20% { opacity: .7; } 100% { opacity: 0; } }
+
+/* Pause, failure and completion share one focusable action panel. */
+#doom-overlay { position: fixed; inset: 0; z-index: 65; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 24px 16px; background: #031017c9; backdrop-filter: blur(3px); }
+.doom-overlay-panel { position: relative; width: min(470px, 100%); padding: 28px 32px 24px; background: #15252df5; border: 1px solid #5f777d; box-shadow: 7px 7px 0 #0008, inset 0 0 0 4px #0b161d; }
+.doom-overlay-panel .doom-eyebrow { margin-top: 32px; }
+#doom-overlay-title { margin: 10px 0 16px; color: #e5edde; font-size: clamp(28px, 6vw, 42px); letter-spacing: -2px; line-height: 1.15; text-shadow: 3px 3px #34464b; overflow-wrap: anywhere; }
+#doom-overlay-text { color: #a9bdc1; line-height: 1.7; font-size: 12px; white-space: pre-line; }
+.doom-overlay-actions { display: grid; gap: 9px; margin-top: 24px; }
+.doom-subtle { background: transparent; color: #91abb3; border-color: #3a525c; }
+
+@media (max-width: 680px) {
+  #start { padding: 12px; }
+  #start .panel { padding: 25px 24px 20px; }
+  #start .doom-intro h1 { letter-spacing: -4px; }
+  #start .doom-intro h1 i { font-size: 100px; right: 3px; top: 20px; }
+  .doom-brand { font-size: 9px; letter-spacing: 1px; }
+  .doom-topline { top: 12px; left: 13px; right: 13px; }
+  .doom-mode { display: none; }
+  #doom-name { font-size: 12px; letter-spacing: 1px; }
+  #doom-message { top: 66px; font-size: 11px; padding: 8px 12px; }
+  .doom-statusbar { width: calc(100% - 16px); bottom: 23px; min-height: 73px; padding: 11px 4px 8px; grid-template-columns: 1fr 1fr .75fr 1fr 1fr; }
+  .doom-stat { padding: 0 8px; }
+  .doom-stat > span { font-size: 8px; letter-spacing: 1px; }
+  .doom-stat b { font-size: 27px; }
+  .doom-stat small { font-size: 8px; }
+  .doom-stat > div { gap: 3px; }
+  .doom-status-brand > b { font-size: 25px; }
+  .doom-status-brand > span { font-size: 6px; letter-spacing: 1px; }
+  .doom-statusbar::before, .doom-statusbar::after { box-shadow: 0 49px 0 #82918e; }
+  #doom-weapon { bottom: 95px; transform: translateX(-50%) scale(.82); transform-origin: bottom center; }
+  #doom-weapon.firing { transform: translate(-50%, 8px) scale(.82); }
+}
+@media (max-width: 430px) {
+  .doom-sandbox { align-items: flex-start; gap: 10px; }
+  #startbtn { font-size: 9px; padding: 10px 8px; }
+  #start .doom-intro h1 i { font-size: 76px; letter-spacing: -13px; }
+  .doom-sectors { gap: 7px 12px; font-size: 8px; }
+  .doom-stat { padding: 0 5px; }
+  .doom-statusbar { grid-template-columns: 1fr 1fr .6fr .8fr 1fr; }
+  .doom-stat b { font-size: 25px; }
+  .doom-stat > span { font-size: 7px; }
+  .doom-status-brand > span { display: none; }
+  .doom-status-brand > b { font-size: 22px; }
+}
+@media (max-height: 720px) and (min-width: 681px) {
+  #start .panel { padding: 22px 32px 18px; }
+  #start p.doom-eyebrow { margin-top: 19px; }
+  #start .doom-intro h1 { font-size: 70px; margin-bottom: 16px; }
+  #start .doom-intro h1 i { font-size: 100px; top: 22px; }
+  #start p.doom-tagline { margin-bottom: 12px; }
+  #start p.doom-keyboard { margin-bottom: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #doom-flash.damage, #doom-flash.warp { animation-duration: .05s; }
+}
